@@ -738,7 +738,7 @@ namespace System.Diagnostics.Tests
         /// <summary>
         /// Will be called when a DiagnosticSource event is fired. 
         /// </summary>
-        public event Action<DiagnosticSourceEvent> EventWritten;
+        public new event Action<DiagnosticSourceEvent> EventWritten;
 
         /// <summary>
         /// It is possible that there are other events besides those that are being forwarded from 
