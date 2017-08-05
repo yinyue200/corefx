@@ -44,7 +44,7 @@ namespace System.Text
     //   }
     internal abstract class BaseCodePageEncoding : EncodingNLS, ISerializable
     {
-        internal const String CODE_PAGE_DATA_FILE_NAME = "codepages.nlp";
+        internal const String CODE_PAGE_DATA_FILE_NAME = "Data.codepages.nlp";
 
         protected int dataTableCodePage;
 
@@ -167,7 +167,8 @@ namespace System.Text
             // NOTE: We must reflect on a public type that is exposed in the contract here
             // (i.e. CodePagesEncodingProvider), otherwise we will not get a reference to
             // the right assembly.
-            Stream stream = typeof(CodePagesEncodingProvider).GetTypeInfo().Assembly.GetManifestResourceStream(tableName);
+            var assembly = typeof(CodePagesEncodingProvider).GetTypeInfo().Assembly;
+            Stream stream = assembly.GetManifestResourceStream(assembly.GetName().Name + "." + tableName);
 
             if (stream == null)
             {
