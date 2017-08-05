@@ -131,7 +131,7 @@ namespace System.Text
         internal void ThrowLastCharRecursive(int charRecursive)
         {
             // Throw it, using our complete character
-            throw new ArgumentException(SR.Format(SR.Argument_RecursiveFallback, charRecursive), "chars");
+            throw new ArgumentException(SR.Format(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.Argument_RecursiveFallback, charRecursive), "chars");
         }
     }
 }

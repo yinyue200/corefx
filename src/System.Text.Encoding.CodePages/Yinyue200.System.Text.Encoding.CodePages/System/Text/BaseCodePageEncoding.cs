@@ -187,7 +187,7 @@ namespace System.Text
             if (!FindCodePage(dataTableCodePage))
             {
                 // Didn't have one
-                throw new NotSupportedException(SR.Format(SR.NotSupported_NoCodepageData, CodePage));
+                throw new NotSupportedException(SR.Format(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.NotSupported_NoCodepageData, CodePage));
             }
 
             // We had it, so load it

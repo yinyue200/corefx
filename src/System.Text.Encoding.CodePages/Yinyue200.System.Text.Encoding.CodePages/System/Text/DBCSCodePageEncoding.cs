@@ -90,7 +90,7 @@ namespace System.Text
 
                 // Make sure we're really a 1-byte code page
                 if (pCodePage->ByteCount != 2)
-                    throw new NotSupportedException(SR.Format(SR.NotSupported_NoCodepageData, CodePage));
+                    throw new NotSupportedException(SR.Format(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.NotSupported_NoCodepageData, CodePage));
                 // Remember our unknown bytes & chars
                 _bytesUnknown = pCodePage->ByteReplace;
                 charUnknown = pCodePage->UnicodeReplace;
@@ -531,7 +531,7 @@ namespace System.Text
 
                 // Only count if encoder.m_throwOnOverflow
                 if (encoder.InternalHasFallbackBuffer && encoder.FallbackBuffer.Remaining > 0)
-                    throw new ArgumentException(SR.Format(SR.Argument_EncoderFallbackNotEmpty, EncodingName, encoder.Fallback.GetType()));
+                    throw new ArgumentException(SR.Format(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.Argument_EncoderFallbackNotEmpty, EncodingName, encoder.Fallback.GetType()));
             }
 
             // prepare our end
@@ -648,7 +648,7 @@ namespace System.Text
 
                 // If we're not converting we must not have a fallback buffer
                 if (encoder.m_throwOnOverflow && fallbackBuffer.Remaining > 0)
-                    throw new ArgumentException(SR.Format(SR.Argument_EncoderFallbackNotEmpty, EncodingName, encoder.Fallback.GetType()));
+                    throw new ArgumentException(SR.Format(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.Argument_EncoderFallbackNotEmpty, EncodingName, encoder.Fallback.GetType()));
 
                 // We may have a left over character from last time, try and process it.
                 if (charLeftOver > 0)
@@ -1118,7 +1118,7 @@ namespace System.Text
         public override int GetMaxByteCount(int charCount)
         {
             if (charCount < 0)
-                throw new ArgumentOutOfRangeException(nameof(charCount), SR.ArgumentOutOfRange_NeedNonNegNum);
+                throw new ArgumentOutOfRangeException(nameof(charCount), Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.ArgumentOutOfRange_NeedNonNegNum);
             Contract.EndContractBlock();
 
             // Characters would be # of characters + 1 in case high surrogate is ? * max fallback
@@ -1131,7 +1131,7 @@ namespace System.Text
             byteCount *= 2;
 
             if (byteCount > 0x7fffffff)
-                throw new ArgumentOutOfRangeException(nameof(charCount), SR.ArgumentOutOfRange_GetByteCountOverflow);
+                throw new ArgumentOutOfRangeException(nameof(charCount), Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.ArgumentOutOfRange_GetByteCountOverflow);
 
             return (int)byteCount;
         }
@@ -1139,7 +1139,7 @@ namespace System.Text
         public override int GetMaxCharCount(int byteCount)
         {
             if (byteCount < 0)
-                throw new ArgumentOutOfRangeException(nameof(byteCount), SR.ArgumentOutOfRange_NeedNonNegNum);
+                throw new ArgumentOutOfRangeException(nameof(byteCount), Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.ArgumentOutOfRange_NeedNonNegNum);
             Contract.EndContractBlock();
 
             // DBCS is pretty much the same, but could have hanging high byte making extra ? and fallback for unknown
@@ -1150,7 +1150,7 @@ namespace System.Text
                 charCount *= DecoderFallback.MaxCharCount;
 
             if (charCount > 0x7fffffff)
-                throw new ArgumentOutOfRangeException(nameof(byteCount), SR.ArgumentOutOfRange_GetCharCountOverflow);
+                throw new ArgumentOutOfRangeException(nameof(byteCount), Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.ArgumentOutOfRange_GetCharCountOverflow);
 
             return (int)charCount;
         }

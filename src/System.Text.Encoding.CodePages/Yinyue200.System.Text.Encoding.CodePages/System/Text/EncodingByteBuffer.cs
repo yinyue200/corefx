@@ -40,7 +40,7 @@ namespace System.Text
                 fallbackBuffer = _encoder.FallbackBuffer;
                 // If we're not converting we must not have data in our fallback buffer
                 if (_encoder.m_throwOnOverflow && _encoder.InternalHasFallbackBuffer && fallbackBuffer.Remaining > 0)
-                    throw new ArgumentException(SR.Format(SR.Argument_EncoderFallbackNotEmpty, _encoder.Encoding.EncodingName, _encoder.Fallback.GetType()));
+                    throw new ArgumentException(SR.Format(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.Argument_EncoderFallbackNotEmpty, _encoder.Encoding.EncodingName, _encoder.Fallback.GetType()));
             }
             fallbackBufferHelper = new EncoderFallbackBufferHelper(fallbackBuffer);
             fallbackBufferHelper.InternalInitialize(_chars, _charEnd, _encoder, _bytes != null);

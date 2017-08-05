@@ -6,7 +6,7 @@ using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace System.Text
+namespace Yinyue200.ClrSystem.Text.Encoding.CodePages
 {
     public sealed partial class CodePagesEncodingProvider : EncodingProvider
     {

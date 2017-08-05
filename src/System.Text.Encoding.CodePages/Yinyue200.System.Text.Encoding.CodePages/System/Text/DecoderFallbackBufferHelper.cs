@@ -61,14 +61,14 @@ namespace System.Text
                         {
                             // High Surrogate
                             if (bHighSurrogate)
-                                throw new ArgumentException(SR.Argument_InvalidCharSequenceNoIndex);
+                                throw new ArgumentException(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.Argument_InvalidCharSequenceNoIndex);
                             bHighSurrogate = true;
                         }
                         else
                         {
                             // Low surrogate
                             if (bHighSurrogate == false)
-                                throw new ArgumentException(SR.Argument_InvalidCharSequenceNoIndex);
+                                throw new ArgumentException(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.Argument_InvalidCharSequenceNoIndex);
                             bHighSurrogate = false;
                         }
                     }
@@ -84,7 +84,7 @@ namespace System.Text
 
                 // Need to make sure that bHighSurrogate isn't true
                 if (bHighSurrogate)
-                    throw new ArgumentException(SR.Argument_InvalidCharSequenceNoIndex);
+                    throw new ArgumentException(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.Argument_InvalidCharSequenceNoIndex);
 
                 // Now we aren't going to be false, so its OK to update chars
                 chars = charTemp;
@@ -117,14 +117,14 @@ namespace System.Text
                         {
                             // High Surrogate
                             if (bHighSurrogate)
-                                throw new ArgumentException(SR.Argument_InvalidCharSequenceNoIndex);
+                                throw new ArgumentException(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.Argument_InvalidCharSequenceNoIndex);
                             bHighSurrogate = true;
                         }
                         else
                         {
                             // Low surrogate
                             if (bHighSurrogate == false)
-                                throw new ArgumentException(SR.Argument_InvalidCharSequenceNoIndex);
+                                throw new ArgumentException(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.Argument_InvalidCharSequenceNoIndex);
                             bHighSurrogate = false;
                         }
                     }
@@ -134,7 +134,7 @@ namespace System.Text
 
                 // Need to make sure that bHighSurrogate isn't true
                 if (bHighSurrogate)
-                    throw new ArgumentException(SR.Argument_InvalidCharSequenceNoIndex);
+                    throw new ArgumentException(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.Argument_InvalidCharSequenceNoIndex);
 
                 return count;
             }
@@ -144,7 +144,7 @@ namespace System.Text
         }
 
         // private helper methods
-        internal void ThrowLastBytesRecursive(byte[] bytesUnknown)
+        internal void ThrowLastByteSrsecursive(byte[] bytesUnknown)
         {
             // Create a string representation of our bytes.
             StringBuilder strBytes = new StringBuilder(bytesUnknown.Length * 3);
@@ -161,7 +161,7 @@ namespace System.Text
 
             // Throw it, using our complete bytes
             throw new ArgumentException(
-                SR.Format(SR.Argument_RecursiveFallbackBytes, strBytes.ToString()), nameof(bytesUnknown));
+                SR.Format(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.Argument_RecursiveFallbackBytes, strBytes.ToString()), nameof(bytesUnknown));
         }
     }
 }

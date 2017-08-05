@@ -85,7 +85,7 @@ namespace System.Text
 
                 // Make sure we're really a 1 byte code page
                 if (pCodePage->ByteCount != 1)
-                    throw new NotSupportedException(SR.Format(SR.NotSupported_NoCodepageData, CodePage));
+                    throw new NotSupportedException(SR.Format(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.NotSupported_NoCodepageData, CodePage));
 
                 // Remember our unknown bytes & chars
                 _byteUnknown = (byte)pCodePage->ByteReplace;
@@ -924,7 +924,7 @@ namespace System.Text
         public override int GetMaxByteCount(int charCount)
         {
             if (charCount < 0)
-                throw new ArgumentOutOfRangeException(nameof(charCount), SR.ArgumentOutOfRange_NeedNonNegNum);
+                throw new ArgumentOutOfRangeException(nameof(charCount), Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.ArgumentOutOfRange_NeedNonNegNum);
             Contract.EndContractBlock();
 
             // Characters would be # of characters + 1 in case high surrogate is ? * max fallback
@@ -936,14 +936,14 @@ namespace System.Text
             // 1 to 1 for most characters.  Only surrogates with fallbacks have less.
 
             if (byteCount > 0x7fffffff)
-                throw new ArgumentOutOfRangeException(nameof(charCount), SR.ArgumentOutOfRange_GetByteCountOverflow);
+                throw new ArgumentOutOfRangeException(nameof(charCount), Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.ArgumentOutOfRange_GetByteCountOverflow);
             return (int)byteCount;
         }
 
         public override int GetMaxCharCount(int byteCount)
         {
             if (byteCount < 0)
-                throw new ArgumentOutOfRangeException(nameof(byteCount), SR.ArgumentOutOfRange_NeedNonNegNum);
+                throw new ArgumentOutOfRangeException(nameof(byteCount), Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.ArgumentOutOfRange_NeedNonNegNum);
             Contract.EndContractBlock();
 
             // Just return length, SBCS stay the same length because they don't map to surrogate
@@ -954,7 +954,7 @@ namespace System.Text
                 charCount *= DecoderFallback.MaxCharCount;
 
             if (charCount > 0x7fffffff)
-                throw new ArgumentOutOfRangeException(nameof(byteCount), SR.ArgumentOutOfRange_GetCharCountOverflow);
+                throw new ArgumentOutOfRangeException(nameof(byteCount), Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.ArgumentOutOfRange_GetCharCountOverflow);
 
             return (int)charCount;
         }

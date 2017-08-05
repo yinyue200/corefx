@@ -76,7 +76,7 @@ namespace System.Text
 
             // This shouldn't really be possible
             if (_defaultCodePage < CodeDevanagari || _defaultCodePage > CodePunjabi)
-                throw new ArgumentException(SR.Format(SR.Argument_CodepageNotSupported, codePage), nameof(codePage));
+                throw new ArgumentException(SR.Format(Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.Argument_CodepageNotSupported, codePage), nameof(codePage));
         }
 
         void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
@@ -90,7 +90,7 @@ namespace System.Text
         public override int GetMaxByteCount(int charCount)
         {
             if (charCount < 0)
-                throw new ArgumentOutOfRangeException(nameof(charCount), SR.ArgumentOutOfRange_NeedNonNegNum);
+                throw new ArgumentOutOfRangeException(nameof(charCount), Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.ArgumentOutOfRange_NeedNonNegNum);
             Contract.EndContractBlock();
 
             // Characters would be # of characters + 1 in case high surrogate is ? * max fallback
@@ -103,7 +103,7 @@ namespace System.Text
             byteCount *= 4;
 
             if (byteCount > 0x7fffffff)
-                throw new ArgumentOutOfRangeException(nameof(charCount), SR.ArgumentOutOfRange_GetByteCountOverflow);
+                throw new ArgumentOutOfRangeException(nameof(charCount), Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.ArgumentOutOfRange_GetByteCountOverflow);
 
             return (int)byteCount;
         }
@@ -113,7 +113,7 @@ namespace System.Text
         public override int GetMaxCharCount(int byteCount)
         {
             if (byteCount < 0)
-                throw new ArgumentOutOfRangeException(nameof(byteCount), SR.ArgumentOutOfRange_NeedNonNegNum);
+                throw new ArgumentOutOfRangeException(nameof(byteCount), Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.ArgumentOutOfRange_NeedNonNegNum);
             Contract.EndContractBlock();
 
             // Our MaxCharCount is the same as the byteCount.  There are a few sequences
@@ -126,7 +126,7 @@ namespace System.Text
                 charCount *= DecoderFallback.MaxCharCount;
 
             if (charCount > 0x7fffffff)
-                throw new ArgumentOutOfRangeException(nameof(byteCount), SR.ArgumentOutOfRange_GetCharCountOverflow);
+                throw new ArgumentOutOfRangeException(nameof(byteCount), Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings.ArgumentOutOfRange_GetCharCountOverflow);
 
             return (int)charCount;
         }
