@@ -1,0 +1,53 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard1.4</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Data\codepages.nlp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Diagnostics.Contracts" Version="4.3.0" />
+    <PackageReference Include="System.Diagnostics.Debug" Version="4.3.0" />
+    <PackageReference Include="System.Runtime" Version="4.3.0" />
+    <PackageReference Include="System.Runtime.Serialization.Formatters" Version="4.3.0" />
+    <PackageReference Include="System.Threading" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Resources\Strings.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Strings.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Resources\Strings.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <PropertyGroup>
+    <!-- This Task can be re-run with /t:GenerateEncodingSource
+         An IANA Mapping file contains rows of two elements: a valid IANA encoding identifier, and the equivalent code page.
+         There may be many IANA ids (aliases) mapped to a single code page. -->
+    <IANAMappingPath>Data\CodePageNameMappings.csv</IANAMappingPath>
+    <!-- The preferred name file contains rows of three elements: a code page, the 'canonical' IANA identifier,
+         and an "English" or descriptive name.  There is one row per code page. -->
+    <PreferredIANANamesPath>Data\PreferredCodePageNames.csv</PreferredIANANamesPath>
+    <OutputDataTablePath>System\Text\EncodingTable.Data.cs</OutputDataTablePath>
+    <AssemblyName>Yinyue200.ClrSystem.Text.Encoding.CodePages</AssemblyName>
+  </PropertyGroup>
+  <Import Project="$(ToolsDir)encoding.targets" Condition="Exists('$(ToolsDir)encoding.targets')" />
+</Project>
