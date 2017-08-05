@@ -49,6 +49,10 @@
     <OutputDataTablePath>System\Text\EncodingTable.Data.cs</OutputDataTablePath>
     <AssemblyName>Yinyue200.Corefx.CodePages</AssemblyName>
     <RootNamespace>Yinyue200.Corefx.CodePages</RootNamespace>
+    <Authors>yinyue200.com</Authors>
+    <Company />
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
   <Import Project="$(ToolsDir)encoding.targets" Condition="Exists('$(ToolsDir)encoding.targets')" />
 </Project>
