@@ -13,7 +13,7 @@ namespace System
         private static ResourceManager s_resourceManager;
 
         private static ResourceManager ResourceManager
-            => s_resourceManager ?? (s_resourceManager = new ResourceManager("Yinyue200.ClrSystem.Text.Encoding.CodePages.Resources.Strings", typeof(SR).GetTypeInfo().Assembly));
+            => s_resourceManager ?? (s_resourceManager = new ResourceManager("Yinyue200.Corefx.CodePages.Resources.Strings", typeof(SR).GetTypeInfo().Assembly));
 
         // This method is used to decide if we need to append the exception message parameters to the message when calling SR.Format.
         // by default it returns false.

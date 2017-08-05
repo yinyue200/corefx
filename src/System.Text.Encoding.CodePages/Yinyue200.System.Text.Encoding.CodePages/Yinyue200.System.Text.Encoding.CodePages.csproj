@@ -47,7 +47,8 @@
          and an "English" or descriptive name.  There is one row per code page. -->
     <PreferredIANANamesPath>Data\PreferredCodePageNames.csv</PreferredIANANamesPath>
     <OutputDataTablePath>System\Text\EncodingTable.Data.cs</OutputDataTablePath>
-    <AssemblyName>Yinyue200.ClrSystem.Text.Encoding.CodePages</AssemblyName>
+    <AssemblyName>Yinyue200.Corefx.CodePages</AssemblyName>
+    <RootNamespace>Yinyue200.Corefx.CodePages</RootNamespace>
   </PropertyGroup>
   <Import Project="$(ToolsDir)encoding.targets" Condition="Exists('$(ToolsDir)encoding.targets')" />
 </Project>

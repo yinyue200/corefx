@@ -5,8 +5,9 @@
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using System.Threading;
+using System.Text;
 
-namespace System.Text
+namespace Yinyue200.Corefx.CodePages
 {
     public sealed partial class CodePagesEncodingProvider : EncodingProvider
     {
