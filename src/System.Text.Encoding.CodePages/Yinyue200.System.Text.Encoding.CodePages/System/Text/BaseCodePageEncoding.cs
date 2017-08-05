@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 using System.Runtime.Serialization;
+using Yinyue200.Corefx.CodePages;
 
 namespace System.Text
 {
