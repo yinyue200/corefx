@@ -53,6 +53,7 @@
     <Company />
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+    <PackageLicenseUrl>https://github.com/yinyue200/corefx/blob/master/LICENSE.TXT</PackageLicenseUrl>
   </PropertyGroup>
   <Import Project="$(ToolsDir)encoding.targets" Condition="Exists('$(ToolsDir)encoding.targets')" />
 </Project>
