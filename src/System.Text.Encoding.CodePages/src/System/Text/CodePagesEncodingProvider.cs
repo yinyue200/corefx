@@ -2,11 +2,10 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace Yinyue200.ClrSystem.Text.Encoding.CodePages
+namespace System.Text
 {
     public sealed partial class CodePagesEncodingProvider : EncodingProvider
     {

@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\AuthenticateAndRedirectHandler.cs" Link="Managed\AuthenticateAndRedirectHandler.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\AuthenticationHelper.Basic.cs" Link="Managed\AuthenticationHelper.Basic.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\AuthenticationHelper.Digest.cs" Link="Managed\AuthenticationHelper.Digest.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\ChunkedEncodingReadStream.cs" Link="Managed\ChunkedEncodingReadStream.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\ChunkedEncodingWriteStream.cs" Link="Managed\ChunkedEncodingWriteStream.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\ConnectHelper.cs" Link="Managed\ConnectHelper.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\ConnectionCloseReadStream.cs" Link="Managed\ConnectionCloseReadStream.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\ContentLengthReadStream.cs" Link="Managed\ContentLengthReadStream.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\ContentLengthWriteStream.cs" Link="Managed\ContentLengthWriteStream.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\CookieHandler.cs" Link="Managed\CookieHandler.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\DecompressionHandler.cs" Link="Managed\DecompressionHandler.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\EmptyReadStream.cs" Link="Managed\EmptyReadStream.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\HttpConnection.cs" Link="Managed\HttpConnection.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\HttpConnectionContent.cs" Link="Managed\HttpConnectionContent.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\HttpConnectionHandler.cs" Link="Managed\HttpConnectionHandler.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\HttpConnectionKey.cs" Link="Managed\HttpConnectionKey.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\HttpConnectionPool.cs" Link="Managed\HttpConnectionPool.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\HttpConnectionPools.cs" Link="Managed\HttpConnectionPools.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\HttpConnectionSettings.cs" Link="Managed\HttpConnectionSettings.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\HttpContentDuplexStream.cs" Link="Managed\HttpContentDuplexStream.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\HttpContentReadStream.cs" Link="Managed\HttpContentReadStream.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\HttpContentStream.cs" Link="Managed\HttpContentStream.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\HttpContentWriteStream.cs" Link="Managed\HttpContentWriteStream.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\HttpProxyConnectionHandler.cs" Link="Managed\HttpProxyConnectionHandler.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\ManagedHandler.cs" Link="Managed\ManagedHandler.cs" />
+    <Compile Include="..\..\..\src\System\Net\Http\Managed\RawConnectionStream.cs" Link="Managed\RawConnectionStream.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Managed\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Memory" Version="4.4.0-preview1-25305-02" />
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.4.0" />
+  </ItemGroup>
+
+</Project>
