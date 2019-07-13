@@ -534,7 +534,6 @@ namespace System.Data
 
         // SxS: this method can generate XSD files if the input xmlWriter is XmlTextWriter or DataTextWriter and its underlying stream is FileStream
         // These XSDs are located in the same folder as the underlying stream's file path (see SetPath method).
-        // These XSDs are not exposed out of this method, so ResourceExposure annotation is None.
         internal void SchemaTree(XmlDocument xd, XmlWriter xmlWriter, DataSet ds, DataTable dt, bool writeHierarchy)
         {
             _constraintNames = new ArrayList();
@@ -2222,7 +2221,7 @@ namespace System.Data
                 if (!string.IsNullOrEmpty(result))
                 {
                     // SetAttribute doesn't fail with invalid data, but the final XmlDocument.Save will fail later
-                    // with the ArugmentException when calling the actual XmlWriter.SetAttribute
+                    // with the ArgumentException when calling the actual XmlWriter.SetAttribute
                     root.SetAttribute(Keywords.MSD_DATATYPE, Keywords.MSDNS, result);
                 }
             }

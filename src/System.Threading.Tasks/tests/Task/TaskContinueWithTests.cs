@@ -1211,34 +1211,49 @@ namespace System.Threading.Tasks.Tests
         }
 
         [Fact]
-        public static void RunStackGuardTests()
+        public static void LongContinuationChain_ContinueWith_DoesNotStackOverflow()
         {
-            const int DIVE_DEPTH = 12000;
+            const int DiveDepth = 12_000;
 
-            // Test stack guard with ContinueWith.
+            var tcs = new TaskCompletionSource<bool>();
+            var t = (Task)tcs.Task;
+            for (int i = 0; i < DiveDepth; i++)
             {
-                Func<Task, Task> func = completed => completed.ContinueWith(delegate { }, TaskContinuationOptions.ExecuteSynchronously);
-                var tcs = new TaskCompletionSource<bool>();
-                var t = (Task)tcs.Task;
-                for (int i = 0; i < DIVE_DEPTH; i++) t = func(t);
-                tcs.TrySetResult(true);
-                t.Wait();
+                t = t.ContinueWith(_ => { }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             }
+            tcs.TrySetResult(true);
+            t.Wait();
+        }
 
-            // Test stack guard with Unwrap
+        [Fact]
+        public static void LongContinuationChain_Unwrap_DoesNotStackOverflow()
+        {
+            const int DiveDepth = 12_000;
+
+            Func<long, Task<long>> func = null;
+            func = iterationsRemaining =>
             {
-                Func<long, Task<long>> func = null;
-                func = iterationsRemaining =>
-                {
-                    --iterationsRemaining;
-                    return iterationsRemaining > 0 ?
-                        Task.Factory.StartNew(() => func(iterationsRemaining)).Unwrap() :
-                        Task.FromResult(iterationsRemaining);
-                };
-                func(DIVE_DEPTH).Wait();
-            }
+                --iterationsRemaining;
+                return iterationsRemaining > 0 ?
+                    Task.Factory.StartNew(() => func(iterationsRemaining)).Unwrap() :
+                    Task.FromResult(iterationsRemaining);
+            };
+            func(DiveDepth).Wait();
+        }
 
-            // These tests will have stack overflowed if they failed.
+        [Fact]
+        public static void LongContinuationChain_Await_DoesNotStackOverflow()
+        {
+            const int DiveDepth = 12_000;
+
+            Func<int, Task<int>> func = null;
+            func = async count =>
+            {
+                return ++count < DiveDepth ?
+                    await await Task.Factory.StartNew(() => func(count), CancellationToken.None, TaskCreationOptions.None, TaskScheduler.Default) :
+                    count;
+            };
+            func(0).Wait();
         }
 
         [Theory]
@@ -1280,7 +1295,7 @@ namespace System.Threading.Tasks.Tests
 
         #region Helper Methods
 
-        public static void ContinueWithTortureTest(int numCanceled, int numLeftover, int completeAfter, int cancelAfter)
+        private static void ContinueWithTortureTest(int numCanceled, int numLeftover, int completeAfter, int cancelAfter)
         {
             //Debug.WriteLine("    - ContinueWithTortureTest(numCanceled={0}, numLeftover={1}, completeAfter={2}, cancelAfter={3})",
             //    numCanceled, numLeftover, completeAfter, cancelAfter);
@@ -1363,7 +1378,7 @@ namespace System.Threading.Tasks.Tests
         }
 
         // Ensures that the specified action throws a AggregateException wrapping a TaskCanceledException
-        public static void EnsureTaskCanceledExceptionThrown(Action action, string message)
+        private static void EnsureTaskCanceledExceptionThrown(Action action, string message)
         {
             Exception exception = null;
 
@@ -1380,7 +1395,7 @@ namespace System.Threading.Tasks.Tests
         }
 
         // Ensures that the specified exception is an AggregateException wrapping a TaskCanceledException
-        public static void EnsureExceptionIsAEofTCE(Exception exception, string message)
+        private static void EnsureExceptionIsAEofTCE(Exception exception, string message)
         {
             if (exception == null)
             {
@@ -1397,7 +1412,7 @@ namespace System.Threading.Tasks.Tests
             }
         }
 
-        private static Task<Int32> Choose(CancellationToken cancellationToken)
+        private static Task<int> Choose(CancellationToken cancellationToken)
         {
             // Set up completion structures
             //var boxedCompleted = new StrongBox<Task>(); // Acts as both completion marker and sync obj for targets

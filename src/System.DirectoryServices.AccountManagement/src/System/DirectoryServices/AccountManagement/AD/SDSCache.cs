@@ -9,10 +9,12 @@ using System.Globalization;
 using System.DirectoryServices;
 using System.Net;
 using System.Threading;
-/// This is a class designed to cache DirectoryEntires instead of creating them every time.
 
 namespace System.DirectoryServices.AccountManagement
 {
+    /// <summary>
+    /// This is a class designed to cache DirectoryEntires instead of creating them every time.
+    /// </summary>
     internal class SDSCache
     {
         public static SDSCache Domain
@@ -34,7 +36,6 @@ namespace System.DirectoryServices.AccountManagement
         private static SDSCache s_domainCache = new SDSCache(false);
         private static SDSCache s_localMachineCache = new SDSCache(true);
 
-        [System.Security.SecurityCritical]
         public PrincipalContext GetContext(string name, NetCred credentials, ContextOptions contextOptions)
         {
             string contextName = name;

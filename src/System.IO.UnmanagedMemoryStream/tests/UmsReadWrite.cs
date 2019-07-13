@@ -10,9 +10,9 @@ namespace System.IO.Tests
 {
     public sealed class ArrayUmsReadWriteTests : UmsReadWriteTests
     {
-        public override int Read(UnmanagedMemoryStream stream, byte[] array, int offset, int count) =>
+        protected override int Read(UnmanagedMemoryStream stream, byte[] array, int offset, int count) =>
             stream.Read(array, offset, count);
-        public override void Write(UnmanagedMemoryStream stream, byte[] array, int offset, int count) =>
+        protected override void Write(UnmanagedMemoryStream stream, byte[] array, int offset, int count) =>
             stream.Write(array, offset, count);
 
         [Fact]
@@ -30,7 +30,7 @@ namespace System.IO.Tests
                 Assert.Throws<ArgumentNullException>(() => stream.WriteAsync(null, 0, 7).GetAwaiter().GetResult());
 
                 //case#4: call Read with start<0, ArgumentOutOfRangeException should be thrown.
-                Assert.Throws<ArgumentOutOfRangeException>(() => stream.Read(new byte[] { }, SByte.MinValue, 9));
+                Assert.Throws<ArgumentOutOfRangeException>(() => stream.Read(new byte[] { }, sbyte.MinValue, 9));
                 Assert.Throws<ArgumentOutOfRangeException>(() => stream.ReadAsync(new byte[] { }, SByte.MinValue, 9).GetAwaiter().GetResult());
                 Assert.Throws<ArgumentOutOfRangeException>(() => stream.Write(new byte[] { }, -1, 6));
                 Assert.Throws<ArgumentOutOfRangeException>(() => stream.WriteAsync(new byte[] { }, -1, 6).GetAwaiter().GetResult());
@@ -56,8 +56,8 @@ namespace System.IO.Tests
 
     public abstract class UmsReadWriteTests
     {
-        public abstract int Read(UnmanagedMemoryStream stream, byte[] array, int offset, int count);
-        public abstract void Write(UnmanagedMemoryStream stream, byte[] array, int offset, int count);
+        protected abstract int Read(UnmanagedMemoryStream stream, byte[] array, int offset, int count);
+        protected abstract void Write(UnmanagedMemoryStream stream, byte[] array, int offset, int count);
 
         [Fact]
         public void EmptyStreamRead()

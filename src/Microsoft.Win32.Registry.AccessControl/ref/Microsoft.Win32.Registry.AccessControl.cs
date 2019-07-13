@@ -5,13 +5,8 @@
 // Changes to this file must follow the http://aka.ms/api-review process.
 // ------------------------------------------------------------------------------
 
-[assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Security.AccessControl.RegistryAccessRule))]
-[assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Security.AccessControl.RegistryAuditRule))]
-[assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Security.AccessControl.RegistrySecurity))]
-
 namespace Microsoft.Win32
 {
-    [System.Security.SecurityCriticalAttribute]
     public static partial class RegistryAclExtensions
     {
         public static System.Security.AccessControl.RegistrySecurity GetAccessControl(this Microsoft.Win32.RegistryKey key) { throw null; }

@@ -1,5 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<root>
+﻿<root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -67,6 +66,9 @@
   <data name="Arg_ArrayPlusOffTooSmall" xml:space="preserve">
     <value>Destination array is not long enough to copy all the items in the collection. Check array index and length.</value>
   </data>
+  <data name="ArgumentNull_ArrayWithNullElements" xml:space="preserve">
+    <value>The array cannot contain null elements.</value>
+  </data>
   <data name="BadClassInCharRange" xml:space="preserve">
     <value>Cannot include class \\{0} in character range.</value>
   </data>
@@ -88,6 +90,9 @@
   <data name="IllegalCondition" xml:space="preserve">
     <value>Illegal conditional (?(...)) expression.</value>
   </data>
+  <data name="IllegalDefaultRegexMatchTimeoutInAppDomain" xml:space="preserve">
+    <value>AppDomain data '{0}' contains the invalid value or object '{1}' for specifying a default matching timeout for System.Text.RegularExpressions.Regex.</value>
+  </data>
   <data name="IllegalEndEscape" xml:space="preserve">
     <value>Illegal \\ at end of pattern.</value>
   </data>
@@ -97,11 +102,14 @@
   <data name="IncompleteSlashP" xml:space="preserve">
     <value>Incomplete \\p{X} character escape.</value>
   </data>
-  <data name="InternalError" xml:space="preserve">
+  <data name="InternalError_ScanRegex" xml:space="preserve">
     <value>Internal error in ScanRegex.</value>
   </data>
   <data name="InvalidGroupName" xml:space="preserve">
     <value>Invalid group name: Group names must begin with a word character.</value>
+  </data>
+  <data name="InvalidEmptyArgument" xml:space="preserve">
+    <value>Argument {0} cannot be zero-length.</value>
   </data>
   <data name="LengthNotNegative" xml:space="preserve">
     <value>Length cannot be less than 0 or exceed input length.</value>
@@ -116,13 +124,13 @@
     <value>Malformed \\p{X} character escape.</value>
   </data>
   <data name="MakeException" xml:space="preserve">
-    <value>parsing '{0}' - {1}</value>
+    <value>Invalid pattern '{0}' at offset {1}. {2}</value>
   </data>
   <data name="MissingControl" xml:space="preserve">
     <value>Missing control character.</value>
   </data>
   <data name="NestedQuantify" xml:space="preserve">
-    <value>Nested quantifier {0}.</value>
+    <value>Nested quantifier '{0}'.</value>
   </data>
   <data name="NoResultOnFailed" xml:space="preserve">
     <value>Result cannot be called on a failed Match.</value>
@@ -135,6 +143,9 @@
   </data>
   <data name="OnlyAllowedOnce" xml:space="preserve">
     <value>This operation is only allowed once per object.</value>
+  </data>
+  <data name="PlatformNotSupported_CompileToAssembly" xml:space="preserve">
+    <value>This platform does not support writing compiled regular expressions to an assembly.</value>
   </data>
   <data name="QuantifyAfterNothing" xml:space="preserve">
     <value>Quantifier {x,y} following nothing.</value>
@@ -164,7 +175,7 @@
     <value>Reference to undefined group number {0}.</value>
   </data>
   <data name="UndefinedNameRef" xml:space="preserve">
-    <value>Reference to undefined group name {0}.</value>
+    <value>Reference to undefined group name '{0}'.</value>
   </data>
   <data name="UndefinedReference" xml:space="preserve">
     <value>(?({0}) ) reference to undefined group.</value>

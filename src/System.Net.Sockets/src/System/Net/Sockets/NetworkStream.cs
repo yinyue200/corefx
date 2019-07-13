@@ -2,10 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Buffers;
-using System.Diagnostics;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -204,7 +201,7 @@ namespace System.Net.Sockets
 #endif
                     if (_cleanedUp)
                     {
-                        throw new ObjectDisposedException(this.GetType().FullName);
+                        throw new ObjectDisposedException(GetType().FullName);
                     }
 
                     // Ask the socket how many bytes are available. If it's
@@ -269,7 +266,7 @@ namespace System.Net.Sockets
                 bool canRead = CanRead;  // Prevent race with Dispose.
                 if (_cleanedUp)
                 {
-                    throw new ObjectDisposedException(this.GetType().FullName);
+                    throw new ObjectDisposedException(GetType().FullName);
                 }
                 if (!canRead)
                 {
@@ -281,11 +278,11 @@ namespace System.Net.Sockets
                 {
                     throw new ArgumentNullException(nameof(buffer));
                 }
-                if (offset < 0 || offset > buffer.Length)
+                if ((uint)offset > buffer.Length)
                 {
                     throw new ArgumentOutOfRangeException(nameof(offset));
                 }
-                if (size < 0 || size > buffer.Length - offset)
+                if ((uint)size > buffer.Length - offset)
                 {
                     throw new ArgumentOutOfRangeException(nameof(size));
                 }
@@ -303,6 +300,34 @@ namespace System.Net.Sockets
 #if DEBUG
             }
 #endif
+        }
+
+        public override int Read(Span<byte> buffer)
+        {
+            if (GetType() != typeof(NetworkStream))
+            {
+                // NetworkStream is not sealed, and a derived type may have overridden Read(byte[], int, int) prior
+                // to this Read(Span<byte>) overload being introduced.  In that case, this Read(Span<byte>) overload
+                // should use the behavior of Read(byte[],int,int) overload.
+                return base.Read(buffer);
+            }
+
+            if (_cleanedUp) throw new ObjectDisposedException(GetType().FullName);
+            if (!CanRead) throw new InvalidOperationException(SR.net_writeonlystream);
+
+            int bytesRead = _streamSocket.Receive(buffer, SocketFlags.None, out SocketError errorCode);
+            if (errorCode != SocketError.Success)
+            {
+                var exception = new SocketException((int)errorCode);
+                throw new IOException(SR.Format(SR.net_io_readfailure, exception.Message), exception);
+            }
+            return bytesRead;
+        }
+
+        public override unsafe int ReadByte()
+        {
+            byte b;
+            return Read(new Span<byte>(&b, 1)) == 0 ? -1 : b;
         }
 
         // Write - provide core Write functionality.
@@ -330,7 +355,7 @@ namespace System.Net.Sockets
                 bool canWrite = CanWrite; // Prevent race with Dispose.
                 if (_cleanedUp)
                 {
-                    throw new ObjectDisposedException(this.GetType().FullName);
+                    throw new ObjectDisposedException(GetType().FullName);
                 }
                 if (!canWrite)
                 {
@@ -342,11 +367,11 @@ namespace System.Net.Sockets
                 {
                     throw new ArgumentNullException(nameof(buffer));
                 }
-                if (offset < 0 || offset > buffer.Length)
+                if ((uint)offset > buffer.Length)
                 {
                     throw new ArgumentOutOfRangeException(nameof(offset));
                 }
-                if (size < 0 || size > buffer.Length - offset)
+                if ((uint)size > buffer.Length - offset)
                 {
                     throw new ArgumentOutOfRangeException(nameof(size));
                 }
@@ -367,6 +392,31 @@ namespace System.Net.Sockets
             }
 #endif
         }
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            if (GetType() != typeof(NetworkStream))
+            {
+                // NetworkStream is not sealed, and a derived type may have overridden Write(byte[], int, int) prior
+                // to this Write(ReadOnlySpan<byte>) overload being introduced.  In that case, this Write(ReadOnlySpan<byte>)
+                // overload should use the behavior of Write(byte[],int,int) overload.
+                base.Write(buffer);
+                return;
+            }
+
+            if (_cleanedUp) throw new ObjectDisposedException(GetType().FullName);
+            if (!CanWrite) throw new InvalidOperationException(SR.net_readonlystream);
+
+            _streamSocket.Send(buffer, SocketFlags.None, out SocketError errorCode);
+            if (errorCode != SocketError.Success)
+            {
+                var exception = new SocketException((int)errorCode);
+                throw new IOException(SR.Format(SR.net_io_writefailure, exception.Message), exception);
+            }
+        }
+
+        public override unsafe void WriteByte(byte value) =>
+            Write(new ReadOnlySpan<byte>(&value, 1));
 
         private int _closeTimeout = Socket.DefaultCloseTimeout; // -1 = respect linger options
 
@@ -442,7 +492,7 @@ namespace System.Net.Sockets
         // Returns:
         // 
         //     An IASyncResult, representing the read.
-        public override IAsyncResult BeginRead(byte[] buffer, int offset, int size, AsyncCallback callback, Object state)
+        public override IAsyncResult BeginRead(byte[] buffer, int offset, int size, AsyncCallback callback, object state)
         {
 #if DEBUG
             using (DebugThreadTracking.SetThreadKind(ThreadKinds.User | ThreadKinds.Async))
@@ -451,7 +501,7 @@ namespace System.Net.Sockets
                 bool canRead = CanRead; // Prevent race with Dispose.
                 if (_cleanedUp)
                 {
-                    throw new ObjectDisposedException(this.GetType().FullName);
+                    throw new ObjectDisposedException(GetType().FullName);
                 }
                 if (!canRead)
                 {
@@ -463,11 +513,11 @@ namespace System.Net.Sockets
                 {
                     throw new ArgumentNullException(nameof(buffer));
                 }
-                if (offset < 0 || offset > buffer.Length)
+                if ((uint)offset > buffer.Length)
                 {
                     throw new ArgumentOutOfRangeException(nameof(offset));
                 }
-                if (size < 0 || size > buffer.Length - offset)
+                if ((uint)size > buffer.Length - offset)
                 {
                     throw new ArgumentOutOfRangeException(nameof(size));
                 }
@@ -509,7 +559,7 @@ namespace System.Net.Sockets
 #endif
                 if (_cleanedUp)
                 {
-                    throw new ObjectDisposedException(this.GetType().FullName);
+                    throw new ObjectDisposedException(GetType().FullName);
                 }
 
                 // Validate input parameters.
@@ -547,7 +597,7 @@ namespace System.Net.Sockets
         // Returns:
         // 
         //     An IASyncResult, representing the write.
-        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int size, AsyncCallback callback, Object state)
+        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int size, AsyncCallback callback, object state)
         {
 #if DEBUG
             using (DebugThreadTracking.SetThreadKind(ThreadKinds.User | ThreadKinds.Async))
@@ -556,7 +606,7 @@ namespace System.Net.Sockets
                 bool canWrite = CanWrite; // Prevent race with Dispose.
                 if (_cleanedUp)
                 {
-                    throw new ObjectDisposedException(this.GetType().FullName);
+                    throw new ObjectDisposedException(GetType().FullName);
                 }
                 if (!canWrite)
                 {
@@ -568,11 +618,11 @@ namespace System.Net.Sockets
                 {
                     throw new ArgumentNullException(nameof(buffer));
                 }
-                if (offset < 0 || offset > buffer.Length)
+                if ((uint)offset > buffer.Length)
                 {
                     throw new ArgumentOutOfRangeException(nameof(offset));
                 }
-                if (size < 0 || size > buffer.Length - offset)
+                if ((uint)size > buffer.Length - offset)
                 {
                     throw new ArgumentOutOfRangeException(nameof(size));
                 }
@@ -611,7 +661,7 @@ namespace System.Net.Sockets
 #endif
                 if (_cleanedUp)
                 {
-                    throw new ObjectDisposedException(this.GetType().FullName);
+                    throw new ObjectDisposedException(GetType().FullName);
                 }
 
                 // Validate input parameters.
@@ -655,7 +705,7 @@ namespace System.Net.Sockets
             bool canRead = CanRead; // Prevent race with Dispose.
             if (_cleanedUp)
             {
-                throw new ObjectDisposedException(this.GetType().FullName);
+                throw new ObjectDisposedException(GetType().FullName);
             }
             if (!canRead)
             {
@@ -667,26 +717,50 @@ namespace System.Net.Sockets
             {
                 throw new ArgumentNullException(nameof(buffer));
             }
-            if (offset < 0 || offset > buffer.Length)
+            if ((uint)offset > buffer.Length)
             {
                 throw new ArgumentOutOfRangeException(nameof(offset));
             }
-            if (size < 0 || size > buffer.Length - offset)
+            if ((uint)size > buffer.Length - offset)
             {
                 throw new ArgumentOutOfRangeException(nameof(size));
-            }
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return Task.FromCanceled<int>(cancellationToken);
             }
 
             try
             {
                 return _streamSocket.ReceiveAsync(
-                    new ArraySegment<byte>(buffer, offset, size),
+                    new Memory<byte>(buffer, offset, size),
                     SocketFlags.None,
-                    fromNetworkStream: true);
+                    fromNetworkStream: true,
+                    cancellationToken).AsTask();
+            }
+            catch (Exception exception) when (!(exception is OutOfMemoryException))
+            {
+                // Some sort of error occurred on the socket call,
+                // set the SocketException as InnerException and throw.
+                throw new IOException(SR.Format(SR.net_io_readfailure, exception.Message), exception);
+            }
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            bool canRead = CanRead; // Prevent race with Dispose.
+            if (_cleanedUp)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
+            }
+            if (!canRead)
+            {
+                throw new InvalidOperationException(SR.net_writeonlystream);
+            }
+
+            try
+            {
+                return _streamSocket.ReceiveAsync(
+                    buffer,
+                    SocketFlags.None,
+                    fromNetworkStream: true,
+                    cancellationToken: cancellationToken);
             }
             catch (Exception exception) when (!(exception is OutOfMemoryException))
             {
@@ -716,7 +790,7 @@ namespace System.Net.Sockets
             bool canWrite = CanWrite; // Prevent race with Dispose.
             if (_cleanedUp)
             {
-                throw new ObjectDisposedException(this.GetType().FullName);
+                throw new ObjectDisposedException(GetType().FullName);
             }
             if (!canWrite)
             {
@@ -728,26 +802,21 @@ namespace System.Net.Sockets
             {
                 throw new ArgumentNullException(nameof(buffer));
             }
-            if (offset < 0 || offset > buffer.Length)
+            if ((uint)offset > buffer.Length)
             {
                 throw new ArgumentOutOfRangeException(nameof(offset));
             }
-            if (size < 0 || size > buffer.Length - offset)
+            if ((uint)size > buffer.Length - offset)
             {
                 throw new ArgumentOutOfRangeException(nameof(size));
             }
 
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return Task.FromCanceled(cancellationToken);
-            }
-
             try
             {
-                return _streamSocket.SendAsync(
-                    new ArraySegment<byte>(buffer, offset, size),
+                return _streamSocket.SendAsyncForNetworkStream(
+                    new ReadOnlyMemory<byte>(buffer, offset, size),
                     SocketFlags.None,
-                    fromNetworkStream: true);
+                    cancellationToken).AsTask();
             }
             catch (Exception exception) when (!(exception is OutOfMemoryException))
             {
@@ -757,47 +826,30 @@ namespace System.Net.Sockets
             }
         }
 
-        public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
         {
-            // Validate arguments as would the base CopyToAsync
-            StreamHelpers.ValidateCopyToArgs(this, destination, bufferSize);
-
-            // And bail early if cancellation has already been requested
-            if (cancellationToken.IsCancellationRequested)
+            bool canWrite = CanWrite; // Prevent race with Dispose.
+            if (_cleanedUp)
             {
-                return Task.FromCanceled(cancellationToken);
+                throw new ObjectDisposedException(GetType().FullName);
+            }
+            if (!canWrite)
+            {
+                throw new InvalidOperationException(SR.net_readonlystream);
             }
 
-            // Do the copy.  We get a copy buffer from the shared pool, and we pass both it and the
-            // socket into the copy as part of the event args so as to avoid additional fields in
-            // the async method's state machine.
-            return CopyToAsyncCore(
-                destination,
-                new AwaitableSocketAsyncEventArgs(_streamSocket, ArrayPool<byte>.Shared.Rent(bufferSize)),
-                cancellationToken);
-        }
-
-        private static async Task CopyToAsyncCore(Stream destination, AwaitableSocketAsyncEventArgs ea, CancellationToken cancellationToken)
-        {
             try
             {
-                while (true)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    int bytesRead = await ea.ReceiveAsync();
-                    if (bytesRead == 0)
-                    {
-                        break;
-                    }
-
-                    await destination.WriteAsync(ea.Buffer, 0, bytesRead, cancellationToken).ConfigureAwait(false);
-                }
+                return _streamSocket.SendAsyncForNetworkStream(
+                    buffer,
+                    SocketFlags.None,
+                    cancellationToken);
             }
-            finally
+            catch (Exception exception) when (!(exception is OutOfMemoryException))
             {
-                ArrayPool<byte>.Shared.Return(ea.Buffer, clearArray: true);
-                ea.Dispose();
+                // Some sort of error occurred on the socket call,
+                // set the SocketException as InnerException and throw.
+                throw new IOException(SR.Format(SR.net_io_writefailure, exception.Message), exception);
             }
         }
 
@@ -844,116 +896,6 @@ namespace System.Net.Sockets
                     _streamSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, timeout, silent);
                     _currentReadTimeout = timeout;
                 }
-            }
-        }
-
-        /// <summary>A SocketAsyncEventArgs that can be awaited to get the result of an operation.</summary>
-        internal sealed class AwaitableSocketAsyncEventArgs : SocketAsyncEventArgs, ICriticalNotifyCompletion
-        {
-            /// <summary>Sentinel object used to indicate that the operation has completed prior to OnCompleted being called.</summary>
-            private static readonly Action s_completedSentinel = () => { };
-            /// <summary>
-            /// null if the operation has not completed, <see cref="s_completedSentinel"/> if it has, and another object
-            /// if OnCompleted was called before the operation could complete, in which case it's the delegate to invoke
-            /// when the operation does complete.
-            /// </summary>
-            private Action _continuation;
-
-            /// <summary>Initializes the event args.</summary>
-            /// <param name="socket">The associated socket.</param>
-            /// <param name="buffer">The buffer to use for all operations.</param>
-            public AwaitableSocketAsyncEventArgs(Socket socket, byte[] buffer)
-            {
-                Debug.Assert(socket != null);
-                Debug.Assert(buffer != null && buffer.Length > 0);
-
-                // Store the socket into the base's UserToken.  This avoids the need for an extra field, at the expense
-                // of an object=>Socket cast when we need to access it, which is only once per operation.
-                UserToken = socket;
-
-                // Store the buffer for use by all operations with this instance.
-                SetBuffer(buffer, 0, buffer.Length);
-
-                // Hook up the completed event.
-                Completed += delegate
-                {
-                    // When the operation completes, see if OnCompleted was already called to hook up a continuation.
-                    // If it was, invoke the continuation.
-                    Action c = _continuation;
-                    if (c != null)
-                    {
-                        c();
-                    }
-                    else
-                    {
-                        // We may be racing with OnCompleted, so check with synchronization, trying to swap in our
-                        // completion sentinel.  If we lose the race and OnCompleted did hook up a continuation,
-                        // invoke it.  Otherwise, there's nothing more to be done.
-                        Interlocked.CompareExchange(ref _continuation, s_completedSentinel, null)?.Invoke();
-                    }
-                };
-            }
-
-            /// <summary>Initiates a receive operation on the associated socket.</summary>
-            /// <returns>This instance.</returns>
-            public AwaitableSocketAsyncEventArgs ReceiveAsync()
-            {
-                if (!Socket.ReceiveAsync(this))
-                {
-                    _continuation = s_completedSentinel;
-                }
-                return this;
-            }
-
-            /// <summary>Gets this instance.</summary>
-            public AwaitableSocketAsyncEventArgs GetAwaiter() => this;
-
-            /// <summary>Gets whether the operation has already completed.</summary>
-            /// <remarks>
-            /// This is not a generically usable IsCompleted operation that suggests the whole operation has completed.
-            /// Rather, it's specifically used as part of the await pattern, and is only usable to determine whether the
-            /// operation has completed by the time the instance is awaited.
-            /// </remarks>
-            public bool IsCompleted => _continuation != null;
-
-            /// <summary>Same as <see cref="OnCompleted(Action)"/> </summary>
-            public void UnsafeOnCompleted(Action continuation) => OnCompleted(continuation);
-
-            /// <summary>Queues the provided continuation to be executed once the operation has completed.</summary>
-            public void OnCompleted(Action continuation)
-            {
-                if (ReferenceEquals(_continuation, s_completedSentinel) ||
-                    ReferenceEquals(Interlocked.CompareExchange(ref _continuation, continuation, null), s_completedSentinel))
-                {
-                    Task.Run(continuation);
-                }
-            }
-
-            /// <summary>Gets the result of the completion operation.</summary>
-            /// <returns>Number of bytes transferred.</returns>
-            /// <remarks>
-            /// Unlike Task's awaiter's GetResult, this does not block until the operation completes: it must only
-            /// be used once the operation has completed.  This is handled implicitly by await.
-            /// </remarks>
-            public int GetResult()
-            {
-                _continuation = null;
-                if (SocketError != SocketError.Success)
-                {
-                    ThrowIOSocketException();
-                }
-                return BytesTransferred;
-            }
-
-            /// <summary>Gets the associated socket.</summary>
-            internal Socket Socket => (Socket)UserToken; // stored in the base's UserToken to avoid an extra field in the object
-
-            /// <summary>Throws an IOException wrapping a SocketException using the current <see cref="SocketError"/>.</summary>
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            private void ThrowIOSocketException()
-            {
-                var se = new SocketException((int)SocketError);
-                throw new IOException(SR.Format(SR.net_io_readfailure, se.Message), se);
             }
         }
     }

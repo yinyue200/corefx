@@ -50,9 +50,12 @@ namespace System.Security.Cryptography
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA5351", Justification = "This is the implementation of DSACryptoServiceProvider")]
         public override byte[] CreateSignature(byte[] rgbHash) => _impl.CreateSignature(rgbHash);
 
+        public override bool TryCreateSignature(ReadOnlySpan<byte> hash, Span<byte> destination, out int bytesWritten) =>
+            _impl.TryCreateSignature(hash, destination, out bytesWritten);
+
         public CspKeyContainerInfo CspKeyContainerInfo
         {
-            get {throw new PlatformNotSupportedException(SR.Format(SR.Cryptography_CAPI_Required, nameof(CspKeyContainerInfo))); }
+            get { throw new PlatformNotSupportedException(SR.Format(SR.Cryptography_CAPI_Required, nameof(CspKeyContainerInfo))); }
         }
 
         protected override void Dispose(bool disposing)
@@ -91,6 +94,14 @@ namespace System.Security.Cryptography
             return AsymmetricAlgorithmHelpers.HashData(data, hashAlgorithm);
         }
 
+        protected override bool TryHashData(ReadOnlySpan<byte> data, Span<byte> destination, HashAlgorithmName hashAlgorithm, out int bytesWritten)
+        {
+            if (hashAlgorithm != HashAlgorithmName.SHA1)
+                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm, hashAlgorithm.Name);
+
+            return AsymmetricAlgorithmHelpers.TryHashData(data, destination, hashAlgorithm, out bytesWritten);
+        }
+
         public void ImportCspBlob(byte[] keyBlob)
         {
             DSAParameters parameters = keyBlob.ToDSAParameters(!IsPublic(keyBlob), null);
@@ -106,6 +117,22 @@ namespace System.Security.Cryptography
             _impl.ImportParameters(parameters);
 
             _publicOnly = (parameters.X == null);
+        }
+
+        public override void ImportEncryptedPkcs8PrivateKey(
+            ReadOnlySpan<byte> passwordBytes,
+            ReadOnlySpan<byte> source,
+            out int bytesRead)
+        {
+            _impl.ImportEncryptedPkcs8PrivateKey(passwordBytes, source, out bytesRead);
+        }
+
+        public override void ImportEncryptedPkcs8PrivateKey(
+            ReadOnlySpan<char> password,
+            ReadOnlySpan<byte> source,
+            out int bytesRead)
+        {
+            _impl.ImportEncryptedPkcs8PrivateKey(password, source, out bytesRead);
         }
 
         public override string KeyExchangeAlgorithm => _impl.KeyExchangeAlgorithm;
@@ -156,7 +183,7 @@ namespace System.Security.Cryptography
         public override byte[] SignData(byte[] data, int offset, int count, HashAlgorithmName hashAlgorithm)
         {
             if (hashAlgorithm != HashAlgorithmName.SHA1)
-                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm);
+                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm, hashAlgorithm.Name);
 
             return _impl.SignData(data, offset, count, hashAlgorithm);
         }
@@ -164,9 +191,17 @@ namespace System.Security.Cryptography
         public override byte[] SignData(Stream data, HashAlgorithmName hashAlgorithm)
         {
             if (hashAlgorithm != HashAlgorithmName.SHA1)
-                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm);
+                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm, hashAlgorithm.Name);
 
             return _impl.SignData(data, hashAlgorithm);
+        }
+
+        public override bool TrySignData(ReadOnlySpan<byte> data, Span<byte> destination, HashAlgorithmName hashAlgorithm, out int bytesWritten)
+        {
+            if (hashAlgorithm != HashAlgorithmName.SHA1)
+                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm, hashAlgorithm.Name);
+
+            return _impl.TrySignData(data, destination, hashAlgorithm, out bytesWritten);
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA5351", Justification = "This is the implementation of DSACryptoServiceProvider")]
@@ -177,11 +212,11 @@ namespace System.Security.Cryptography
             if (PublicOnly)
                 throw new CryptographicException(SR.Cryptography_CSP_NoPrivateKey);
             if (rgbHash.Length != SHA1_HASHSIZE)
-                throw new CryptographicException(string.Format(SR.Cryptography_InvalidHashSize, "SHA1", SHA1_HASHSIZE));
+                throw new CryptographicException(SR.Format(SR.Cryptography_InvalidHashSize, "SHA1", SHA1_HASHSIZE));
 
             // Only SHA1 allowed; the default value is SHA1
-            if (str != null && string.Compare(str, "SHA1", StringComparison.OrdinalIgnoreCase) != 0)
-                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm);
+            if (str != null && !string.Equals(str, "SHA1", StringComparison.OrdinalIgnoreCase))
+                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm, str);
 
             return CreateSignature(rgbHash);
         }
@@ -199,8 +234,8 @@ namespace System.Security.Cryptography
             // For compat with Windows, no check for rgbHash.Length != SHA1_HASHSIZE
 
             // Only SHA1 allowed; the default value is SHA1
-            if (str != null && string.Compare(str, "SHA1", StringComparison.OrdinalIgnoreCase) != 0)
-                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm);
+            if (str != null && !string.Equals(str, "SHA1", StringComparison.OrdinalIgnoreCase))
+                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm, str);
 
             return _impl.VerifySignature(rgbHash, rgbSignature);
         }
@@ -208,7 +243,7 @@ namespace System.Security.Cryptography
         public override bool VerifyData(byte[] data, int offset, int count, byte[] signature, HashAlgorithmName hashAlgorithm)
         {
             if (hashAlgorithm != HashAlgorithmName.SHA1)
-                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm);
+                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm, hashAlgorithm.Name);
 
             return _impl.VerifyData(data, offset, count, signature, hashAlgorithm);
         }
@@ -216,13 +251,24 @@ namespace System.Security.Cryptography
         public override bool VerifyData(Stream data, byte[] signature, HashAlgorithmName hashAlgorithm)
         {
             if (hashAlgorithm != HashAlgorithmName.SHA1)
-                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm);
+                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm, hashAlgorithm.Name);
+
+            return _impl.VerifyData(data, signature, hashAlgorithm);
+        }
+
+        public override bool VerifyData(ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature, HashAlgorithmName hashAlgorithm)
+        {
+            if (hashAlgorithm != HashAlgorithmName.SHA1)
+                throw new CryptographicException(SR.Cryptography_UnknownHashAlgorithm, hashAlgorithm.Name);
 
             return _impl.VerifyData(data, signature, hashAlgorithm);
         }
 
         public override bool VerifySignature(byte[] rgbHash, byte[] rgbSignature) =>
             _impl.VerifySignature(rgbHash, rgbSignature);
+
+        public override bool VerifySignature(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> signature) =>
+            _impl.VerifySignature(hash, signature);
 
         // UseMachineKeyStore has no effect in Unix
         public static bool UseMachineKeyStore { get; set; }

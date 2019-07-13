@@ -25,11 +25,10 @@ namespace System.DirectoryServices.AccountManagement
 
         public dSPropertyValueCollection this[string propertyName]
         {
-            [System.Security.SecurityCritical]
             get
             {
                 if (propertyName == null)
-                    throw new ArgumentNullException("propertyName");
+                    throw new ArgumentNullException(nameof(propertyName));
 
                 if (null != _pc)
                 {
@@ -54,7 +53,6 @@ namespace System.DirectoryServices.AccountManagement
 
         public object this[int index]
         {
-            [System.Security.SecurityCritical]
             get
             {
                 if (_pc != null)

@@ -138,7 +138,7 @@ namespace System.IO.IsolatedStorage
 
             // We can save a bunch of work if the directory we want to create already exists.  This also
             // saves us in the case where sub paths are inaccessible (due to ERROR_ACCESS_DENIED) but the
-            // final path is accessable and the directory already exists.  For example, consider trying
+            // final path is accessible and the directory already exists.  For example, consider trying
             // to create c:\Foo\Bar\Baz, where everything already exists but ACLS prevent access to c:\Foo
             // and c:\Foo\Bar.  In that case, this code will think it needs to create c:\Foo, and c:\Foo\Bar
             // and fail to due so, causing an exception to be thrown.  This is not what we want.
@@ -373,7 +373,7 @@ namespace System.IO.IsolatedStorage
             }
             catch (FileNotFoundException)
             {
-                throw new FileNotFoundException(string.Format(SR.PathNotFound_Path, sourceFileName));
+                throw new FileNotFoundException(SR.Format(SR.PathNotFound_Path, sourceFileName));
             }
             catch (PathTooLongException)
             {
@@ -414,7 +414,7 @@ namespace System.IO.IsolatedStorage
             }
             catch (FileNotFoundException)
             {
-                throw new FileNotFoundException(string.Format(SR.PathNotFound_Path, sourceFileName));
+                throw new FileNotFoundException(SR.Format(SR.PathNotFound_Path, sourceFileName));
             }
             catch (PathTooLongException)
             {
@@ -455,7 +455,7 @@ namespace System.IO.IsolatedStorage
             }
             catch (DirectoryNotFoundException)
             {
-                throw new DirectoryNotFoundException(string.Format(SR.PathNotFound_Path, sourceDirectoryName));
+                throw new DirectoryNotFoundException(SR.Format(SR.PathNotFound_Path, sourceDirectoryName));
             }
             catch (PathTooLongException)
             {

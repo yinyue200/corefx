@@ -4,8 +4,10 @@
 
 using System.Diagnostics;
 using System.IO.PortsTests;
+using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Legacy.Support;
 using Xunit;
 
@@ -289,7 +291,7 @@ namespace System.IO.Ports.Tests
                 TCSupport.WaitForReadBufferToLoad(com1, byteXmitBuffer.Length);
 
                 //Read Every Byte except the last one. The last bye should be left in the last position of SerialPort's
-                //internal buffer. When we try to read this char as UTF32 the buffer should have to be resized so 
+                //internal buffer. When we try to read this char as UTF32 the buffer should have to be resized so
                 //the other 3 bytes of the ut32 encoded char can be in the buffer
                 com1.Read(new char[1023], 0, 1023);
                 Assert.Equal(1, com1.BytesToRead);
@@ -353,7 +355,7 @@ namespace System.IO.Ports.Tests
             {
                 char[] charXmitBuffer = TCSupport.GetRandomChars(512, TCSupport.CharacterOptions.None);
                 var asyncRead = new ASyncRead(com1);
-                var asyncReadThread = new Thread(new ThreadStart(asyncRead.Read));
+                var asyncReadTask = new Task(asyncRead.Read);
 
                 char endLineChar = com1.NewLine[0];
                 char notEndLineChar = TCSupport.GetRandomOtherChar(endLineChar, TCSupport.CharacterOptions.None);
@@ -380,7 +382,7 @@ namespace System.IO.Ports.Tests
                 if (!com2.IsOpen) //This is necessary since com1 and com2 might be the same port if we are using a loopback
                     com2.Open();
 
-                asyncReadThread.Start();
+                asyncReadTask.Start();
                 asyncRead.ReadStartedEvent.WaitOne();
                 //This only tells us that the thread has started to execute code in the method
                 Thread.Sleep(2000); //We need to wait to guarentee that we are executing code in SerialPort
@@ -458,32 +460,18 @@ namespace System.IO.Ports.Tests
             using (SerialPort com1 = TCSupport.InitFirstSerialPort())
             using (SerialPort com2 = TCSupport.InitSecondSerialPort(com1))
             {
-                char[] charXmitBuffer = TCSupport.GetRandomChars(512, TCSupport.CharacterOptions.None);
+                int numberOfCharsToWrite = 2048;
 
-                var continueRunning = true;
-                var numberOfIterations = 0;
-                var writeToCom2Thread = new Thread(delegate ()
+                char[] charactersToWrite = new char[numberOfCharsToWrite];
+                for (int i = 0; i < numberOfCharsToWrite; i++)
                 {
-                    while (continueRunning)
-                    {
-                        com1.Write(charXmitBuffer, 0, charXmitBuffer.Length);
-                        ++numberOfIterations;
-                    }
-                });
-
-
-                char endChar = com1.NewLine[0];
-                char notEndChar = TCSupport.GetRandomOtherChar(endChar, TCSupport.CharacterOptions.None);
-
-                //Ensure the new line is not in charXmitBuffer
-                for (var i = 0; i < charXmitBuffer.Length; ++i)
-                {
-                    //Se any appearances of a character in the new line string to some other char
-                    if (endChar == charXmitBuffer[i])
-                    {
-                        charXmitBuffer[i] = notEndChar;
-                    }
+                    charactersToWrite[i] = (char)('A' + (i % ('Z' - 'A' + 1)));
                 }
+
+                var writeToCom2Task = new Task(() =>
+                {
+                    com1.Write(charactersToWrite, 0, numberOfCharsToWrite);
+                });
 
                 com1.BaudRate = 115200;
                 com2.BaudRate = 115200;
@@ -498,32 +486,15 @@ namespace System.IO.Ports.Tests
                 if (!com2.IsOpen) //This is necessary since com1 and com2 might be the same port if we are using a loopback
                     com2.Open();
 
-                writeToCom2Thread.Start();
+                writeToCom2Task.Start();
 
                 Assert.Throws<TimeoutException>(() => com2.ReadLine());
-
-                continueRunning = false;
-                writeToCom2Thread.Join();
+                writeToCom2Task.Wait();
 
                 com1.Write(com1.NewLine);
 
-                string stringRcvBuffer = com2.ReadLine();
-
-                if (charXmitBuffer.Length * numberOfIterations == stringRcvBuffer.Length)
-                {
-                    for (var i = 0; i < charXmitBuffer.Length * numberOfIterations; ++i)
-                    {
-                        if (stringRcvBuffer[i] != charXmitBuffer[i % charXmitBuffer.Length])
-                        {
-                            Fail("Err_292aneid Expected to read {0} actually read {1}", charXmitBuffer[i % charXmitBuffer.Length], stringRcvBuffer[i]);
-                        }
-                    }
-                }
-                else
-                {
-                    Fail("Err_292haie Expected to read {0} characters actually read {1}",
-                        charXmitBuffer.Length * numberOfIterations, stringRcvBuffer.Length);
-                }
+                string receivedLine = com2.ReadLine();
+                Assert.Equal(charactersToWrite, receivedLine);
             }
         }
 
@@ -653,7 +624,7 @@ namespace System.IO.Ports.Tests
             byte[] bytesToWrite = com1.Encoding.GetBytes(charsToWrite);
 
             com2.Write(bytesToWrite, 0, 1);
-            // Write one byte at the begining because we are going to read this to buffer the rest of the data    
+            // Write one byte at the begining because we are going to read this to buffer the rest of the data
             com2.Write(bytesToWrite, 0, bytesToWrite.Length);
 
             TCSupport.WaitForReadBufferToLoad(com1, bytesToWrite.Length + 1);

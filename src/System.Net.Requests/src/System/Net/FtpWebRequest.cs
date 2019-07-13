@@ -87,11 +87,6 @@ namespace System.Net
             get { return (Flags & FtpMethodFlags.IsDownload) != 0; }
         }
 
-        internal bool HasHttpCommand
-        {
-            get { return (Flags & FtpMethodFlags.HasHttpCommand) != 0; }
-        }
-
         /// <summary>
         ///    <para>True if we should attempt to get a response uri
         ///    out of a server response</para>
@@ -184,7 +179,7 @@ namespace System.Net
     }
 
     /// <summary>
-    /// <para>The FtpWebRequest class implements a basic FTP client interface.
+    /// The FtpWebRequest class implements a basic FTP client interface.
     /// </summary>
     public sealed class FtpWebRequest : WebRequest
     {
@@ -228,7 +223,7 @@ namespace System.Net
         private LazyAsyncResult _readAsyncResult;
         private LazyAsyncResult _requestCompleteAsyncResult;
 
-        private static readonly NetworkCredential s_defaultFtpNetworkCredential = new NetworkCredential("anonymous", "anonymous@", String.Empty);
+        private static readonly NetworkCredential s_defaultFtpNetworkCredential = new NetworkCredential("anonymous", "anonymous@", string.Empty);
         private const int s_DefaultTimeout = 100000;  // 100 seconds
         private static readonly TimerThread.Queue s_DefaultTimerQueue = TimerThread.GetOrCreateQueue(s_DefaultTimeout);
 
@@ -238,15 +233,6 @@ namespace System.Net
             get
             {
                 return _methodInfo;
-            }
-        }
-
-        // Used by FtpControlStream
-        internal static NetworkCredential DefaultNetworkCredential
-        {
-            get
-            {
-                return s_defaultFtpNetworkCredential;
             }
         }
 
@@ -276,7 +262,7 @@ namespace System.Net
             }
             set
             {
-                if (String.IsNullOrEmpty(value))
+                if (string.IsNullOrEmpty(value))
                 {
                     throw new ArgumentException(SR.net_ftp_invalid_method_name, nameof(value));
                 }
@@ -314,7 +300,7 @@ namespace System.Net
                     throw new InvalidOperationException(SR.net_reqsubmitted);
                 }
 
-                if (String.IsNullOrEmpty(value))
+                if (string.IsNullOrEmpty(value))
                 {
                     throw new ArgumentException(SR.net_ftp_invalid_renameto, nameof(value));
                 }
@@ -1503,9 +1489,9 @@ namespace System.Net
                     if (stage >= RequestStage.WriteReady)
                     {
                         // If writeResult == null and this is an upload request, it means
-                        // that the user has called GetResponse() without calling 
-                        // GetRequestStream() first. So they are not interested in a 
-                        // stream. Therefore we close the stream so that the 
+                        // that the user has called GetResponse() without calling
+                        // GetRequestStream() first. So they are not interested in a
+                        // stream. Therefore we close the stream so that the
                         // request/pipeline can continue
                         if (_methodInfo.IsUpload && !_getRequestStreamStarted)
                         {
@@ -1526,7 +1512,7 @@ namespace System.Net
         }
 
         /// <summary>
-        /// <para>Aborts underlying connection to FTP server (command & data)</para>
+        /// <para>Aborts underlying connection to FTP server (command &amp; data)</para>
         /// </summary>
         public override void Abort()
         {
@@ -1805,28 +1791,6 @@ namespace System.Net
             if (NetEventSource.IsEnabled) NetEventSource.Info(this, $"Returns {_ftpWebResponse} with stream {_ftpWebResponse._responseStream}");
 
             return;
-        }
-
-        /// <summary>
-        ///    <para>Returns username string</para>
-        /// </summary>
-        internal string GetUserString()
-        {
-            string name = null;
-            if (this.Credentials != null)
-            {
-                NetworkCredential networkCreds = this.Credentials.GetCredential(_uri, "basic");
-                if (networkCreds != null)
-                {
-                    name = networkCreds.UserName;
-                    string domain = networkCreds.Domain;
-                    if (!string.IsNullOrEmpty(domain))
-                    {
-                        name = domain + "\\" + name;
-                    }
-                }
-            }
-            return name == null ? null : (String.Compare(name, "anonymous", StringComparison.InvariantCultureIgnoreCase) == 0 ? null : name);
         }
 
         internal void DataStreamClosed(CloseExState closeState)

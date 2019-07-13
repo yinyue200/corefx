@@ -1167,7 +1167,7 @@ namespace System.Threading.Tasks.Tests
                () => Task.WaitAny(new Task[] { Task.Factory.StartNew(() => { }) }, TimeSpan.FromMilliseconds(-2)));
         }
 
-        public static void CoreWaitAnyTest(int fillerTasks, bool[] finishMeFirst, int nExpectedReturnCode)
+        private static void CoreWaitAnyTest(int fillerTasks, bool[] finishMeFirst, int nExpectedReturnCode)
         {
             // We need to do this test in a local TM with # or threads equal to or greater than
             // the number of tasks requested. Otherwise this test can undeservedly fail on dual proc machines
@@ -1331,7 +1331,7 @@ namespace System.Threading.Tasks.Tests
             RunTaskWaitAllTest(false, 10);
         }
 
-        public static void RunTaskWaitAllTest(bool staThread, int nTaskCount)
+        private static void RunTaskWaitAllTest(bool staThread, int nTaskCount)
         {
             string methodInput = string.Format("RunTaskWaitAllTest:  > WaitAll() Tests for aptState={0}, task count={1}", staThread ? "MTA" : "STA", nTaskCount);
             string excpMsg = "foo";
@@ -1343,17 +1343,17 @@ namespace System.Threading.Tasks.Tests
             int nSecondHalfCount = nTaskCount - nFirstHalfCount;
 
             //CancellationTokenSource ctsForSleepAndAckCancelAction = null; // this needs to be allocated every time sleepAndAckCancelAction is about to be used
-            Action<object> emptyAction = delegate (Object o) { };
-            Action<object> sleepAction = delegate (Object o) { for (int i = 0; i < 200; i++) { } };
-            Action<object> longAction = delegate (Object o) { for (int i = 0; i < 400; i++) { } };
+            Action<object> emptyAction = delegate (object o) { };
+            Action<object> sleepAction = delegate (object o) { for (int i = 0; i < 200; i++) { } };
+            Action<object> longAction = delegate (object o) { for (int i = 0; i < 400; i++) { } };
 
-            Action<object> sleepAndAckCancelAction = delegate (Object o)
+            Action<object> sleepAndAckCancelAction = delegate (object o)
             {
                 CancellationToken ct = (CancellationToken)o;
                 if (!ct.IsCancellationRequested) ct.WaitHandle.WaitOne();
                 throw new OperationCanceledException(ct);   // acknowledge
             };
-            Action<object> exceptionThrowAction = delegate (Object o) { throw new Exception(excpMsg); };
+            Action<object> exceptionThrowAction = delegate (object o) { throw new Exception(excpMsg); };
 
             Exception e = null;
 
@@ -1431,7 +1431,7 @@ namespace System.Threading.Tasks.Tests
         // the core function for WaitAll tests. Takes 2 types of actions to create tasks, how many copies of each task type
         // to create, whether to wait for the completion of the first group, etc
         //
-        public static void DoRunTaskWaitAllTest(bool staThread,
+        private static void DoRunTaskWaitAllTest(bool staThread,
                                                     int numTasksType1,
                                                     Action<object> taskAction1,
                                                     bool bWaitOnAct1,
@@ -1495,7 +1495,7 @@ namespace System.Threading.Tasks.Tests
         // the core function for WaitAll tests. Takes 2 types of actions to create tasks, how many copies of each task type
         // to create, whether to wait for the completion of the first group, etc
         //
-        public static void DoRunTaskWaitAllTestWithCancellationToken(bool staThread,
+        private static void DoRunTaskWaitAllTestWithCancellationToken(bool staThread,
                                                     int numTasks,
                                                     bool bWaitOnAct1,
                                                     bool bCancelAct1,
@@ -2315,10 +2315,6 @@ namespace System.Threading.Tasks.Tests
             {
                 ManualResetEvent mreFaulted = new ManualResetEvent(false);
                 bool innerStarted = false;
-
-                // I Think SpinWait has been implemented on all future platforms because
-                // it is in the Contract.
-                // So we can ignore this Thread.SpinWait(100);
 
                 SpinWait sw = new SpinWait();
                 Task tFaulted = Task.Factory.StartNew(delegate

@@ -4,27 +4,24 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Net.Security;
 using System.Net.Test.Common;
 using System.Runtime.InteropServices;
 using System.Security.Authentication.ExtendedProtection;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using Microsoft.DotNet.RemoteExecutor;
 using Xunit;
 
 namespace System.Net.Http.Functional.Tests
 {
-    public partial class HttpClientHandler_ServerCertificates_Test : RemoteExecutorTestBase
+    public abstract partial class HttpClientHandler_ServerCertificates_Test
     {
         private static bool ShouldSuppressRevocationException
         {
             get
             {
-                if (ManagedHandlerTestHelpers.IsEnabled)
-                {
-                    return false;
-                }
-
                 if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 {
                     return false;
@@ -45,7 +42,7 @@ namespace System.Net.Http.Functional.Tests
                 //     MustNotCheck,
                 // }
 
-                if (CurlSslVersionDescription() == "SecureTransport")
+                if (Interop.Http.GetSslVersionDescription() == "SecureTransport")
                 {
                     return true;
                 }
@@ -53,29 +50,45 @@ namespace System.Net.Http.Functional.Tests
             }
         }
 
-        internal static bool BackendSupportsCustomCertificateHandling
+        internal bool BackendSupportsCustomCertificateHandling
         {
             get
             {
-                if (ManagedHandlerTestHelpers.IsEnabled)
+                if (UseSocketsHttpHandler)
                 {
                     return true;
                 }
 
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                {
-                    return false;
-                }
-
-                // For other Unix-based systems it's true if (and only if) the openssl backend
-                // is used with libcurl.
-                return (CurlSslVersionDescription()?.StartsWith("OpenSSL") ?? false);
+                return TestHelper.NativeHandlerSupportsSslConfiguration();
             }
         }
 
-        private static bool BackendDoesNotSupportCustomCertificateHandling => !BackendSupportsCustomCertificateHandling;
+        [Fact]
+        [PlatformSpecific(~TestPlatforms.OSX)] // Not implemented
+        public void HttpClientUsesSslCertEnvironmentVariables()
+        {
+            // We set SSL_CERT_DIR and SSL_CERT_FILE to empty locations.
+            // The HttpClient should fail to validate the server certificate.
 
-        [DllImport("System.Net.Http.Native", EntryPoint = "HttpNative_GetSslVersionDescription")]
-        private static extern string CurlSslVersionDescription();
+            var psi = new ProcessStartInfo();
+            string sslCertDir = GetTestFilePath();
+            Directory.CreateDirectory(sslCertDir);
+            psi.Environment.Add("SSL_CERT_DIR", sslCertDir);
+
+            string sslCertFile = GetTestFilePath();
+            File.WriteAllText(sslCertFile, "");
+            psi.Environment.Add("SSL_CERT_FILE", sslCertFile);
+
+            RemoteExecutor.Invoke(async (useSocketsHttpHandlerString, useHttp2String) =>
+            {
+                const string Url = "https://www.microsoft.com";
+
+                using (HttpClient client = CreateHttpClient(useSocketsHttpHandlerString, useHttp2String))
+                {
+                    await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync(Url));
+                }
+                return RemoteExecutor.SuccessExitCode;
+            }, UseSocketsHttpHandler.ToString(), UseHttp2.ToString(), new RemoteInvokeOptions { StartInfo = psi }).Dispose();
+        }
     }
 }

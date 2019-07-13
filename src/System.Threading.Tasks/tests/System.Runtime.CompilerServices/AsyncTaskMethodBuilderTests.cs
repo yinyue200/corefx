@@ -12,7 +12,7 @@ using System.Diagnostics;
 
 namespace System.Threading.Tasks.Tests
 {
-    public class AsyncTaskMethodBuilderTests
+    public partial class AsyncTaskMethodBuilderTests
     {
         // Test captured sync context with successful completion (SetResult)
         [Fact]
@@ -345,7 +345,6 @@ namespace System.Threading.Tasks.Tests
         }
 
         [Fact]
-        [ActiveIssue("TFS 450361 - Codegen optimization issue", TargetFrameworkMonikers.UapAot)]
         public static void TaskMethodBuilder_UsesCompletedCache()
         {
             var atmb1 = new AsyncTaskMethodBuilder();
@@ -358,7 +357,6 @@ namespace System.Threading.Tasks.Tests
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
-        [ActiveIssue("TFS 450361 - Codegen optimization issue", TargetFrameworkMonikers.UapAot)]
         public static void TaskMethodBuilderBoolean_UsesCompletedCache(bool result)
         {
             TaskMethodBuilderT_UsesCompletedCache(result, true);
@@ -369,16 +367,22 @@ namespace System.Threading.Tasks.Tests
         [InlineData(5, true)]
         [InlineData(-5, false)]
         [InlineData(42, false)]
-        [ActiveIssue("TFS 450361 - Codegen optimization issue", TargetFrameworkMonikers.UapAot)]
         public static void TaskMethodBuilderInt32_UsesCompletedCache(int result, bool shouldBeCached)
         {
             TaskMethodBuilderT_UsesCompletedCache(result, shouldBeCached);
         }
 
+        [Fact]
+        public static void TaskMethodBuilderDecimal_DoesntUseCompletedCache()
+        {
+            TaskMethodBuilderT_UsesCompletedCache(0m, shouldBeCached: false);
+            TaskMethodBuilderT_UsesCompletedCache(0.0m, shouldBeCached: false);
+            TaskMethodBuilderT_UsesCompletedCache(42m, shouldBeCached: false);
+        }
+
         [Theory]
         [InlineData((string)null, true)]
         [InlineData("test", false)]
-        [ActiveIssue("TFS 450361 - Codegen optimization issue", TargetFrameworkMonikers.UapAot)]
         public static void TaskMethodBuilderRef_UsesCompletedCache(string result, bool shouldBeCached)
         {
             TaskMethodBuilderT_UsesCompletedCache(result, shouldBeCached);
@@ -393,6 +397,11 @@ namespace System.Threading.Tasks.Tests
             atmb2.SetResult(result);
 
             Assert.Equal(shouldBeCached, object.ReferenceEquals(atmb1.Task, atmb2.Task));
+            if (result != null)
+            {
+                Assert.Equal(result.ToString(), atmb1.Task.Result.ToString());
+                Assert.Equal(result.ToString(), atmb2.Task.Result.ToString());
+            }
         }
 
         [Fact]
@@ -494,10 +503,10 @@ namespace System.Threading.Tasks.Tests
             cts.Cancel();
             b.SignalAndWait(); // release task to complete
 
-            // This test may be run concurrently with other tests in the suite, 
+            // This test may be run concurrently with other tests in the suite,
             // which can be problematic as TaskScheduler.UnobservedTaskException
             // is global state.  The handler is carefully written to be non-problematic
-            // if it happens to be set during the execution of another test that has 
+            // if it happens to be set during the execution of another test that has
             // an unobserved exception.
             EventHandler<UnobservedTaskExceptionEventArgs> handler =
                 (s, e) => Assert.DoesNotContain(oce, e.Exception.InnerExceptions);
@@ -510,6 +519,58 @@ namespace System.Threading.Tasks.Tests
                 GC.WaitForPendingFinalizers();
             }
             TaskScheduler.UnobservedTaskException -= handler;
+        }
+
+        [ActiveIssue(39155)]
+        [Fact]
+        public static async Task AsyncMethodsDropsStateMachineAndExecutionContextUponCompletion()
+        {
+            // Create a finalizable object that'll be referenced by both an async method's
+            // captured ExecutionContext and its state machine, invoke the method, wait for it,
+            // and then hold on to the resulting task while forcing GCs and finalizers.
+            // We want to make sure that holding on to the resulting Task doesn't keep
+            // that finalizable object alive.
+
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            Task t = null;
+
+            Thread runner = new Thread(() =>
+            {
+                async Task YieldOnceAsync(object s)
+                {
+                    await Task.Yield();
+                    GC.KeepAlive(s); // keep s referenced by the state machine
+                }
+
+                var state = new InvokeActionOnFinalization { Action = () => tcs.SetResult(true) };
+                var al = new AsyncLocal<object>() { Value = state }; // ensure the object is stored in ExecutionContext
+                t = YieldOnceAsync(state); // ensure the object is stored in the state machine
+                al.Value = null;
+            }) { IsBackground = true };
+
+            runner.Start();
+            runner.Join();
+
+            await t; // wait for the async method to complete and clear out its state
+            await Task.Yield(); // ensure associated state is not still on the stack as part of the antecedent's execution
+
+            for (int i = 0; i < 2; i++)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+
+            try
+            {
+                await tcs.Task.TimeoutAfter(60_000);
+            }
+            catch (Exception e)
+            {
+                Environment.FailFast("Look at the created dump", e);
+            }
+
+            GC.KeepAlive(t); // ensure the object is stored in the state machine
         }
 
         #region Helper Methods / Classes
@@ -529,7 +590,7 @@ namespace System.Threading.Tasks.Tests
         {
             Assert.NotNull(e);
             Assert.NotNull(e.StackTrace);
-            Assert.Contains("End of stack trace", e.StackTrace);
+            Assert.Matches(@"---.+---", e.StackTrace);
         }
 
         private class TrackOperationsSynchronizationContext : SynchronizationContext

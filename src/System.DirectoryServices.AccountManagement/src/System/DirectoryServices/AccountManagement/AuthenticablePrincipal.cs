@@ -6,13 +6,9 @@ using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
-using System.Security.Permissions;
 
 namespace System.DirectoryServices.AccountManagement
 {
-#pragma warning disable 618    // Have not migrated to v4 transparency yet
-    [System.Security.SecurityCritical(System.Security.SecurityCriticalScope.Everything)]
-#pragma warning restore 618
     [DirectoryRdnPrefix("CN")]
     public class AuthenticablePrincipal : Principal
     {
@@ -60,7 +56,7 @@ namespace System.DirectoryServices.AccountManagement
 
                 // We don't want to let them set a null value.
                 if (!value.HasValue)
-                    throw new ArgumentNullException("value");
+                    throw new ArgumentNullException(nameof(value));
 
                 HandleSet<bool>(ref _enabled, value.Value, ref _enabledChanged,
                                   PropertyNames.AuthenticablePrincipalEnabled);
@@ -369,10 +365,10 @@ namespace System.DirectoryServices.AccountManagement
                 throw new ArgumentException(SR.AuthenticablePrincipalMustBeSubtypeOfAuthPrinc);
 
             if (context == null)
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
 
             if (subtype == null)
-                throw new ArgumentNullException("subtype");
+                throw new ArgumentNullException(nameof(subtype));
         }
 
         //

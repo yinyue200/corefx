@@ -5,7 +5,3 @@
 // Changes to this file must follow the http://aka.ms/api-review process.
 // ------------------------------------------------------------------------------
 
-[assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Security.SecureString))]
-#if !netfx
-[assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Security.SecureStringMarshal))]
-#endif // !netfx

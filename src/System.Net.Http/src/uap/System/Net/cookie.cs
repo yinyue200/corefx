@@ -65,7 +65,8 @@ namespace System.Net
         internal const string SpecialAttributeLiteral = "$";
 
         internal static readonly char[] PortSplitDelimiters = new char[] { ' ', ',', '\"' };
-        internal static readonly char[] Reserved2Name = new char[] { ' ', '\t', '\r', '\n', '=', ';', ',' };
+        // Space (' ') should be reserved as well per RFCs, but major web browsers support it and some web sites use it - so we support it too
+        internal static readonly char[] Reserved2Name = new char[] { '\t', '\r', '\n', '=', ';', ',' };
         internal static readonly char[] Reserved2Value = new char[] { ';', ',' };
 
         // fields
@@ -215,7 +216,7 @@ namespace System.Net
             }
             set
             {
-                m_domain = (value == null ? String.Empty : value);
+                m_domain = (value == null ? string.Empty : value);
                 m_domain_implicit = false;
                 m_domainKey = string.Empty; //this will get it value when adding into the Container.
             }
@@ -277,7 +278,7 @@ namespace System.Net
             }
             set
             {
-                if (String.IsNullOrEmpty(value) || !InternalSetName(value))
+                if (string.IsNullOrEmpty(value) || !InternalSetName(value))
                 {
                     throw new CookieException(SR.Format(SR.net_cookie_attribute, "Name", value == null ? "<null>" : value));
                 }
@@ -286,7 +287,7 @@ namespace System.Net
 
         internal bool InternalSetName(string value)
         {
-            if (String.IsNullOrEmpty(value) || value[0] == '$' || value.IndexOfAny(Reserved2Name) != -1)
+            if (string.IsNullOrEmpty(value) || value[0] == '$' || value.IndexOfAny(Reserved2Name) != -1 ||  value[0] == ' ' || value[value.Length - 1] == ' ')
             {
                 m_name = string.Empty;
                 return false;
@@ -306,7 +307,7 @@ namespace System.Net
             }
             set
             {
-                m_path = (value == null ? String.Empty : value);
+                m_path = (value == null ? string.Empty : value);
                 m_path_implicit = false;
             }
         }
@@ -360,15 +361,8 @@ namespace System.Net
         {
             //
             // +1 in the host length is to account for the leading dot in domain
-            if ((host.Length + 1 == domain.Length) &&
-                (string.Compare(host, 0, domain, 1, host.Length, StringComparison.OrdinalIgnoreCase) == 0))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return (host.Length + 1 == domain.Length) &&
+                (string.Compare(host, 0, domain, 1, host.Length, StringComparison.OrdinalIgnoreCase) == 0);
         }
 
         //
@@ -406,7 +400,7 @@ namespace System.Net
             }
 
             //Check the name
-            if (m_name == null || m_name.Length == 0 || m_name[0] == '$' || m_name.IndexOfAny(Reserved2Name) != -1)
+            if (string.IsNullOrEmpty(m_name) || m_name[0] == '$' || m_name.IndexOfAny(Reserved2Name) != -1 ||  m_name[0] == ' ' || m_name[m_name.Length - 1] == ' ')
             {
                 if (isThrow)
                 {
@@ -491,7 +485,7 @@ namespace System.Net
                     int host_dot = host.IndexOf('.');
 
                     // First quick check is for pushing a cookie into the local domain
-                    if (isLocalDomain && (string.Compare(localDomain, domain, StringComparison.OrdinalIgnoreCase) == 0))
+                    if (isLocalDomain && string.Equals(localDomain, domain, StringComparison.OrdinalIgnoreCase))
                     {
                         valid = true;
                     }
@@ -539,7 +533,7 @@ namespace System.Net
                 {
                     // for implicitly set domain AND at the set_default==false time
                     // we simply got to match uri.Host against m_domain
-                    if (string.Compare(host, m_domain, StringComparison.OrdinalIgnoreCase) != 0)
+                    if (!string.Equals(host, m_domain, StringComparison.OrdinalIgnoreCase))
                     {
                         valid = false;
                     }
@@ -675,7 +669,7 @@ namespace System.Net
                         // Skip spaces
                         if (ports[i] != string.Empty)
                         {
-                            if (!Int32.TryParse(ports[i], out port))
+                            if (!int.TryParse(ports[i], out port))
                                 throw new CookieException(SR.Format(SR.net_cookie_attribute, PortAttributeName, value));
                             // valid values for port 0 - 0xFFFF
                             if ((port < 0) || (port > 0xFFFF))
@@ -738,7 +732,7 @@ namespace System.Net
             }
             set
             {
-                m_value = (value == null ? String.Empty : value);
+                m_value = (value == null ? string.Empty : value);
             }
         }
 
@@ -770,7 +764,6 @@ namespace System.Net
         }
 
 
-        //public Version Version {
         /// <devdoc>
         ///    <para>[To be supplied.]</para>
         /// </devdoc>
@@ -809,10 +802,10 @@ namespace System.Net
 
             Cookie other = (Cookie)comparand;
 
-            return (string.Compare(Name, other.Name, StringComparison.OrdinalIgnoreCase) == 0)
-                    && (string.Compare(Value, other.Value, StringComparison.Ordinal) == 0)
-                    && (string.Compare(Path, other.Path, StringComparison.Ordinal) == 0)
-                    && (string.Compare(Domain, other.Domain, StringComparison.OrdinalIgnoreCase) == 0)
+            return (string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase))
+                    && (string.Equals(Value, other.Value, StringComparison.Ordinal))
+                    && (string.Equals(Path, other.Path, StringComparison.Ordinal))
+                    && (string.Equals(Domain, other.Domain, StringComparison.OrdinalIgnoreCase))
                     && (Version == other.Version)
                     ;
         }
@@ -1207,7 +1200,7 @@ namespace System.Net
         {
             m_tokenLength = 0;
             m_start = m_index;
-            while ((m_index < m_length) && Char.IsWhiteSpace(m_tokenStream[m_index]))
+            while ((m_index < m_length) && char.IsWhiteSpace(m_tokenStream[m_index]))
             {
                 ++m_index;
                 ++m_start;
@@ -1462,7 +1455,7 @@ namespace System.Net
 
             internal bool IsEqualTo(string value)
             {
-                return string.Compare(m_name, value, StringComparison.OrdinalIgnoreCase) == 0;
+                return string.Equals(m_name, value, StringComparison.OrdinalIgnoreCase);
             }
         }
 

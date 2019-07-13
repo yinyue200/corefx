@@ -4,6 +4,8 @@
 
 namespace System.Data.Odbc
 {
+    [Serializable]
+    [System.Runtime.CompilerServices.TypeForwardedFrom("System.Data, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089")]
     public sealed class OdbcError
     {
         //Data
@@ -24,7 +26,7 @@ namespace System.Data.Odbc
         {
             get
             {
-                return ((null != _message) ? _message : String.Empty);
+                return ((null != _message) ? _message : string.Empty);
             }
         }
 
@@ -48,7 +50,7 @@ namespace System.Data.Odbc
         {
             get
             {
-                return ((null != _source) ? _source : String.Empty);
+                return ((null != _source) ? _source : string.Empty);
             }
         }
 

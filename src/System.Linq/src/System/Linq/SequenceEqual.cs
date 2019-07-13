@@ -20,17 +20,34 @@ namespace System.Linq
 
             if (first == null)
             {
-                throw Error.ArgumentNull(nameof(first));
+                ThrowHelper.ThrowArgumentNullException(ExceptionArgument.first);
             }
 
             if (second == null)
             {
-                throw Error.ArgumentNull(nameof(second));
+                ThrowHelper.ThrowArgumentNullException(ExceptionArgument.second);
             }
 
-            if (first is ICollection<TSource> firstCol && second is ICollection<TSource> secondCol && firstCol.Count != secondCol.Count)
+            if (first is ICollection<TSource> firstCol && second is ICollection<TSource> secondCol)
             {
-                return false;
+                if (firstCol.Count != secondCol.Count)
+                {
+                    return false;
+                }
+
+                if (firstCol is IList<TSource> firstList && secondCol is IList<TSource> secondList)
+                {
+                    int count = firstCol.Count;
+                    for (int i = 0; i < count; i++)
+                    {
+                        if (!comparer.Equals(firstList[i], secondList[i]))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
             }
 
             using (IEnumerator<TSource> e1 = first.GetEnumerator())

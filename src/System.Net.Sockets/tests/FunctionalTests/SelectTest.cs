@@ -111,8 +111,9 @@ namespace System.Net.Sockets.Tests
             }
         }
 
+        [Fact]
         [PlatformSpecific(~TestPlatforms.OSX)] // typical OSX install has very low max open file descriptors value
-        public void Select_Read_OneReadyAtATime_ManySockets(int reads)
+        public void Select_Read_OneReadyAtATime_ManySockets()
         {
             Select_Read_OneReadyAtATime(90); // value larger than the internal value in SocketPal.Unix that swaps between stack and heap allocation
         }
@@ -146,7 +147,7 @@ namespace System.Net.Sockets.Tests
         }
 
         [PlatformSpecific(~TestPlatforms.OSX)] // typical OSX install has very low max open file descriptors value
-        [ConditionalFact(nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsNotWindowsSubsystemForLinux))] // https://github.com/Microsoft/BashOnWindows/issues/989
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsSubsystemForLinux))] // [ActiveIssue(11057)]
         public void Select_Error_OneReadyAtATime()
         {
             const int Errors = 90; // value larger than the internal value in SocketPal.Unix that swaps between stack and heap allocation
@@ -241,7 +242,7 @@ namespace System.Net.Sockets.Tests
 
         [OuterLoop]
         [Fact]
-        public static void Select_AcceptNonBlocking_Success()
+        public static async Task Select_AcceptNonBlocking_Success()
         {
             using (Socket listenSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
@@ -264,12 +265,11 @@ namespace System.Net.Sockets.Tests
                 }
 
                 // Give the task 5 seconds to complete; if not, assume it's hung.
-                bool completed = t.Wait(5000);
-                Assert.True(completed);
+                await t.TimeoutAfter(5000);
             }
         }
 
-        public static void DoAccept(Socket listenSocket, int connectionsToAccept)
+        private static void DoAccept(Socket listenSocket, int connectionsToAccept)
         {
             int connectionCount = 0;
             while (true)

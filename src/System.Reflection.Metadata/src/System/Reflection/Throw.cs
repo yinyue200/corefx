@@ -39,7 +39,7 @@ namespace System.Reflection
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static Exception InvalidArgument_Handle(string parameterName)
         {
-            throw new ArgumentException(SR.Format(SR.InvalidHandle), parameterName);
+            throw new ArgumentException(SR.InvalidHandle, parameterName);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -106,6 +106,12 @@ namespace System.Reflection
         internal static void ArgumentEmptyString(string parameterName)
         {
             throw new ArgumentException(SR.ExpectedNonEmptyString, parameterName);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void ArgumentEmptyArray(string parameterName)
+        {
+            throw new ArgumentException(SR.ExpectedNonEmptyArray, parameterName);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

@@ -8,17 +8,13 @@ using System.Reflection;
 using System;
 
 
-#if XMLSERIALIZERGENERATOR
-namespace Microsoft.XmlSerializer.Generator
-#else
 namespace System.Xml.Serialization
-#endif
 {
     internal static class Globals
     {
         internal static Exception NotSupported(string msg)
         {
-            System.Diagnostics.Debug.Assert(false, msg);
+            System.Diagnostics.Debug.Fail(msg);
             return new NotSupportedException(msg);
         }
     }

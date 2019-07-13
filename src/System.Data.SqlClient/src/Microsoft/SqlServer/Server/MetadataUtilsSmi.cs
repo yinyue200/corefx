@@ -183,8 +183,8 @@ namespace Microsoft.SqlServer.Server
         internal static ExtendedClrTypeCode DetermineExtendedTypeCodeForUseWithSqlDbType(
                 SqlDbType dbType,
                 bool isMultiValued,
-                object value
-        )
+                object value,
+                Type udtType)
         {
             ExtendedClrTypeCode extendedCode = ExtendedClrTypeCode.Invalid;
 
@@ -202,7 +202,7 @@ namespace Microsoft.SqlServer.Server
                 switch (dbType)
                 {
                     case SqlDbType.BigInt:
-                        if (value.GetType() == typeof(Int64))
+                        if (value.GetType() == typeof(long))
                             extendedCode = ExtendedClrTypeCode.Int64;
                         else if (value.GetType() == typeof(SqlInt64))
                             extendedCode = ExtendedClrTypeCode.SqlInt64;
@@ -255,19 +255,19 @@ namespace Microsoft.SqlServer.Server
                             extendedCode = ExtendedClrTypeCode.SqlDateTime;
                         break;
                     case SqlDbType.Decimal:
-                        if (value.GetType() == typeof(Decimal))
+                        if (value.GetType() == typeof(decimal))
                             extendedCode = ExtendedClrTypeCode.Decimal;
                         else if (value.GetType() == typeof(SqlDecimal))
                             extendedCode = ExtendedClrTypeCode.SqlDecimal;
                         break;
                     case SqlDbType.Real:
-                        if (value.GetType() == typeof(Single))
+                        if (value.GetType() == typeof(float))
                             extendedCode = ExtendedClrTypeCode.Single;
                         else if (value.GetType() == typeof(SqlSingle))
                             extendedCode = ExtendedClrTypeCode.SqlSingle;
                         break;
                     case SqlDbType.Int:
-                        if (value.GetType() == typeof(Int32))
+                        if (value.GetType() == typeof(int))
                             extendedCode = ExtendedClrTypeCode.Int32;
                         else if (value.GetType() == typeof(SqlInt32))
                             extendedCode = ExtendedClrTypeCode.SqlInt32;
@@ -276,13 +276,13 @@ namespace Microsoft.SqlServer.Server
                     case SqlDbType.SmallMoney:
                         if (value.GetType() == typeof(SqlMoney))
                             extendedCode = ExtendedClrTypeCode.SqlMoney;
-                        else if (value.GetType() == typeof(Decimal))
+                        else if (value.GetType() == typeof(decimal))
                             extendedCode = ExtendedClrTypeCode.Decimal;
                         break;
                     case SqlDbType.Float:
                         if (value.GetType() == typeof(SqlDouble))
                             extendedCode = ExtendedClrTypeCode.SqlDouble;
-                        else if (value.GetType() == typeof(Double))
+                        else if (value.GetType() == typeof(double))
                             extendedCode = ExtendedClrTypeCode.Double;
                         break;
                     case SqlDbType.UniqueIdentifier:
@@ -292,13 +292,13 @@ namespace Microsoft.SqlServer.Server
                             extendedCode = ExtendedClrTypeCode.Guid;
                         break;
                     case SqlDbType.SmallInt:
-                        if (value.GetType() == typeof(Int16))
+                        if (value.GetType() == typeof(short))
                             extendedCode = ExtendedClrTypeCode.Int16;
                         else if (value.GetType() == typeof(SqlInt16))
                             extendedCode = ExtendedClrTypeCode.SqlInt16;
                         break;
                     case SqlDbType.TinyInt:
-                        if (value.GetType() == typeof(Byte))
+                        if (value.GetType() == typeof(byte))
                             extendedCode = ExtendedClrTypeCode.Byte;
                         else if (value.GetType() == typeof(SqlByte))
                             extendedCode = ExtendedClrTypeCode.SqlByte;
@@ -315,7 +315,16 @@ namespace Microsoft.SqlServer.Server
                         }
                         break;
                     case SqlDbType.Udt:
-                        throw ADP.DbTypeNotSupported(SqlDbType.Udt.ToString());
+                        // Validate UDT type if caller gave us a type to validate against
+                        if (null == udtType || value.GetType() == udtType)
+                        {
+                            extendedCode = ExtendedClrTypeCode.Object;
+                        }
+                        else
+                        {
+                            extendedCode = ExtendedClrTypeCode.Invalid;
+                        }
+                        break;
                     case SqlDbType.Time:
                         if (value.GetType() == typeof(TimeSpan))
                             extendedCode = ExtendedClrTypeCode.TimeSpan;
@@ -329,7 +338,7 @@ namespace Microsoft.SqlServer.Server
                             extendedCode = ExtendedClrTypeCode.SqlXml;
                         if (value.GetType() == typeof(XmlDataFeed))
                             extendedCode = ExtendedClrTypeCode.XmlReader;
-                        else if (value.GetType() == typeof(System.String))
+                        else if (value.GetType() == typeof(string))
                             extendedCode = ExtendedClrTypeCode.String;
                         break;
                     case SqlDbType.Structured:
@@ -430,8 +439,8 @@ namespace Microsoft.SqlServer.Server
                     source.TypeSpecificNamePart1,
                     source.TypeSpecificNamePart2,
                     source.TypeSpecificNamePart3,
-                    true
-                    );
+                    true,
+                    source.Type);
             }
 
             return new SqlMetaData(source.Name,
@@ -460,7 +469,40 @@ namespace Microsoft.SqlServer.Server
             }
             else if (SqlDbType.Udt == source.SqlDbType)
             {
-                throw ADP.DbTypeNotSupported(SqlDbType.Udt.ToString());
+                // Split the input name. UdtTypeName is specified as single 3 part name.
+                // NOTE: ParseUdtTypeName throws if format is incorrect
+                string typeName = source.ServerTypeName;
+                if (null != typeName)
+                {
+                    string[] names = SqlParameter.ParseTypeName(typeName, true /* isUdtTypeName */);
+
+                    if (1 == names.Length)
+                    {
+                        typeSpecificNamePart3 = names[0];
+                    }
+                    else if (2 == names.Length)
+                    {
+                        typeSpecificNamePart2 = names[0];
+                        typeSpecificNamePart3 = names[1];
+                    }
+                    else if (3 == names.Length)
+                    {
+                        typeSpecificNamePart1 = names[0];
+                        typeSpecificNamePart2 = names[1];
+                        typeSpecificNamePart3 = names[2];
+                    }
+                    else
+                    {
+                        throw ADP.ArgumentOutOfRange(nameof(typeName));
+                    }
+
+                    if ((!string.IsNullOrEmpty(typeSpecificNamePart1) && TdsEnums.MAX_SERVERNAME < typeSpecificNamePart1.Length)
+                        || (!string.IsNullOrEmpty(typeSpecificNamePart2) && TdsEnums.MAX_SERVERNAME < typeSpecificNamePart2.Length)
+                        || (!string.IsNullOrEmpty(typeSpecificNamePart3) && TdsEnums.MAX_SERVERNAME < typeSpecificNamePart3.Length))
+                    {
+                        throw ADP.ArgumentOutOfRange(nameof(typeName));
+                    }
+                }
             }
 
             return new SmiExtendedMetaData(source.SqlDbType,
@@ -469,6 +511,7 @@ namespace Microsoft.SqlServer.Server
                                             source.Scale,
                                             source.LocaleId,
                                             source.CompareOptions,
+                                            null,
                                             source.Name,
                                             typeSpecificNamePart1,
                                             typeSpecificNamePart2,
@@ -561,7 +604,7 @@ namespace Microsoft.SqlServer.Server
                     object obj = row[column];
                     if (!(obj is DBNull))
                     {
-                        SqlDecimal value = (SqlDecimal)(Decimal)obj;
+                        SqlDecimal value = (SqlDecimal)(decimal)obj;
                         byte tempNonFractPrec = checked((byte)(value.Precision - value.Scale));
                         if (tempNonFractPrec > nonFractionalPrecision)
                         {
@@ -603,6 +646,7 @@ namespace Microsoft.SqlServer.Server
                                         scale,
                                         columnLocale.LCID,
                                         SmiMetaData.DefaultNVarChar.CompareOptions,
+                                        null,
                                         false,  // no support for multi-valued columns in a TVP yet
                                         null,   // no support for structured columns yet
                                         null,   // no support for structured columns yet
@@ -907,6 +951,7 @@ namespace Microsoft.SqlServer.Server
                             scale,
                             System.Globalization.CultureInfo.CurrentCulture.LCID,
                             SmiMetaData.GetDefaultForType(colDbType).CompareOptions,
+                            null,
                             false,  // no support for multi-valued columns in a TVP yet
                             null,   // no support for structured columns yet
                             null,   // no support for structured columns yet

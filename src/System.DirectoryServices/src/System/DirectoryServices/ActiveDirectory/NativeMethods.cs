@@ -7,7 +7,6 @@ using System.Runtime.InteropServices;
 
 namespace System.DirectoryServices.ActiveDirectory
 {
-#pragma warning disable BCL0015 // CoreFxPort
 
     /*typedef struct _DOMAIN_CONTROLLER_INFO {
 		LPTSTR DomainControllerName;
@@ -291,7 +290,6 @@ namespace System.DirectoryServices.ActiveDirectory
         public string callerName;
     }
 
-    [SuppressUnmanagedCodeSecurityAttribute()]
     internal sealed class NativeMethods
     {
         // disable public constructor
@@ -385,7 +383,6 @@ namespace System.DirectoryServices.ActiveDirectory
 			RPC_AUTH_IDENTITY_HANDLE* pAuthIdentity
 			);*/
 
-        [SuppressUnmanagedCodeSecurityAttribute()]
         internal delegate int DsMakePasswordCredentials(
       [MarshalAs(UnmanagedType.LPWStr)] string user,
       [MarshalAs(UnmanagedType.LPWStr)] string domain,
@@ -395,7 +392,6 @@ namespace System.DirectoryServices.ActiveDirectory
         /*VOID DsFreePasswordCredentials(
 			RPC_AUTH_IDENTITY_HANDLE AuthIdentity
 			);*/
-        [SuppressUnmanagedCodeSecurityAttribute()]
         internal delegate void DsFreePasswordCredentials(
             [In] IntPtr authIdentity);
 
@@ -405,7 +401,6 @@ namespace System.DirectoryServices.ActiveDirectory
 			RPC_AUTH_IDENTITY_HANDLE AuthIdentity, 
 			HANDLE* phDS
 			);*/
-        [SuppressUnmanagedCodeSecurityAttribute()]
         internal delegate int DsBindWithCred(
             [MarshalAs(UnmanagedType.LPWStr)] string domainController,
             [MarshalAs(UnmanagedType.LPWStr)] string dnsDomainName,
@@ -415,7 +410,6 @@ namespace System.DirectoryServices.ActiveDirectory
         /*DWORD DsUnBind(
 			HANDLE* phDS
 			);*/
-        [SuppressUnmanagedCodeSecurityAttribute()]
         internal delegate int DsUnBind(
             [In] ref IntPtr handle);
 
@@ -426,7 +420,6 @@ namespace System.DirectoryServices.ActiveDirectory
 			DWORD* pcOut,
 			VOID** ppInfo
 			);*/
-        [SuppressUnmanagedCodeSecurityAttribute()]
         internal delegate int DsGetDomainControllerInfo(
             [In] IntPtr handle,
             [MarshalAs(UnmanagedType.LPWStr)] string domainName,
@@ -442,7 +435,6 @@ namespace System.DirectoryServices.ActiveDirectory
 			DWORD cInfo, 
 			VOID* pInfo
 			);*/
-        [SuppressUnmanagedCodeSecurityAttribute()]
         internal delegate void DsFreeDomainControllerInfo(
             [In] int infoLevel,
             [In] int dcInfoListCount,
@@ -454,7 +446,6 @@ namespace System.DirectoryServices.ActiveDirectory
 			HANDLE hDs,
 			PDS_NAME_RESULT* ppSites
 			);*/
-        [SuppressUnmanagedCodeSecurityAttribute()]
         internal delegate int DsListSites(
             [In] IntPtr dsHandle,
             [Out] out IntPtr sites);
@@ -463,7 +454,6 @@ namespace System.DirectoryServices.ActiveDirectory
 			HANDLE hDs, 
 			PDS_NAME_RESULTW* ppRoles
 			);*/
-        [SuppressUnmanagedCodeSecurityAttribute()]
         internal delegate int DsListRoles(
             [In] IntPtr dsHandle,
             [Out] out IntPtr roles);
@@ -517,7 +507,6 @@ namespace System.DirectoryServices.ActiveDirectory
 			LPTSTR* rpNames, 
 			PDS_NAME_RESULT* ppResult
 			);*/
-        [SuppressUnmanagedCodeSecurityAttribute()]
         internal delegate int DsCrackNames(
             [In] IntPtr hDS,
             [In] int flags,
@@ -589,9 +578,6 @@ namespace System.DirectoryServices.ActiveDirectory
         internal static extern int LsaNtStatusToWinError(int ntStatus);
     }
 
-    [
-        SuppressUnmanagedCodeSecurityAttribute()
-        ]
     internal sealed class NativeComInterfaces
     {
         /*typedef enum {
@@ -640,7 +626,6 @@ namespace System.DirectoryServices.ActiveDirectory
         internal interface IAdsPathname
         {
             // HRESULT Set([in] BSTR bstrADsPath,  [in] long lnSetType);
-            [SuppressUnmanagedCodeSecurityAttribute()]
             int Set([In, MarshalAs(UnmanagedType.BStr)] string bstrADsPath, [In, MarshalAs(UnmanagedType.U4)] int lnSetType);
 
             // HRESULT SetDisplayType([in] long lnDisplayType);
@@ -648,7 +633,6 @@ namespace System.DirectoryServices.ActiveDirectory
 
             // HRESULT Retrieve([in] long lnFormatType,  [out, retval] BSTR* pbstrADsPath);
             [return: MarshalAs(UnmanagedType.BStr)]
-            [SuppressUnmanagedCodeSecurityAttribute()]
             string Retrieve([In, MarshalAs(UnmanagedType.U4)] int lnFormatType);
 
             // HRESULT GetNumElements([out, retval] long* plnNumPathElements);
@@ -671,13 +655,11 @@ namespace System.DirectoryServices.ActiveDirectory
 
             // HRESULT GetEscapedElement([in] long lnReserved, [in] BSTR bstrInStr, [out, retval] BSTR*  pbstrOutStr );
             [return: MarshalAs(UnmanagedType.BStr)]
-            [SuppressUnmanagedCodeSecurityAttribute()]
             string GetEscapedElement([In, MarshalAs(UnmanagedType.U4)] int lnReserved, [In, MarshalAs(UnmanagedType.BStr)] string bstrInStr);
 
             int EscapedMode
             {
                 get;
-                [SuppressUnmanagedCodeSecurityAttribute()]
                 set;
             }
         }
@@ -729,18 +711,18 @@ namespace System.DirectoryServices.ActiveDirectory
 
             void SetInfo();
 
-            Object Get([In, MarshalAs(UnmanagedType.BStr)] string bstrName);
+            object Get([In, MarshalAs(UnmanagedType.BStr)] string bstrName);
 
             void Put([In, MarshalAs(UnmanagedType.BStr)] string bstrName,
-                        [In] Object vProp);
+                        [In] object vProp);
 
-            Object GetEx([In, MarshalAs(UnmanagedType.BStr)] String bstrName);
+            object GetEx([In, MarshalAs(UnmanagedType.BStr)] string bstrName);
 
             void PutEx([In, MarshalAs(UnmanagedType.U4)] int lnControlCode,
                         [In, MarshalAs(UnmanagedType.BStr)] string bstrName,
-                        [In] Object vProp);
+                        [In] object vProp);
 
-            void GetInfoEx([In] Object vProperties,
+            void GetInfoEx([In] object vProperties,
                         [In, MarshalAs(UnmanagedType.U4)] int lnReserved);
 
             //
@@ -750,7 +732,6 @@ namespace System.DirectoryServices.ActiveDirectory
             string OID
             {
                 [return: MarshalAs(UnmanagedType.BStr)]
-                [SuppressUnmanagedCodeSecurityAttribute()]
                 get;
                 [param: MarshalAs(UnmanagedType.BStr)]
                 set;
@@ -767,7 +748,6 @@ namespace System.DirectoryServices.ActiveDirectory
             int MaxRange
             {
                 [return: MarshalAs(UnmanagedType.U4)]
-                [SuppressUnmanagedCodeSecurityAttribute()]
                 get;
                 [param: MarshalAs(UnmanagedType.U4)]
                 set;
@@ -776,7 +756,6 @@ namespace System.DirectoryServices.ActiveDirectory
             int MinRange
             {
                 [return: MarshalAs(UnmanagedType.U4)]
-                [SuppressUnmanagedCodeSecurityAttribute()]
                 get;
                 [param: MarshalAs(UnmanagedType.U4)]
                 set;
@@ -784,7 +763,6 @@ namespace System.DirectoryServices.ActiveDirectory
 
             bool MultiValued
             {
-                [SuppressUnmanagedCodeSecurityAttribute()]
                 get;
                 set;
             }
@@ -838,18 +816,18 @@ namespace System.DirectoryServices.ActiveDirectory
 
             void SetInfo();
 
-            Object Get([In, MarshalAs(UnmanagedType.BStr)] string bstrName);
+            object Get([In, MarshalAs(UnmanagedType.BStr)] string bstrName);
 
             void Put([In, MarshalAs(UnmanagedType.BStr)] string bstrName,
-                        [In] Object vProp);
+                        [In] object vProp);
 
-            Object GetEx([In, MarshalAs(UnmanagedType.BStr)] String bstrName);
+            object GetEx([In, MarshalAs(UnmanagedType.BStr)] string bstrName);
 
             void PutEx([In, MarshalAs(UnmanagedType.U4)] int lnControlCode,
                         [In, MarshalAs(UnmanagedType.BStr)] string bstrName,
-                        [In] Object vProp);
+                        [In] object vProp);
 
-            void GetInfoEx([In] Object vProperties,
+            void GetInfoEx([In] object vProperties,
                         [In, MarshalAs(UnmanagedType.U4)] int lnReserved);
 
             //
@@ -873,7 +851,6 @@ namespace System.DirectoryServices.ActiveDirectory
             string OID
             {
                 [return: MarshalAs(UnmanagedType.BStr)]
-                [SuppressUnmanagedCodeSecurityAttribute()]
                 get;
                 [param: MarshalAs(UnmanagedType.BStr)]
                 set;
@@ -885,14 +862,12 @@ namespace System.DirectoryServices.ActiveDirectory
 
             object MandatoryProperties
             {
-                [SuppressUnmanagedCodeSecurityAttribute()]
                 get;
                 set;
             }
 
             object OptionalProperties
             {
-                [SuppressUnmanagedCodeSecurityAttribute()]
                 get;
                 set;
             }
@@ -907,14 +882,12 @@ namespace System.DirectoryServices.ActiveDirectory
 
             object AuxDerivedFrom
             {
-                [SuppressUnmanagedCodeSecurityAttribute()]
                 get;
                 set;
             }
 
             object PossibleSuperiors
             {
-                [SuppressUnmanagedCodeSecurityAttribute()]
                 get;
                 set;
             }

@@ -14,9 +14,6 @@ using System.Runtime.InteropServices;
 
 namespace System.DirectoryServices.AccountManagement
 {
-#pragma warning disable 618    // Have not migrated to v4 transparency yet
-    [System.Security.SecurityCritical(System.Security.SecurityCriticalScope.Everything)]
-#pragma warning restore 618
     internal class SAMMembersSet : BookmarkableResultSet
     {
         internal SAMMembersSet(string groupPath, UnsafeNativeMethods.IADsGroup group, bool recursive, SAMStoreCtx storeCtx, DirectoryEntry ctxBase)
@@ -432,12 +429,10 @@ namespace System.DirectoryServices.AccountManagement
                                         err);
 
                 throw new PrincipalOperationException(
-                            String.Format(CultureInfo.CurrentCulture,
-                                          SR.SAMStoreCtxErrorEnumeratingGroup,
-                                          err));
+                            SR.Format(SR.SAMStoreCtxErrorEnumeratingGroup, err));
             }
 
-            if (String.Compare(_storeCtx.MachineFlatName, domainName, StringComparison.OrdinalIgnoreCase) == 0)
+            if (string.Equals(_storeCtx.MachineFlatName, domainName, StringComparison.OrdinalIgnoreCase))
                 isLocal = true;
 
             GlobalDebug.WriteLineIf(GlobalDebug.Info,

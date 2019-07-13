@@ -2,6 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -42,6 +44,7 @@ namespace Microsoft.CSharp.RuntimeBinder.Tests
         }
 
         [Fact]
+        [ActiveIssue(31032, TargetFrameworkMonikers.NetFramework)]
         public void CustomIndexerName()
         {
             dynamic d = new AllTheIntegers();
@@ -50,6 +53,7 @@ namespace Microsoft.CSharp.RuntimeBinder.Tests
         }
 
         [Fact]
+        [ActiveIssue(31032, TargetFrameworkMonikers.NetFramework)]
         public void CustomIndexerNameDynamicArgument()
         {
             AllTheIntegers all = new AllTheIntegers();
@@ -68,12 +72,85 @@ namespace Microsoft.CSharp.RuntimeBinder.Tests
         }
 
         [Fact]
+        [ActiveIssue(31032, TargetFrameworkMonikers.NetFramework)]
         public void DeepInheritingIndexingInterface()
         {
             IC ifaceTyped = new Implementation();
             dynamic d = 23;
             string answer = ifaceTyped[d];
             Assert.Equal("23", answer);
+        }
+
+        [Fact]
+        public void ArrayLongIndexed()
+        {
+            dynamic arr = new[] {1, 2, 3};
+            dynamic ind = 2L;
+            Assert.Equal(3, arr[ind]);
+        }
+
+        [Fact]
+        public void BadArrayIndexer()
+        {
+            dynamic arr = new[] {1, 2, 3};
+            dynamic ind = "a";
+            Assert.Throws<RuntimeBinderException>(() => arr[ind]);
+        }
+
+        [Fact]
+        public void BadArrayIndexerCouldHaveCast()
+        {
+            dynamic arr = new[] { 1, 2, 3 };
+            dynamic ind = 2m;
+            Assert.Throws<RuntimeBinderException>(() => arr[ind]);
+        }
+
+        // Only gives results once.
+        private class ArgumentEnumerable : IEnumerable<CSharpArgumentInfo>
+        {
+            private int _count;
+
+            public ArgumentEnumerable(int count)
+            {
+                _count = count;
+            }
+
+            public IEnumerator<CSharpArgumentInfo> GetEnumerator()
+            {
+                while (_count > 0)
+                {
+                    yield return CSharpArgumentInfo.Create(CSharpArgumentInfoFlags.None, null);
+                    --_count;
+                }
+            }
+
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        }
+
+        [Fact]
+        [ActiveIssue(31032, TargetFrameworkMonikers.NetFramework)]
+        public void GetIndexWithNonRepeatingArgumentInfos()
+        {
+            CallSiteBinder binder = Binder.GetIndex(CSharpBinderFlags.None, GetType(), new ArgumentEnumerable(2));
+            CallSite<Func<CallSite, object, object, object>> callSite =
+                CallSite<Func<CallSite, object, object, object>>.Create(binder);
+            Func<CallSite, object, object, object> targ = callSite.Target;
+            object result = targ(callSite, new[] {1, 2, 3}, 1);
+            Assert.Equal(2, result);
+        }
+
+        [Fact]
+        [ActiveIssue(31032, TargetFrameworkMonikers.NetFramework)]
+        public void SetIndexWithNonRepeatingArgumentInfos()
+        {
+            CallSiteBinder binder = Binder.SetIndex(CSharpBinderFlags.None, GetType(), new ArgumentEnumerable(3));
+            CallSite<Func<CallSite, object, object, object, object>> callSite =
+                CallSite<Func<CallSite, object, object, object, object>>.Create(binder);
+            Func<CallSite, object, object, object, object> targ = callSite.Target;
+            int[] array = {1, 2, 3};
+            object result = targ(callSite, array, 1, 9);
+            Assert.Equal(9, result);
+            Assert.Equal(9, array[1]);
         }
     }
 }

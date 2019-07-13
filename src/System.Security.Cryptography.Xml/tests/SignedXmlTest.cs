@@ -1,3 +1,5 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// See the LICENSE file in the project root for more information
 //
 // SignedXmlTest.cs - Test Cases for SignedXml
 //
@@ -189,10 +191,7 @@ namespace System.Security.Cryptography.Xml.Tests
 
             Assert.Null(signedXml.SigningKeyName);
 
-            if (PlatformDetection.IsFullFramework)
-                Assert.Equal("http://www.w3.org/2000/09/xmldsig#rsa-sha1", signedXml.SignatureMethod);
-            else
-                Assert.Equal("http://www.w3.org/2001/04/xmldsig-more#rsa-sha256", signedXml.SignatureMethod);
+            Assert.Equal("http://www.w3.org/2001/04/xmldsig-more#rsa-sha256", signedXml.SignatureMethod);
 
             Assert.Equal(key.KeySize / 8, signedXml.SignatureValue.Length);
             Assert.Null(signedXml.SigningKeyName);
@@ -200,7 +199,7 @@ namespace System.Security.Cryptography.Xml.Tests
             // Get the XML representation of the signature.
             XmlElement xmlSignature = signedXml.GetXml();
 
-            // LAMESPEC: we must reload the signature or it won't work
+            // we must reload the signature or it won't work
             // MS framework throw a "malformed element"
             SignedXml vrfy = new SignedXml();
             vrfy.LoadXml(xmlSignature);
@@ -315,13 +314,13 @@ namespace System.Security.Cryptography.Xml.Tests
 
             Assert.Null(signedXml.SignatureLength);
             Assert.Equal(SignedXml.XmlDsigDSAUrl, signedXml.SignatureMethod);
-            Assert.InRange(signedXml.SignatureValue.Length, low: 40, high: Int32.MaxValue);
+            Assert.InRange(signedXml.SignatureValue.Length, low: 40, high: int.MaxValue);
             Assert.Null(signedXml.SigningKeyName);
 
             // Get the XML representation of the signature.
             XmlElement xmlSignature = signedXml.GetXml();
 
-            // LAMESPEC: we must reload the signature or it won't work
+            // we must reload the signature or it won't work
             // MS framework throw a "malformed element"
             SignedXml vrfy = new SignedXml();
             vrfy.LoadXml(xmlSignature);
@@ -355,7 +354,7 @@ namespace System.Security.Cryptography.Xml.Tests
             // Get the XML representation of the signature.
             XmlElement xmlSignature = signedXml.GetXml();
 
-            // LAMESPEC: we must reload the signature or it won't work
+            // we must reload the signature or it won't work
             // MS framework throw a "malformed element"
             SignedXml vrfy = new SignedXml();
             vrfy.LoadXml(xmlSignature);
@@ -365,7 +364,7 @@ namespace System.Security.Cryptography.Xml.Tests
         }
 
         // Using empty constructor
-        // LAMESPEC: The two other constructors don't seems to apply in verifying signatures
+        // The two other constructors don't seems to apply in verifying signatures
         [Fact]
         public void AsymmetricRSAVerify()
         {
@@ -389,7 +388,7 @@ namespace System.Security.Cryptography.Xml.Tests
         }
 
         // Using empty constructor
-        // LAMESPEC: The two other constructors don't seems to apply in verifying signatures
+        // The two other constructors don't seems to apply in verifying signatures
         [Fact]
         public void AsymmetricDSAVerify()
         {
@@ -1434,7 +1433,7 @@ namespace System.Security.Cryptography.Xml.Tests
   <Object Id=""object"">some other text</Object>
 </Signature>
 ";
-            SignedXml sign = GetSignedXml(String.Format(xml, bits));
+            SignedXml sign = GetSignedXml(string.Format(xml, bits));
             // only multiple of 8 bits are supported
             sign.CheckSignature(new HMACSHA1(Encoding.ASCII.GetBytes("secret")));
         }
@@ -1573,20 +1572,10 @@ namespace System.Security.Cryptography.Xml.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "https://github.com/dotnet/corefx/issues/18690")]
         public void CoreFxSignedXmlUsesSha256ByDefault()
         {
             const string expectedSignatureMethod = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
             const string expectedDigestMethod = "http://www.w3.org/2001/04/xmlenc#sha256";
-            ValidateSignedXmlDefaultHashAlgorithms(expectedSignatureMethod, expectedDigestMethod);
-        }
-
-        [Fact]
-        [SkipOnTargetFramework(~TargetFrameworkMonikers.NetFramework, "https://github.com/dotnet/corefx/issues/18690")]
-        public void NetFxSignedXmlUsesSha1ByDefault()
-        {
-            const string expectedSignatureMethod = "http://www.w3.org/2000/09/xmldsig#rsa-sha1";
-            const string expectedDigestMethod = "http://www.w3.org/2000/09/xmldsig#sha1";
             ValidateSignedXmlDefaultHashAlgorithms(expectedSignatureMethod, expectedDigestMethod);
         }
 

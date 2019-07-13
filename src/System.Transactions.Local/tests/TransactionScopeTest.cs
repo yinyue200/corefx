@@ -9,8 +9,19 @@ namespace System.Transactions.Tests
 {
     // Ported from Mono
 
-    public class TransactionScopeTest
+    public class TransactionScopeTest : IDisposable
     {
+        public TransactionScopeTest()
+        {
+            // Make sure we start with Transaction.Current = null.
+            Transaction.Current = null;
+        }
+
+        public void Dispose()
+        {
+            Transaction.Current = null;
+        }
+
         [Fact]
         public void TransactionScopeWithInvalidTimeSpanThrows()
         {
@@ -761,7 +772,7 @@ namespace System.Transactions.Tests
                 irm.Value = 2;
                 ct.Commit();
 
-                /* Using a already committed transaction in a new 
+                /* Using an already committed transaction in a new 
                  * TransactionScope
                  */
                 TransactionScope scope = new TransactionScope(ct);

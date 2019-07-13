@@ -7,14 +7,12 @@ using Xunit;
 
 namespace System.IO.IsolatedStorage
 {
-    [ActiveIssue(18940, TargetFrameworkMonikers.UapAot)]
     public class ContainsUnknownFilesTests : IsoStorageTest
     {
         private static MethodInfo s_containsUnknownFilesMethod
             = typeof(IsolatedStorageFile).GetMethod("ContainsUnknownFiles", BindingFlags.NonPublic | BindingFlags.Instance);
 
-        [Theory MemberData(nameof(ValidStores))]
-        [ActiveIssue("dotnet/corefx #18265", TargetFrameworkMonikers.NetFramework)]
+        [Theory, MemberData(nameof(ValidStores))]
         public void ContainsUnknownFiles_CleanStore(PresetScopes scope)
         {
             TestHelper.WipeStores();
@@ -25,8 +23,7 @@ namespace System.IO.IsolatedStorage
             }
         }
 
-        [Theory MemberData(nameof(ValidStores))]
-        [ActiveIssue("dotnet/corefx #18265", TargetFrameworkMonikers.NetFramework)]
+        [Theory, MemberData(nameof(ValidStores))]
         public void ContainsUnknownFiles_OkFiles(PresetScopes scope)
         {
             TestHelper.WipeStores();
@@ -45,8 +42,7 @@ namespace System.IO.IsolatedStorage
             }
         }
 
-        [Theory MemberData(nameof(ValidStores))]
-        [ActiveIssue("dotnet/corefx #18265", TargetFrameworkMonikers.NetFramework)]
+        [Theory, MemberData(nameof(ValidStores))]
         public void ContainsUnknownFiles_NotOkFiles(PresetScopes scope)
         {
             TestHelper.WipeStores();
@@ -68,8 +64,7 @@ namespace System.IO.IsolatedStorage
             }
         }
 
-        [Theory MemberData(nameof(ValidStores))]
-        [ActiveIssue("dotnet/corefx #18265", TargetFrameworkMonikers.NetFramework)]
+        [Theory, MemberData(nameof(ValidStores))]
         public void ContainsUnknownFiles_NotOkDirectory(PresetScopes scope)
         {
             TestHelper.WipeStores();

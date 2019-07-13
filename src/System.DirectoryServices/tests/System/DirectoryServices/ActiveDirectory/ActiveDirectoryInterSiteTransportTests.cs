@@ -7,6 +7,7 @@ using Xunit;
 
 namespace System.DirectoryServices.ActiveDirectory.Tests
 {
+    [ConditionalClass(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer))]
     public class ActiveDirectoryInterSiteTransportTests
     {
         [Fact]
@@ -18,11 +19,13 @@ namespace System.DirectoryServices.ActiveDirectory.Tests
         [Fact]
         [OuterLoop]
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Getting information about domain is denied inside App")]
-        [ActiveIssue("https://github.com/dotnet/corefx/issues/21553", TargetFrameworkMonikers.UapAot)]
         public void FindByTransportType_ForestNoDomainAssociatedWithoutName_ThrowsActiveDirectoryOperationException()
         {
             var context = new DirectoryContext(DirectoryContextType.Forest);
-            Assert.Throws<ActiveDirectoryOperationException>(() => ActiveDirectoryInterSiteTransport.FindByTransportType(context, ActiveDirectoryTransportType.Rpc));
+            if (!PlatformDetection.IsDomainJoinedMachine)
+            {
+                Assert.Throws<ActiveDirectoryOperationException>(() => ActiveDirectoryInterSiteTransport.FindByTransportType(context, ActiveDirectoryTransportType.Rpc));
+            }
         }
 
         [Fact]
@@ -36,8 +39,12 @@ namespace System.DirectoryServices.ActiveDirectory.Tests
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Not approved COM object for app")]
         public void FindByTransportType_ForestNoDomainAssociatedWithName_ThrowsActiveDirectoryOperationException_NoUap()
         {
-            var context = new DirectoryContext(DirectoryContextType.Forest, "\0");
-            AssertExtensions.Throws<ArgumentException>("context", () => ActiveDirectoryInterSiteTransport.FindByTransportType(context, ActiveDirectoryTransportType.Rpc));
+            // Domain joined machines will not throw on the ActiveDirectoryInterSiteTransport.FindByTransportType call.
+            if (!PlatformDetection.IsDomainJoinedMachine)
+            {
+                var context = new DirectoryContext(DirectoryContextType.Forest, "\0");
+                AssertExtensions.Throws<ArgumentException>("context", () => ActiveDirectoryInterSiteTransport.FindByTransportType(context, ActiveDirectoryTransportType.Rpc));
+            }
         }
 
         [Fact]
@@ -47,22 +54,25 @@ namespace System.DirectoryServices.ActiveDirectory.Tests
             AssertExtensions.Throws<ArgumentException>("context", () => ActiveDirectoryInterSiteTransport.FindByTransportType(context, ActiveDirectoryTransportType.Rpc));
         }
 
-        [ConditionalTheory(nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsNotWindowsNanoServer))]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer))]
         [OuterLoop("Takes too long on domain joined machines")]
         [InlineData(DirectoryContextType.ApplicationPartition)]
         [InlineData(DirectoryContextType.DirectoryServer)]
         [InlineData(DirectoryContextType.Domain)]
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Access to common path is denied inside App")]
-        public void FindByTransportType_InvalidContextTypeWithName_ThrowsArgumentException(DirectoryContextType type)
+        public void FindByTransportType_InvalidContextTypeWithName(DirectoryContextType type)
         {
             var context = new DirectoryContext(type, "Name");
-            AssertExtensions.Throws<ArgumentException>("context", () => ActiveDirectoryInterSiteTransport.FindByTransportType(context, ActiveDirectoryTransportType.Rpc));
+            Exception exception = Record.Exception(() => ActiveDirectoryInterSiteTransport.FindByTransportType(context, ActiveDirectoryTransportType.Rpc));
+            Assert.NotNull(exception);
+            Assert.True(exception is ArgumentException ||
+                        exception is ActiveDirectoryOperationException,
+                        $"We got unrecognized exception {exception}");
         }
 
         [Fact]
         [OuterLoop]
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Getting information about domain is denied inside App")]
-        [ActiveIssue("https://github.com/dotnet/corefx/issues/21553", TargetFrameworkMonikers.UapAot)]
         public void FindByTransportType_ConfigurationSetTypeWithName_Throws()
         {
             var context = new DirectoryContext(DirectoryContextType.ConfigurationSet, "Name");

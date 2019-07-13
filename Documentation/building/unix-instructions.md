@@ -8,9 +8,8 @@ Building CoreFX on FreeBSD, Linux and OS X
 4. Run the build script `./build.sh`
 
 Calling the script `build.sh` builds both the native and managed code.
-Only use it when the parameters that you are passing to the script apply for both components. Otherwise, use the scripts `build-native.sh` and `build-managed.sh` respectively.
 
-For more information about the different options when building, run `build.sh -?` and look at examples in the [developer-guide](../project-docs/developer-guide.md).
+For more information about the different options when building, run `build.sh --help` and look at examples in the [developer-guide](../project-docs/developer-guide.md).
 
 ## Minimum Hardware Requirements
 - 2GB RAM
@@ -19,13 +18,17 @@ For more information about the different options when building, run `build.sh -?
 
 ### Linux
 
+First, the package lists might need to be updated
+
+`sudo apt-get update`
+
 #### Native build
 
 For Ubuntu 14.04, the following packages should be installed to build the native
 components
 
 * git
-* clang-3.5
+* clang-3.9
 * cmake
 * make
 * libc6-dev
@@ -34,7 +37,7 @@ components
 * libcurl4-openssl-dev
 * zlib1g-dev
 
-`sudo apt-get install git clang-3.5 cmake make libc6-dev libssl-dev libkrb5-dev
+`sudo apt-get install git clang-3.9 cmake make libc6-dev libssl-dev libkrb5-dev
 libcurl4-openssl-dev zlib1g-dev`
 
 #### Managed build
@@ -47,13 +50,34 @@ For Ubuntu 14.04, install the following packages:
 
 `sudo apt-get install libunwind8 libicu52 curl`
 
-For Ubuntu 16.04 LTS / Bash on Ubuntu on Windows you may need to replace libicu52 with libicu55. Ubuntu 16.10 will require libcu57.
+For Ubuntu 16.04 LTS / Bash on Ubuntu on Windows you may need to replace libicu52 with libicu55.
+Ubuntu 16.10 and Ubuntu 17.04 will require libicu57.
 
 `sudo apt-get install libunwind8 libicu55 curl`
+
+For Ubuntu 18.04, you will also need to replace libicu52 with libicu60 and install libssl1.0-dev_1.0.2n-1ubuntu5.1_amd64.deb with dpkg-deb.
+
+```sh
+sudo apt-get install libunwind8 libicu60 curl
+apt-get download libssl1.0-dev
+sudo dpkg-deb -X libssl1.0-dev_1.0.2n-1ubuntu5.1_amd64.deb /
+```
 
 In addition to the above packages, the runtime versions of the packages listed
 in the native section should also be installed (this happens automatically on
 most systems when you install the development packages).
+
+### Windows Subsystem For Linux
+
+Generally building and testing should work fine on Windows Subsystem for Linux (WSL) and it can be convenient if you primarily work on Windows and want to run tests sometimes on Linux. 
+
+There is one caveat: you must set the LANG in your shell to something other than the default. For example,
+```sh
+export LANG=en_US.UTF-8
+```
+Otherwise you may get errors like `PackagingException: File not found: '/home/dan/git/corefx/LICENSE.TXT'`. More info in [this issue](https://github.com/dotnet/corefx/issues/38608). It is possible this may occur on other distros, if LANG is set as above.
+
+We have not tested on WSL2 yet. If you try it out, we'd welcome an update.
 
 ### macOS
 
@@ -104,4 +128,3 @@ If you see errors along the lines of `SendFailure (Error writing headers)` you m
 mozroots --import --sync
 ```
 
-Bash on Ubuntu on Windows issues are tracked by: [#11057](https://github.com/dotnet/corefx/issues/11057)

@@ -22,24 +22,69 @@ internal static partial class Interop
         [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_RsaDestroy")]
         internal static extern void RsaDestroy(IntPtr rsa);
 
+        internal static SafeRsaHandle DecodeRsaPublicKey(ReadOnlySpan<byte> buf) =>
+            DecodeRsaPublicKey(ref MemoryMarshal.GetReference(buf), buf.Length);
+
         [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_DecodeRsaPublicKey")]
-        internal static extern SafeRsaHandle DecodeRsaPublicKey(byte[] buf, int len);
+        private static extern SafeRsaHandle DecodeRsaPublicKey(ref byte buf, int len);
+
+        internal static int RsaPublicEncrypt(
+            int flen,
+            ReadOnlySpan<byte> from,
+            Span<byte> to,
+            SafeRsaHandle rsa,
+            RsaPadding padding) =>
+            RsaPublicEncrypt(flen, ref MemoryMarshal.GetReference(from), ref MemoryMarshal.GetReference(to), rsa, padding);
 
         [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_RsaPublicEncrypt")]
-        internal extern static int RsaPublicEncrypt(
+        private extern static int RsaPublicEncrypt(
             int flen,
-            byte[] from,
-            byte[] to,
+            ref byte from,
+            ref byte to,
             SafeRsaHandle rsa,
             RsaPadding padding);
 
-        [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_RsaPrivateDecrypt")]
-        internal extern static int RsaPrivateDecrypt(
+        internal static int RsaPrivateDecrypt(
             int flen,
-            byte[] from,
-            byte[] to,
+            ReadOnlySpan<byte> from,
+            Span<byte> to,
+            SafeRsaHandle rsa,
+            RsaPadding padding) =>
+            RsaPrivateDecrypt(flen, ref MemoryMarshal.GetReference(from), ref MemoryMarshal.GetReference(to), rsa, padding);
+
+        [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_RsaPrivateDecrypt")]
+        private extern static int RsaPrivateDecrypt(
+            int flen,
+            ref byte from,
+            ref byte to,
             SafeRsaHandle rsa,
             RsaPadding padding);
+
+        internal static int RsaSignPrimitive(
+            ReadOnlySpan<byte> from,
+            Span<byte> to,
+            SafeRsaHandle rsa) =>
+            RsaSignPrimitive(from.Length, ref MemoryMarshal.GetReference(from), ref MemoryMarshal.GetReference(to), rsa);
+
+        [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_RsaSignPrimitive")]
+        private static extern int RsaSignPrimitive(
+            int flen,
+            ref byte from,
+            ref byte to,
+            SafeRsaHandle rsa);
+
+        internal static int RsaVerificationPrimitive(
+            ReadOnlySpan<byte> from,
+            Span<byte> to,
+            SafeRsaHandle rsa) =>
+            RsaVerificationPrimitive(from.Length, ref MemoryMarshal.GetReference(from), ref MemoryMarshal.GetReference(to), rsa);
+
+        [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_RsaVerificationPrimitive")]
+        private static extern int RsaVerificationPrimitive(
+            int flen,
+            ref byte from,
+            ref byte to,
+            SafeRsaHandle rsa);
 
         [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_RsaSize")]
         internal static extern int RsaSize(SafeRsaHandle rsa);
@@ -47,13 +92,35 @@ internal static partial class Interop
         [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_RsaGenerateKeyEx")]
         internal static extern int RsaGenerateKeyEx(SafeRsaHandle rsa, int bits, SafeBignumHandle e);
 
+        internal static bool RsaSign(int type, ReadOnlySpan<byte> m, int m_len, Span<byte> sigret, out int siglen, SafeRsaHandle rsa) =>
+            RsaSign(type, ref MemoryMarshal.GetReference(m), m_len, ref MemoryMarshal.GetReference(sigret), out siglen, rsa);
+
         [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_RsaSign")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        internal static extern bool RsaSign(int type, byte[] m, int m_len, byte[] sigret, out int siglen, SafeRsaHandle rsa);
+        private static extern bool RsaSign(int type, ref byte m, int m_len, ref byte sigret, out int siglen, SafeRsaHandle rsa);
+
+        internal static bool RsaVerify(int type, ReadOnlySpan<byte> m, ReadOnlySpan<byte> sigbuf, SafeRsaHandle rsa)
+        {
+            bool ret = RsaVerify(
+                type,
+                ref MemoryMarshal.GetReference(m),
+                m.Length,
+                ref MemoryMarshal.GetReference(sigbuf),
+                sigbuf.Length,
+                rsa);
+
+            if (!ret)
+            {
+                ErrClearError();
+            }
+
+            return ret;
+        }
+            
 
         [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_RsaVerify")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        internal static extern bool RsaVerify(int type, byte[] m, int m_len, byte[] sigbuf, int siglen, SafeRsaHandle rsa);
+        private static extern bool RsaVerify(int type, ref byte m, int m_len, ref byte sigbuf, int siglen, SafeRsaHandle rsa);
 
         internal static RSAParameters ExportRsaParameters(SafeRsaHandle key, bool includePrivateParameters)
         {
@@ -123,7 +190,8 @@ internal static partial class Interop
             out IntPtr iqmp);
 
         [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_SetRsaParameters")]
-        internal static extern void SetRsaParameters(
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool SetRsaParameters(
             SafeRsaHandle key,
             byte[] n,
             int nLength,
@@ -146,6 +214,7 @@ internal static partial class Interop
         {
             Pkcs1 = 0,
             OaepSHA1 = 1,
+            NoPadding = 2,
         }
     }
 }

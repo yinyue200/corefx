@@ -25,7 +25,7 @@ namespace System.Drawing.Printing
         public PaperSize()
         {
             _kind = PaperKind.Custom;
-            _name = String.Empty;
+            _name = string.Empty;
             _createdByDefaultConstructor = true;
         }
 
@@ -61,7 +61,7 @@ namespace System.Drawing.Printing
             set
             {
                 if (_kind != PaperKind.Custom && !_createdByDefaultConstructor)
-                    throw new ArgumentException(SR.Format(SR.PSizeNotCustom));
+                    throw new ArgumentException(SR.PSizeNotCustom);
                 _height = value;
             }
         }
@@ -91,7 +91,7 @@ namespace System.Drawing.Printing
             set
             {
                 if (_kind != PaperKind.Custom && !_createdByDefaultConstructor)
-                    throw new ArgumentException(SR.Format(SR.PSizeNotCustom));
+                    throw new ArgumentException(SR.PSizeNotCustom);
                 _name = value;
             }
         }
@@ -118,7 +118,7 @@ namespace System.Drawing.Printing
             set
             {
                 if (_kind != PaperKind.Custom && !_createdByDefaultConstructor)
-                    throw new ArgumentException(SR.Format(SR.PSizeNotCustom));
+                    throw new ArgumentException(SR.PSizeNotCustom);
                 _width = value;
             }
         }

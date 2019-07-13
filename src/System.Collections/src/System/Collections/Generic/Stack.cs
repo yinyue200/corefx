@@ -30,8 +30,6 @@ namespace System.Collections.Generic
         private T[] _array; // Storage for stack elements. Do not rename (binary serialization)
         private int _size; // Number of items in the stack. Do not rename (binary serialization)
         private int _version; // Used to keep enumerator in sync w/ collection. Do not rename (binary serialization)
-        [NonSerialized]
-        private object _syncRoot;
 
         private const int DefaultCapacity = 4;
 
@@ -68,17 +66,7 @@ namespace System.Collections.Generic
             get { return false; }
         }
 
-        object ICollection.SyncRoot
-        {
-            get
-            {
-                if (_syncRoot == null)
-                {
-                    Threading.Interlocked.CompareExchange<object>(ref _syncRoot, new object(), null);
-                }
-                return _syncRoot;
-            }
-        }
+        object ICollection.SyncRoot => this;
 
         // Removes all Objects from the Stack.
         public void Clear()
@@ -202,22 +190,28 @@ namespace System.Collections.Generic
         // is empty, Peek throws an InvalidOperationException.
         public T Peek()
         {
-            if (_size == 0)
+            int size = _size - 1;
+            T[] array = _array;
+
+            if ((uint)size >= (uint)array.Length)
             {
                 ThrowForEmptyStack();
             }
             
-            return _array[_size - 1];
+            return array[size];
         }
 
-        public bool TryPeek(out T result)
+        public bool TryPeek([MaybeNullWhen(false)] out T result)
         {
-            if (_size == 0)
+            int size = _size - 1;
+            T[] array = _array;
+
+            if ((uint)size >= (uint)array.Length)
             {
-                result = default(T);
+                result = default!;
                 return false;
             }
-            result = _array[_size - 1];
+            result = array[size];
             return true;
         }
 
@@ -225,33 +219,44 @@ namespace System.Collections.Generic
         // throws an InvalidOperationException.
         public T Pop()
         {
-            if (_size == 0)
+            int size = _size - 1;
+            T[] array = _array;
+            
+            // if (_size == 0) is equivalent to if (size == -1), and this case
+            // is covered with (uint)size, thus allowing bounds check elimination 
+            // https://github.com/dotnet/coreclr/pull/9773
+            if ((uint)size >= (uint)array.Length)
             {
                 ThrowForEmptyStack();
             }
             
             _version++;
-            T item = _array[--_size];
+            _size = size;
+            T item = array[size];
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
             {
-                _array[_size] = default(T);     // Free memory quicker.
+                array[size] = default!;     // Free memory quicker.
             }
             return item;
         }
 
-        public bool TryPop(out T result)
+        public bool TryPop([MaybeNullWhen(false)] out T result)
         {
-            if (_size == 0)
+            int size = _size - 1;
+            T[] array = _array;
+
+            if ((uint)size >= (uint)array.Length)
             {
-                result = default(T);
+                result = default!;
                 return false;
             }
 
             _version++;
-            result = _array[--_size];
+            _size = size;
+            result = array[size];
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
             {
-                _array[_size] = default(T);     // Free memory quicker.
+                array[size] = default!;
             }
             return true;
         }
@@ -259,12 +264,29 @@ namespace System.Collections.Generic
         // Pushes an item to the top of the stack.
         public void Push(T item)
         {
-            if (_size == _array.Length)
+            int size = _size;
+            T[] array = _array;
+
+            if ((uint)size < (uint)array.Length)
             {
-                Array.Resize(ref _array, (_array.Length == 0) ? DefaultCapacity : 2 * _array.Length);
+                array[size] = item;
+                _version++;
+                _size = size + 1;
             }
-            _array[_size++] = item;
+            else
+            {
+                PushWithResize(item);
+            }
+        }
+        
+        // Non-inline from Stack.Push to improve its code quality as uncommon path
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void PushWithResize(T item)
+        {
+            Array.Resize(ref _array, (_array.Length == 0) ? DefaultCapacity : 2 * _array.Length);
+            _array[_size] = item;
             _version++;
+            _size++;
         }
 
         // Copies the Stack to an array, in the same order Pop would return the items.
@@ -295,14 +317,14 @@ namespace System.Collections.Generic
             private readonly Stack<T> _stack;
             private readonly int _version;
             private int _index;
-            private T _currentElement;
+            [AllowNull] private T _currentElement;
 
             internal Enumerator(Stack<T> stack)
             {
                 _stack = stack;
                 _version = stack._version;
                 _index = -2;
-                _currentElement = default(T);
+                _currentElement = default;
             }
 
             public void Dispose()
@@ -331,7 +353,7 @@ namespace System.Collections.Generic
                 if (retval)
                     _currentElement = _stack._array[_index];
                 else
-                    _currentElement = default(T);
+                    _currentElement = default;
                 return retval;
             }
 
@@ -351,7 +373,7 @@ namespace System.Collections.Generic
                 throw new InvalidOperationException(_index == -2 ? SR.InvalidOperation_EnumNotStarted : SR.InvalidOperation_EnumEnded);
             }
             
-            object System.Collections.IEnumerator.Current
+            object? System.Collections.IEnumerator.Current
             {
                 get { return Current; }
             }
@@ -360,7 +382,7 @@ namespace System.Collections.Generic
             {
                 if (_version != _stack._version) throw new InvalidOperationException(SR.InvalidOperation_EnumFailedVersion);
                 _index = -2;
-                _currentElement = default(T);
+                _currentElement = default;
             }
         }
     }

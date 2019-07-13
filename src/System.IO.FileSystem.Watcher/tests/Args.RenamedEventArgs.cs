@@ -9,7 +9,6 @@ namespace System.IO.Tests
     public class RenamedEventArgsTests
     {
         [Theory]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "OldFullPath on Desktop demands FileIOPermissions which causes failures for invalid paths.")]
         [InlineData(WatcherChangeTypes.Changed, "C:", "foo.txt", "bar.txt")]
         [InlineData(WatcherChangeTypes.All, "C:", "foo.txt", "bar.txt")]
         [InlineData(0, "", "", "")]
@@ -24,7 +23,6 @@ namespace System.IO.Tests
         }
 
         [Theory]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "OldFullPath on Desktop demands FileIOPermissions which causes failures for invalid paths.")]
         [InlineData(WatcherChangeTypes.Changed, "C:", "foo.txt", "bar.txt")]
         [InlineData(WatcherChangeTypes.All, "C:", "foo.txt", "bar.txt")]
         [InlineData(0, "", "", "")]
@@ -38,7 +36,7 @@ namespace System.IO.Tests
         [Fact]
         public static void RenamedEventArgs_ctor_Invalid()
         {
-            Assert.Throws<NullReferenceException>(() => new RenamedEventArgs((WatcherChangeTypes)0, null, String.Empty, String.Empty));
+            Assert.Throws<NullReferenceException>(() => new RenamedEventArgs((WatcherChangeTypes)0, null, string.Empty, string.Empty));
         }
     }
 }

@@ -1316,7 +1316,7 @@ namespace System.Threading.Tasks.Tests
             }
         }
 
-        private static IEnumerable<object[]> CancelForEachTest_MemberData()
+        public static IEnumerable<object[]> CancelForEachTest_MemberData()
         {
             var array = new int[CancelForTestLoopIterations];
             yield return new object[] { array };
@@ -1384,25 +1384,21 @@ namespace System.Threading.Tasks.Tests
         // Used for parallel scheduler tests
         public class ParallelTestsScheduler : TaskScheduler
         {
-            [SecurityCritical]
             protected override void QueueTask(Task task)
             {
                 Task.Run(() => TryExecuteTaskWrapper(task));
             }
 
-            [SecuritySafeCritical]
             private void TryExecuteTaskWrapper(Task task)
             {
                 TryExecuteTask(task);
             }
 
-            [SecurityCritical]
             protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
             {
                 return TryExecuteTask(task);
             }
 
-            [SecurityCritical]
             protected override IEnumerable<Task> GetScheduledTasks()
             {
                 return null;

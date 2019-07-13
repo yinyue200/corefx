@@ -29,19 +29,19 @@
 
 using System.Collections.Generic;
 using System.Data.SqlTypes;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.Serialization.Formatters.Tests;
+using System.Text.RegularExpressions;
 using System.Xml;
-
-
-
+using Microsoft.DotNet.RemoteExecutor;
 using Xunit;
 
 namespace System.Data.Tests
 {
-    public class DataTableTest : DataSetAssertion
+    public class DataTableTest
     {
         public DataTableTest()
         {
@@ -392,6 +392,25 @@ namespace System.Data.Tests
         }
 
         [Fact]
+        public void DataColumnTypeSerialization()
+        {
+            DataTable dt = new DataTable("MyTable");
+            DataColumn dc = new DataColumn("dc", typeof(int));
+            dt.Columns.Add(dc);
+            dt.RemotingFormat = SerializationFormat.Binary;
+
+            DataTable dtDeserialized;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                BinaryFormatter bf = new BinaryFormatter();
+                bf.Serialize(ms, dt);
+                ms.Seek(0, SeekOrigin.Begin);
+                dtDeserialized = (DataTable)bf.Deserialize(ms);
+            }
+            Assert.Equal(dc.DataType, dtDeserialized.Columns[0].DataType);
+        }
+
+        [Fact]
         public void SelectExceptions()
         {
             DataTable T = new DataTable("test");
@@ -680,7 +699,6 @@ namespace System.Data.Tests
 
             /*
 			try {
-				// FIXME: LAMESPEC: Why the exception is thrown why... why... 
 				Mom.Select ("Child.Name = 'Jack'");
 Assert.False(true);
 			} catch (Exception e) {
@@ -847,10 +865,8 @@ Assert.False(true);
         [Fact]
         public void PropertyExceptions()
         {
-            CultureInfo orig = CultureInfo.CurrentCulture;
-            try
+            RemoteExecutor.Invoke(() =>
             {
-                CultureInfo.CurrentCulture = new CultureInfo("en-US");
                 DataSet set = new DataSet();
                 DataTable table = new DataTable();
                 DataTable table1 = new DataTable();
@@ -882,40 +898,25 @@ Assert.False(true);
                 DataRelation dr = new DataRelation("DR", table.Columns[0], table1.Columns[0]);
                 set.Relations.Add(dr);
 
-                try
+                Assert.Throws<ArgumentException>(() =>
                 {
+                    // Set to a different sensitivity than before: this breaks the DataRelation constraint
+                    // because it is not the sensitivity of the related table
                     table.CaseSensitive = true;
-                    table1.CaseSensitive = true;
-                    Assert.False(true);
-                }
-                catch (ArgumentException)
-                {
-                }
+                });
 
-                try
+                Assert.Throws<ArgumentException>(() =>
                 {
-                    CultureInfo cultureInfo = new CultureInfo("en-gb");
+                    // Set to a different culture than before: this breaks the DataRelation constraint
+                    // because it is not the locale of the related table
+                    CultureInfo cultureInfo = table.Locale.Name == "en-US" ? new CultureInfo("en-GB") : new CultureInfo("en-US");
                     table.Locale = cultureInfo;
-                    table1.Locale = cultureInfo;
-                    Assert.False(true);
-                }
-                catch (ArgumentException)
-                {
-                }
+                });
 
-                try
-                {
-                    table.Prefix = "Prefix#1";
-                    Assert.False(true);
-                }
-                catch (DataException)
-                {
-                }
-            }
-            finally
-            {
-                CultureInfo.CurrentCulture = orig;
-            }
+                Assert.Throws<DataException>(() => table.Prefix = "Prefix#1");
+
+                return RemoteExecutor.SuccessExitCode;
+            }).Dispose();
         }
 
         [Fact]
@@ -1249,8 +1250,12 @@ Assert.False(true);
                 Assert.Equal(typeof(ConstraintException), ex.GetType());
                 Assert.Null(ex.InnerException);
                 Assert.NotNull(ex.Message);
-                Assert.True(ex.Message.IndexOf("'id'") != -1);
-                Assert.True(ex.Message.IndexOf("'3'") != -1);
+
+                // \p{Pi} any kind of opening quote https://www.compart.com/en/unicode/category/Pi
+                // \p{Pf} any kind of closing quote https://www.compart.com/en/unicode/category/Pf
+                // \p{Po} any kind of punctuation character that is not a dash, bracket, quote or connector https://www.compart.com/en/unicode/category/Po
+                Assert.Matches(@"[\p{Pi}\p{Po}]" + "id" + @"[\p{Pf}\p{Po}]", ex.Message);
+                Assert.Matches(@"[\p{Pi}\p{Po}]" + "3" + @"[\p{Pf}\p{Po}]", ex.Message);
             }
 
             // check row states
@@ -1353,8 +1358,12 @@ Assert.False(true);
                 Assert.Equal(typeof(ConstraintException), ex.GetType());
                 Assert.Null(ex.InnerException);
                 Assert.NotNull(ex.Message);
-                Assert.True(ex.Message.IndexOf("'col'") != -1);
-                Assert.True(ex.Message.IndexOf("'1'") != -1);
+
+                // \p{Pi} any kind of opening quote https://www.compart.com/en/unicode/category/Pi
+                // \p{Pf} any kind of closing quote https://www.compart.com/en/unicode/category/Pf
+                // \p{Po} any kind of punctuation character that is not a dash, bracket, quote or connector https://www.compart.com/en/unicode/category/Po
+                Assert.Matches(@"[\p{Pi}\p{Po}]" + "col" + @"[\p{Pf}\p{Po}]", ex.Message);
+                Assert.Matches(@"[\p{Pi}\p{Po}]" + "1" + @"[\p{Pf}\p{Po}]", ex.Message);
             }
         }
 
@@ -2127,12 +2136,12 @@ Assert.False(true);
             _tableInitialized = true;
         }
 
-        public void OnRowChanging(object src, DataRowChangeEventArgs args)
+        private void OnRowChanging(object src, DataRowChangeEventArgs args)
         {
             _rowActionChanging = args.Action;
         }
 
-        public void OnRowChanged(object src, DataRowChangeEventArgs args)
+        private void OnRowChanged(object src, DataRowChangeEventArgs args)
         {
             _rowActionChanged = args.Action;
         }
@@ -3323,16 +3332,16 @@ Assert.False(true);
         [Fact]
         public void WriteXmlSchema()
         {
-            CultureInfo orig = CultureInfo.CurrentCulture;
-            try
+            RemoteExecutor.Invoke(() =>
             {
                 CultureInfo.CurrentCulture = new CultureInfo("en-GB");
+
                 var ds = new DataSet();
                 ds.ReadXml(new StringReader(DataProvider.region));
                 TextWriter writer = new StringWriter();
                 ds.Tables[0].WriteXmlSchema(writer);
 
-                string TextString = GetNormalizedSchema(writer.ToString());
+                string TextString = DataSetAssertion.GetNormalizedSchema(writer.ToString());
                 //string TextString = writer.ToString ();
 
                 string substring = TextString.Substring(0, TextString.IndexOfAny(new[] { '\r', '\n' }));
@@ -3401,11 +3410,9 @@ Assert.False(true);
                 Assert.Equal("  </xs:element>", substring);
 
                 Assert.Equal("</xs:schema>", TextString);
-            }
-            finally
-            {
-                CultureInfo.CurrentCulture = orig;
-            }
+
+                return RemoteExecutor.SuccessExitCode;
+            }).Dispose();
         }
 
         [Fact]
@@ -3769,12 +3776,12 @@ Assert.False(true);
             StringWriter sw1 = new StringWriter();
             ds1.Tables[0].WriteXmlSchema(sw1);
             string xml1 = sw1.ToString();
-            Assert.True(xml1.IndexOf(@"<xs:unique name=""Constraint1"">") != -1);
+            Assert.Contains(@"<xs:unique name=""Constraint1"">", xml1, StringComparison.Ordinal);
 
             StringWriter sw2 = new StringWriter();
             ds1.Tables[1].WriteXmlSchema(sw2);
             string xml2 = sw2.ToString();
-            Assert.True(xml2.IndexOf(@"<xs:unique name=""Constraint1"">") == -1);
+            Assert.DoesNotContain(@"<xs:unique name=""Constraint1"">", xml2, StringComparison.Ordinal);
         }
 
         [Fact]
@@ -4036,9 +4043,9 @@ Assert.False(true);
     }
 
     [Serializable]
-
     public class AppDomainsAndFormatInfo
     {
+        [Fact]
         public void Remote()
         {
             int n = (int)Convert.ChangeType("5", typeof(int));
@@ -4048,56 +4055,51 @@ Assert.False(true);
         [Fact]
         public void Bug55978()
         {
-            CultureInfo orig = CultureInfo.CurrentCulture;
-            try
+            DataTable dt = new DataTable();
+            dt.Columns.Add("StartDate", typeof(DateTime));
+
+            DataRow dr;
+            DateTime date = DateTime.Now;
+
+            for (int i = 0; i < 10; i++)
             {
-                CultureInfo.CurrentCulture = new CultureInfo("en-US");
-                DataTable dt = new DataTable();
-                dt.Columns.Add("StartDate", typeof(DateTime));
-
-                DataRow dr;
-                DateTime date = DateTime.Now;
-
-                for (int i = 0; i < 10; i++)
-                {
-                    dr = dt.NewRow();
-                    dr["StartDate"] = date.AddDays(i);
-                    dt.Rows.Add(dr);
-                }
-
-                DataView dv = dt.DefaultView;
-                dv.RowFilter = string.Format(CultureInfo.InvariantCulture,
-                                  "StartDate >= '{0}' and StartDate <= '{1}'",
-                                  DateTime.Now.AddDays(2),
-                                  DateTime.Now.AddDays(4));
-                Assert.Equal(10, dt.Rows.Count);
-                Assert.Equal(2, dv.Count);
+                dr = dt.NewRow();
+                dr["StartDate"] = date.AddDays(i);
+                dt.Rows.Add(dr);
             }
-            finally
-            {
-                CultureInfo.CurrentCulture = orig;
-            }
+
+            DataView dv = dt.DefaultView;
+            dv.RowFilter = string.Format(CultureInfo.InvariantCulture,
+                                "StartDate >= #{0}# and StartDate <= #{1}#",
+                                DateTime.Now.AddDays(2),
+                                DateTime.Now.AddDays(4));
+            Assert.Equal(10, dt.Rows.Count);
+            Assert.Equal(2, dv.Count);
+
         }
 
         [Fact]
         public void Bug82109()
         {
-            DataTable tbl = new DataTable();
-            tbl.Columns.Add("data", typeof(DateTime));
-            DataRow row = tbl.NewRow();
-            row["Data"] = new DateTime(2007, 7, 1);
-            tbl.Rows.Add(row);
+            RemoteExecutor.Invoke(() =>
+            {
+                DataTable tbl = new DataTable();
+                tbl.Columns.Add("data", typeof(DateTime));
+                DataRow row = tbl.NewRow();
+                row["Data"] = new DateTime(2007, 7, 1);
+                tbl.Rows.Add(row);
 
-            CultureInfo currentCulture = CultureInfo.CurrentCulture; ;
-            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-            Select(tbl);
+                CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+                Select(tbl);
 
-            CultureInfo.CurrentCulture = new CultureInfo("it-IT");
-            Select(tbl);
+                CultureInfo.CurrentCulture = new CultureInfo("it-IT");
+                Select(tbl);
 
-            CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
-            Select(tbl);
-            CultureInfo.CurrentCulture = currentCulture;
+                CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
+                Select(tbl);
+
+                return RemoteExecutor.SuccessExitCode;
+            }).Dispose();
         }
 
         private static void Select(DataTable tbl)

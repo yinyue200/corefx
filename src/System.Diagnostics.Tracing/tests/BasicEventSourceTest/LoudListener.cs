@@ -4,7 +4,11 @@
 
 using System;
 using System.Diagnostics;
+#if USE_MDT_EVENTSOURCE
+using Microsoft.Diagnostics.Tracing;
+#else
 using System.Diagnostics.Tracing;
+#endif
 
 namespace BasicEventSourceTests
 {
@@ -23,8 +27,13 @@ namespace BasicEventSourceTests
             t_lastEvent = eventData;
 
             Debug.Write(string.Format("Event {0} ", eventData.EventId));
-            Debug.Write(string.Format(" (activity {0}{1}) ", eventData.ActivityId, eventData.RelatedActivityId != null ? "->" + eventData.RelatedActivityId : ""));
+            Debug.Write(string.Format(" (activity {0}{1}) ", eventData.ActivityId, eventData.RelatedActivityId != Guid.Empty ? "->" + eventData.RelatedActivityId : ""));
             Debug.WriteLine(string.Format(" ({0}).", eventData.Payload != null ? string.Join(", ", eventData.Payload) : ""));
+        }
+
+        public static EventWrittenEventArgs LastEvent
+        {
+            get { return t_lastEvent; }
         }
     }
 }

@@ -87,7 +87,7 @@ namespace System.Diagnostics
             }
         }
 
-#region private helper classes
+        #region private helper classes
 
         private class HashtableWrapper : Hashtable, IEnumerable
         {
@@ -539,6 +539,31 @@ namespace System.Diagnostics
                     {
                         s_instance.RaiseResponseEvent(request, response);
                     }
+                    else
+                    {
+                        // In case reponse content length is 0 and request is async, 
+                        // we won't have a HttpWebResponse set on request object when this method is called
+                        // http://referencesource.microsoft.com/#System/net/System/Net/HttpWebResponse.cs,525
+
+                        // But we there will be CoreResponseData object that is either exception 
+                        // or the internal HTTP reponse representation having status, content and headers
+
+                        var coreResponse = s_coreResponseAccessor(request);
+                        if (coreResponse != null && s_coreResponseDataType.IsInstanceOfType(coreResponse))
+                        {
+                            HttpStatusCode status = s_coreStatusCodeAccessor(coreResponse);
+                            WebHeaderCollection headers = s_coreHeadersAccessor(coreResponse);
+
+                            // Manual creation of HttpWebResponse here is not possible as this method is eventually called from the 
+                            // HttpWebResponse ctor. So we will send Stop event with the Status and Headers payload
+                            // to notify listeners about response;
+                            // We use two different names for Stop events since one event with payload type that varies creates
+                            // complications for efficient payload parsing and is not supported by DiagnosicSource helper 
+                            // libraries (e.g. Microsoft.Extensions.DiagnosticAdapter)
+
+                            s_instance.RaiseResponseEvent(request, status, headers);
+                        }
+                    }
                 }
 
                 base.RemoveAt(index);
@@ -578,25 +603,52 @@ namespace System.Diagnostics
                     activity.Start();
                 }
 
-                request.Headers.Add(RequestIdHeaderName, activity.Id);
-                // we expect baggage to be empty or contain a few items
-                using (IEnumerator<KeyValuePair<string, string>> e = activity.Baggage.GetEnumerator())
+                if (activity.IdFormat == ActivityIdFormat.W3C)
                 {
-                    if (e.MoveNext())
+                    // do not inject header if it was injected already 
+                    // perhaps tracing systems wants to override it
+                    if (request.Headers.Get(TraceParentHeaderName) == null)
                     {
-                        StringBuilder baggage = new StringBuilder();
-                        do
+                        request.Headers.Add(TraceParentHeaderName, activity.Id);
+
+                        var traceState = activity.TraceStateString;
+                        if (traceState != null)
                         {
-                            KeyValuePair<string, string> item = e.Current;
-                            baggage.Append(item.Key).Append('=').Append(item.Value).Append(',');
+                            request.Headers.Add(TraceStateHeaderName, traceState);
                         }
-                        while (e.MoveNext());
-                        baggage.Remove(baggage.Length - 1, 1);
-                        request.Headers.Add(CorrelationContextHeaderName, baggage.ToString());
+                    }
+                }
+                else
+                {
+                    // do not inject header if it was injected already 
+                    // perhaps tracing systems wants to override it
+                    if (request.Headers.Get(RequestIdHeaderName) == null)
+                    {
+                        request.Headers.Add(RequestIdHeaderName, activity.Id);
                     }
                 }
 
-                // There is no gurantee that Activity.Current will flow to the Response, so let's stop it here
+                if (request.Headers.Get(CorrelationContextHeaderName) == null)
+                {
+                    // we expect baggage to be empty or contain a few items
+                    using (IEnumerator<KeyValuePair<string, string>> e = activity.Baggage.GetEnumerator())
+                    {
+                        if (e.MoveNext())
+                        {
+                            StringBuilder baggage = new StringBuilder();
+                            do
+                            {
+                                KeyValuePair<string, string> item = e.Current;
+                                baggage.Append(WebUtility.UrlEncode(item.Key)).Append('=').Append(WebUtility.UrlEncode(item.Value)).Append(',');
+                            }
+                            while (e.MoveNext());
+                            baggage.Remove(baggage.Length - 1, 1);
+                            request.Headers.Add(CorrelationContextHeaderName, baggage.ToString());
+                        }
+                    }
+                }
+
+                // There is no guarantee that Activity.Current will flow to the Response, so let's stop it here
                 activity.Stop();
             }
         }
@@ -606,22 +658,34 @@ namespace System.Diagnostics
             // Response event could be received several times for the same request in case it was redirected
             // IsLastResponse checks if response is the last one (no more redirects will happen)
             // based on response StatusCode and number or redirects done so far
-            if (request.Headers[RequestIdHeaderName] != null && IsLastResponse(request, response))
+            if (request.Headers.Get(RequestIdHeaderName) != null && IsLastResponse(request, response.StatusCode))
             {
                 // only send Stop if request was instrumented
                 this.Write(RequestStopName, new { Request = request, Response = response });
             }
         }
 
-        private bool IsLastResponse(HttpWebRequest request, HttpWebResponse response)
+        private void RaiseResponseEvent(HttpWebRequest request, HttpStatusCode statusCode, WebHeaderCollection headers)
+        {
+            // Response event could be received several times for the same request in case it was redirected
+            // IsLastResponse checks if response is the last one (no more redirects will happen)
+            // based on response StatusCode and number or redirects done so far
+            if (request.Headers.Get(RequestIdHeaderName) != null && IsLastResponse(request, statusCode))
+            {
+                this.Write(RequestStopExName, new { Request = request, StatusCode = statusCode, Headers = headers });
+            }
+        }
+
+        private bool IsLastResponse(HttpWebRequest request, HttpStatusCode statusCode)
         {
             if (request.AllowAutoRedirect)
             {
-                if (response.StatusCode == HttpStatusCode.Ambiguous       ||  // 300
-                    response.StatusCode == HttpStatusCode.Moved           ||  // 301
-                    response.StatusCode == HttpStatusCode.Redirect        ||  // 302
-                    response.StatusCode == HttpStatusCode.RedirectMethod  ||  // 303
-                    response.StatusCode == HttpStatusCode.RedirectKeepVerb)   // 307
+                if (statusCode == HttpStatusCode.Ambiguous ||  // 300
+                    statusCode == HttpStatusCode.Moved ||  // 301
+                    statusCode == HttpStatusCode.Redirect ||  // 302
+                    statusCode == HttpStatusCode.RedirectMethod ||  // 303
+                    statusCode == HttpStatusCode.RedirectKeepVerb ||  // 307
+                    (int)statusCode == 308) // 308 Permanent Redirect is not in netfx yet, and so has to be specified this way.
                 {
                     return s_autoRedirectsAccessor(request) >= request.MaximumAutomaticRedirections;
                 }
@@ -642,32 +706,16 @@ namespace System.Diagnostics
             s_connectionType = systemNetHttpAssembly?.GetType("System.Net.Connection");
             s_writeListField = s_connectionType?.GetField("m_WriteList", BindingFlags.Instance | BindingFlags.NonPublic);
 
-            // Second step: Generate an accessor for HttpWebRequest._HttpResponse
-            FieldInfo responseField = typeof(HttpWebRequest).GetField("_HttpResponse", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (responseField != null)
-            {
-                string methodName = responseField.ReflectedType.FullName + ".get_" + responseField.Name;
-                DynamicMethod getterMethod = new DynamicMethod(methodName, typeof(HttpWebResponse), new Type[] { typeof(HttpWebRequest) }, true);
-                ILGenerator generator = getterMethod.GetILGenerator();
-                generator.Emit(OpCodes.Ldarg_0);
-                generator.Emit(OpCodes.Ldfld, responseField);
-                generator.Emit(OpCodes.Ret);
-                s_httpResponseAccessor = (Func<HttpWebRequest, HttpWebResponse>)getterMethod.CreateDelegate(typeof(Func<HttpWebRequest, HttpWebResponse>));
-            }
+            s_httpResponseAccessor = CreateFieldGetter<HttpWebRequest, HttpWebResponse>("_HttpResponse", BindingFlags.NonPublic | BindingFlags.Instance);
+            s_autoRedirectsAccessor = CreateFieldGetter<HttpWebRequest, int>("_AutoRedirects", BindingFlags.NonPublic | BindingFlags.Instance);
+            s_coreResponseAccessor = CreateFieldGetter<HttpWebRequest, object>("_CoreResponse", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            // Third step: Generate an accessor for HttpWebRequest._AutoRedirects
-            FieldInfo redirectsField = typeof(HttpWebRequest).GetField("_AutoRedirects", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (redirectsField != null)
+            s_coreResponseDataType = systemNetHttpAssembly?.GetType("System.Net.CoreResponseData");
+            if (s_coreResponseDataType != null)
             {
-                string methodName = redirectsField.ReflectedType.FullName + ".get_" + redirectsField.Name;
-                DynamicMethod getterMethod = new DynamicMethod(methodName, typeof(int), new Type[] { typeof(HttpWebRequest) }, true);
-                ILGenerator generator = getterMethod.GetILGenerator();
-                generator.Emit(OpCodes.Ldarg_0);
-                generator.Emit(OpCodes.Ldfld, redirectsField);
-                generator.Emit(OpCodes.Ret);
-                s_autoRedirectsAccessor = (Func<HttpWebRequest, int>)getterMethod.CreateDelegate(typeof(Func<HttpWebRequest, int>));
+                s_coreStatusCodeAccessor = CreateFieldGetter<HttpStatusCode>(s_coreResponseDataType, "m_StatusCode", BindingFlags.Public | BindingFlags.Instance);
+                s_coreHeadersAccessor = CreateFieldGetter<WebHeaderCollection>(s_coreResponseDataType, "m_ResponseHeaders", BindingFlags.Public | BindingFlags.Instance);
             }
-
             // Double checking to make sure we have all the pieces initialized
             if (s_connectionGroupListField == null ||
                 s_connectionGroupType == null ||
@@ -675,7 +723,10 @@ namespace System.Diagnostics
                 s_connectionType == null ||
                 s_writeListField == null ||
                 s_httpResponseAccessor == null ||
-                s_autoRedirectsAccessor == null)
+                s_autoRedirectsAccessor == null ||
+                s_coreResponseDataType == null ||
+                s_coreStatusCodeAccessor == null ||
+                s_coreHeadersAccessor == null)
             {
                 // If anything went wrong here, just return false. There is nothing we can do.
                 throw new InvalidOperationException("Unable to initialize all required reflection objects");
@@ -697,18 +748,62 @@ namespace System.Diagnostics
             servicePointTableField.SetValue(null, newTable);
         }
 
-#endregion
+        private static Func<TClass, TField> CreateFieldGetter<TClass, TField>(string fieldName, BindingFlags flags) where TClass : class
+        {
+            FieldInfo field = typeof(TClass).GetField(fieldName, flags);
+            if (field != null)
+            {
+                string methodName = field.ReflectedType.FullName + ".get_" + field.Name;
+                DynamicMethod getterMethod = new DynamicMethod(methodName, typeof(TField), new[] { typeof(TClass) }, true);
+                ILGenerator generator = getterMethod.GetILGenerator();
+                generator.Emit(OpCodes.Ldarg_0);
+                generator.Emit(OpCodes.Ldfld, field);
+                generator.Emit(OpCodes.Ret);
+                return (Func<TClass, TField>)getterMethod.CreateDelegate(typeof(Func<TClass, TField>));
+            }
+
+            return null;
+        }
+
+
+        /// <summary>
+        /// Creates getter for a field defined in private or internal type
+        /// repesented with classType variable
+        /// </summary>
+        private static Func<object, TField> CreateFieldGetter<TField>(Type classType, string fieldName, BindingFlags flags)
+        {
+            FieldInfo field = classType.GetField(fieldName, flags);
+            if (field != null)
+            {
+                string methodName = classType.FullName + ".get_" + field.Name;
+                DynamicMethod getterMethod = new DynamicMethod(methodName, typeof(TField), new[] { typeof(object) }, true);
+                ILGenerator generator = getterMethod.GetILGenerator();
+                generator.Emit(OpCodes.Ldarg_0);
+                generator.Emit(OpCodes.Castclass, classType);
+                generator.Emit(OpCodes.Ldfld, field);
+                generator.Emit(OpCodes.Ret);
+
+                return (Func<object, TField>)getterMethod.CreateDelegate(typeof(Func<object, TField>));
+            }
+
+            return null;
+        }
+
+        #endregion
 
         internal static HttpHandlerDiagnosticListener s_instance = new HttpHandlerDiagnosticListener();
 
-#region private fields
+        #region private fields
         private const string DiagnosticListenerName = "System.Net.Http.Desktop";
         private const string ActivityName = "System.Net.Http.Desktop.HttpRequestOut";
         private const string RequestStartName = "System.Net.Http.Desktop.HttpRequestOut.Start";
         private const string RequestStopName = "System.Net.Http.Desktop.HttpRequestOut.Stop";
+        private const string RequestStopExName = "System.Net.Http.Desktop.HttpRequestOut.Ex.Stop";
         private const string InitializationFailed = "System.Net.Http.InitializationFailed";
         private const string RequestIdHeaderName = "Request-Id";
         private const string CorrelationContextHeaderName = "Correlation-Context";
+        private const string TraceParentHeaderName = "traceparent";
+        private const string TraceStateHeaderName = "tracestate";
 
         // Fields for controlling initialization of the HttpHandlerDiagnosticListener singleton
         private bool initialized = false;
@@ -721,7 +816,11 @@ namespace System.Diagnostics
         private static FieldInfo s_writeListField;
         private static Func<HttpWebRequest, HttpWebResponse> s_httpResponseAccessor;
         private static Func<HttpWebRequest, int> s_autoRedirectsAccessor;
+        private static Func<HttpWebRequest, object> s_coreResponseAccessor;
+        private static Func<object, HttpStatusCode> s_coreStatusCodeAccessor;
+        private static Func<object, WebHeaderCollection> s_coreHeadersAccessor;
+        private static Type s_coreResponseDataType;
 
-#endregion
+        #endregion
     }
 }

@@ -10,6 +10,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.InteropServices;
 using System.Reflection;
+using System.Numerics.Hashing;
 
 namespace Microsoft.CSharp.RuntimeBinder
 {
@@ -19,7 +20,7 @@ namespace Microsoft.CSharp.RuntimeBinder
         private static MethodInfo s_SingleIsNaN;
 
         internal static DynamicMetaObject Bind(
-                DynamicMetaObjectBinder action,
+                ICSharpBinder action,
                 RuntimeBinder binder,
                 DynamicMetaObject[] args,
                 IEnumerable<CSharpArgumentInfo> arginfos,
@@ -37,11 +38,7 @@ namespace Microsoft.CSharp.RuntimeBinder
                 // Our contract with the DLR is such that we will not enter a bind unless we have
                 // values for the meta-objects involved.
 
-                if (!o.HasValue)
-                {
-                    Debug.Assert(false, "The runtime binder is being asked to bind a metaobject without a value");
-                    throw Error.InternalCompilerError();
-                }
+                Debug.Assert(o.HasValue);
 
                 CSharpArgumentInfo info = arginfosEnum.MoveNext() ? arginfosEnum.Current : null;
 
@@ -93,8 +90,7 @@ namespace Microsoft.CSharp.RuntimeBinder
             // Get the bound expression.
             try
             {
-                DynamicMetaObject deferredBinding;
-                Expression expression = binder.Bind(action, parameters, args, out deferredBinding);
+                Expression expression = binder.Bind(action, parameters, args, out DynamicMetaObject deferredBinding);
 
                 if (deferredBinding != null)
                 {
@@ -143,6 +139,30 @@ namespace Microsoft.CSharp.RuntimeBinder
                     ),
                     restrictions
                 );
+            }
+        }
+
+        public static void ValidateBindArgument(DynamicMetaObject argument, string paramName)
+        {
+            if (argument == null)
+            {
+                throw Error.ArgumentNull(paramName);
+            }
+
+            if (!argument.HasValue)
+            {
+                throw Error.DynamicArgumentNeedsValue(paramName);
+            }
+        }
+
+        public static void ValidateBindArgument(DynamicMetaObject[] arguments, string paramName)
+        {
+            if (arguments != null) // null is treated as empty, so not invalid
+            {
+                for (int i = 0; i != arguments.Length; ++i)
+                {
+                    ValidateBindArgument(arguments[i], $"{paramName}[{i}]");
+                }
             }
         }
 
@@ -262,7 +282,7 @@ namespace Microsoft.CSharp.RuntimeBinder
 
         /////////////////////////////////////////////////////////////////////////////////
 
-        private static Expression ConvertResult(Expression binding, DynamicMetaObjectBinder action)
+        private static Expression ConvertResult(Expression binding, ICSharpBinder action)
         {
             // Need to handle the following cases:
             //   (1) Call to a constructor: no conversions.
@@ -272,25 +292,21 @@ namespace Microsoft.CSharp.RuntimeBinder
             // In all other cases, binding.Type should be equivalent or
             // reference assignable to resultType.
 
-            var invokeConstructor = action as CSharpInvokeConstructorBinder;
-            if (invokeConstructor != null)
+            // No conversions needed for , the call site has the correct type.
+            if (action is CSharpInvokeConstructorBinder)
             {
-                // No conversions needed, the call site has the correct type.
                 return binding;
             }
 
             if (binding.Type == typeof(void))
             {
-                var invoke = action as ICSharpInvokeOrInvokeMemberBinder;
-                if (invoke != null && invoke.ResultDiscarded)
+                if (action is ICSharpInvokeOrInvokeMemberBinder invoke && invoke.ResultDiscarded)
                 {
                     Debug.Assert(action.ReturnType == typeof(object));
                     return Expression.Block(binding, Expression.Default(action.ReturnType));
                 }
-                else
-                {
-                    throw Error.BindToVoidMethodButExpectResult();
-                }
+
+                throw Error.BindToVoidMethodButExpectResult();
             }
 
             if (binding.Type.IsValueType && !action.ReturnType.IsValueType)
@@ -304,7 +320,7 @@ namespace Microsoft.CSharp.RuntimeBinder
 
         /////////////////////////////////////////////////////////////////////////////////
 
-        private static Type GetTypeForErrorMetaObject(DynamicMetaObjectBinder action, DynamicMetaObject[] args)
+        private static Type GetTypeForErrorMetaObject(ICSharpBinder action, DynamicMetaObject[] args)
         {
             // This is similar to ConvertResult but has fewer things to worry about.
 
@@ -321,13 +337,9 @@ namespace Microsoft.CSharp.RuntimeBinder
 
         /////////////////////////////////////////////////////////////////////////////////
 
-        private static bool IsIncrementOrDecrementActionOnLocal(DynamicMetaObjectBinder action)
-        {
-            CSharpUnaryOperationBinder operatorPayload = action as CSharpUnaryOperationBinder;
-
-            return operatorPayload != null &&
-                (operatorPayload.Operation == ExpressionType.Increment || operatorPayload.Operation == ExpressionType.Decrement);
-        }
+        private static bool IsIncrementOrDecrementActionOnLocal(ICSharpBinder action) =>
+            action is CSharpUnaryOperationBinder operatorPayload
+            && (operatorPayload.Operation == ExpressionType.Increment || operatorPayload.Operation == ExpressionType.Decrement);
 
         /////////////////////////////////////////////////////////////////////////////////
 
@@ -360,19 +372,11 @@ namespace Microsoft.CSharp.RuntimeBinder
 
         /////////////////////////////////////////////////////////////////////////////////
 
-        internal static List<T> ToList<T>(IEnumerable<T> source)
-        {
-            if (source == null)
-            {
-                return new List<T>();
-            }
-
-            return source.ToList();
-        }
+        internal static T[] ToArray<T>(IEnumerable<T> source) => source == null ? Array.Empty<T>() : source.ToArray();
 
         /////////////////////////////////////////////////////////////////////////////////
 
-        internal static CallInfo CreateCallInfo(IEnumerable<CSharpArgumentInfo> argInfos, int discard)
+        internal static CallInfo CreateCallInfo(ref IEnumerable<CSharpArgumentInfo> argInfos, int discard)
         {
             // This function converts the C# Binder's notion of argument information to the
             // DLR's notion. The DLR counts arguments differently than C#. Here are some
@@ -390,8 +394,9 @@ namespace Microsoft.CSharp.RuntimeBinder
 
             int argCount = 0;
             List<string> argNames = new List<string>();
-
-            foreach (CSharpArgumentInfo info in argInfos)
+            CSharpArgumentInfo[] infoArray = ToArray(argInfos);
+            argInfos = infoArray; // Write back the array to allow single enumeration.
+            foreach (CSharpArgumentInfo info in infoArray)
             {
                 if (info.NamedArgument)
                 {
@@ -484,10 +489,65 @@ namespace Microsoft.CSharp.RuntimeBinder
                     return SpecialNames.CLR_False;
 
                 case ExpressionType.Increment:
-                    return SpecialNames.CLR_PreIncrement;
+                    return SpecialNames.CLR_Increment;
                 case ExpressionType.Decrement:
-                    return SpecialNames.CLR_PreDecrement;
+                    return SpecialNames.CLR_Decrement;
             }
+        }
+
+        internal static int AddArgHashes(int hash, Type[] typeArguments, CSharpArgumentInfo[] argInfos)
+        {
+            foreach (var typeArg in typeArguments)
+            {
+                hash = HashHelpers.Combine(hash, typeArg.GetHashCode());
+            }
+
+            return AddArgHashes(hash, argInfos);
+        }
+
+        internal static int AddArgHashes(int hash, CSharpArgumentInfo[] argInfos)
+        {
+            foreach (var argInfo in argInfos)
+            {
+                hash = HashHelpers.Combine(hash, (int)argInfo.Flags);
+                var argName = argInfo.Name;
+                if (!string.IsNullOrEmpty(argName))
+                {
+                    hash = HashHelpers.Combine(hash, argName.GetHashCode());
+                }
+            }
+
+            return hash;
+        }
+
+        internal static bool CompareArgInfos(Type[] typeArgs, Type[] otherTypeArgs, CSharpArgumentInfo[] argInfos, CSharpArgumentInfo[] otherArgInfos)
+        {
+            for (int i = 0; i < typeArgs.Length; i++)
+            {
+                if (typeArgs[i] != otherTypeArgs[i])
+                {
+                    return false;
+                }
+            }
+
+            return CompareArgInfos(argInfos, otherArgInfos);
+        }
+
+        internal static bool CompareArgInfos(CSharpArgumentInfo[] argInfos, CSharpArgumentInfo[] otherArgInfos)
+        {
+            for (int i = 0; i < argInfos.Length; i++)
+            {
+                var argInfo = argInfos[i];
+                var otherArgInfo = otherArgInfos[i];
+
+                if (argInfo.Flags != otherArgInfo.Flags ||
+                    argInfo.Name != otherArgInfo.Name)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

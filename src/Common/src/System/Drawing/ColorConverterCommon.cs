@@ -4,7 +4,6 @@
 
 using System.Diagnostics;
 using System.Globalization;
-using System.Reflection;
 
 namespace System.Drawing
 {
@@ -55,7 +54,7 @@ namespace System.Drawing
                 }
             }
 
-            // Nope.  Parse the RGBA from the text.
+            // Nope. Parse the RGBA from the text.
             //
             string[] tokens = text.Split(sep);
             int[] values = new int[tokens.Length];
@@ -89,7 +88,7 @@ namespace System.Drawing
         private static Color PossibleKnownColor(Color color)
         {
             // Now check to see if this color matches one of our known colors.
-            // If it does, then substitute it.  We can only do this for "Colors"
+            // If it does, then substitute it. We can only do this for "Colors"
             // because system colors morph with user settings.
             //
             int targetARGB = color.ToArgb();
@@ -128,7 +127,7 @@ namespace System.Drawing
             }
             catch (Exception e)
             {
-                throw new Exception(SR.Format(SR.ConvertInvalidPrimitive, text, typeof(int).Name), e);
+                throw new ArgumentException(SR.Format(SR.ConvertInvalidPrimitive, text, typeof(int).Name), e);
             }
         }
 
@@ -139,7 +138,7 @@ namespace System.Drawing
 
         private static int IntFromString(string value, NumberFormatInfo formatInfo)
         {
-            return Int32.Parse(value, NumberStyles.Integer, formatInfo);
+            return int.Parse(value, NumberStyles.Integer, formatInfo);
         }
     }
 }

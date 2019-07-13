@@ -16,7 +16,7 @@ namespace System.Net.Tests
 {
     public class HttpWebResponseHeaderTest
     {
-        public void HttpContinueMethod(int StatusCode, WebHeaderCollection httpHeaders)
+        private static void HttpContinueMethod(int StatusCode, WebHeaderCollection httpHeaders)
         {
         }
 
@@ -32,13 +32,7 @@ namespace System.Net.Tests
                 request.ContinueDelegate = continueDelegate;
                 Task<WebResponse> getResponse = request.GetResponseAsync();
                 DateTimeOffset utcNow = DateTimeOffset.UtcNow;
-                await LoopbackServer.ReadRequestAndSendResponseAsync(server,
-                        $"HTTP/1.1 200 OK\r\n" +
-                        $"Date: {utcNow:R}\r\n" +
-                        "Content-Type: application/json;charset=UTF-8\r\n" +
-                        "Content-Length: 5\r\n" +
-                        "\r\n" +
-                        "12345");
+                await server.AcceptConnectionSendResponseAndCloseAsync(HttpStatusCode.OK, "Content-Type: application/json;charset=UTF-8\r\n", "12345");
                 Assert.Equal(continueDelegate, request.ContinueDelegate);
             });
         }
@@ -53,13 +47,7 @@ namespace System.Net.Tests
                 request.Method = HttpMethod.Get.Method;
                 Task<WebResponse> getResponse = request.GetResponseAsync();
                 DateTimeOffset utcNow = DateTimeOffset.UtcNow;
-                await LoopbackServer.ReadRequestAndSendResponseAsync(server,
-                        $"HTTP/1.1 200 OK\r\n" +
-                        $"Date: {utcNow:R}\r\n" +
-                        "Content-Type: application/json;charset=UTF-8\r\n" +
-                        "Content-Length: 5\r\n" +
-                        "\r\n" +
-                        "12345");
+                await server.AcceptConnectionSendResponseAndCloseAsync(HttpStatusCode.OK, "Content-Type: application/json;charset=UTF-8\r\n", "12345");
 
                 using (WebResponse response = await getResponse)
                 {
@@ -86,28 +74,50 @@ namespace System.Net.Tests
                 request.Method = HttpMethod.Get.Method;
                 Task<WebResponse> getResponse = request.GetResponseAsync();
                 DateTimeOffset utcNow = DateTimeOffset.UtcNow;
-                await LoopbackServer.ReadRequestAndSendResponseAsync(server,
-                        $"HTTP/1.1 200 OK\r\n" +
-                        $"Date: {utcNow:R}\r\n" +
-                        "Content-Type: application/json;charset=UTF-8\r\n" +
-                        "Content-Length: 5\r\n" +
-                        "\r\n" +
-                        "12345");
+                await server.AcceptConnectionSendResponseAndCloseAsync(HttpStatusCode.OK, "Content-Type: application/json;charset=UTF-8\r\n", "12345");
                 WebResponse response = await getResponse;
                 HttpWebResponse httpResponse = (HttpWebResponse)response;
                 httpResponse.Close();
-                if (PlatformDetection.IsFullFramework)
+                
+                // TODO: Issue #18851. Investigate .NET Core to see if it can
+                // match .NET Framework.
+                Assert.Throws<ObjectDisposedException>(() =>
                 {
-                    Stream stream = httpResponse.GetResponseStream();
+                    httpResponse.GetResponseStream();
+                });
+            });
+        }
+
+        [Fact]
+        public async Task LastModified_ValidDate_Success()
+        {
+            DateTime expected = TimeZoneInfo.ConvertTimeFromUtc(new DateTime(2018, 4, 10, 3, 4, 5, DateTimeKind.Utc), TimeZoneInfo.Local);
+            await LoopbackServer.CreateServerAsync(async (server, url) =>
+            {
+                HttpWebRequest request = WebRequest.CreateHttp(url);
+                Task<WebResponse> getResponse = request.GetResponseAsync();
+                await server.AcceptConnectionSendResponseAndCloseAsync(HttpStatusCode.OK, "Last-Modified: Tue, 10 Apr 2018 03:04:05 GMT\r\n", "12345");
+
+                using (HttpWebResponse response = (HttpWebResponse)(await getResponse))
+                {
+                    Assert.Equal(expected, response.LastModified);
                 }
-                else
+            });
+        }
+
+        [Fact]
+        public async Task LastModified_InvalidDate_Throws()
+        {
+            DateTime expected = TimeZoneInfo.ConvertTimeFromUtc(new DateTime(2018, 4, 10, 3, 4, 5, DateTimeKind.Utc), TimeZoneInfo.Local);
+            await LoopbackServer.CreateServerAsync(async (server, url) =>
+            {
+                HttpWebRequest request = WebRequest.CreateHttp(url);
+                Task<WebResponse> getResponse = request.GetResponseAsync();
+                await server.AcceptConnectionSendResponseAndCloseAsync(HttpStatusCode.OK, "Last-Modified: invalid date\r\n", "12345");
+
+                using (HttpWebResponse response = (HttpWebResponse)(await getResponse))
                 {
-                    // TODO: Issue #18851. Investigate .NET Core to see if it can
-                    // match .NET Framework.
-                    Assert.Throws<ObjectDisposedException>(() =>
-                    {
-                        httpResponse.GetResponseStream();
-                    });
+                    Assert.Throws<ProtocolViolationException>(() => response.LastModified);
                 }
             });
         }
@@ -121,11 +131,7 @@ namespace System.Net.Tests
                 request.Method = HttpMethod.Get.Method;
                 Task<WebResponse> getResponse = request.GetResponseAsync();
                 DateTimeOffset utcNow = DateTimeOffset.UtcNow;
-                await LoopbackServer.ReadRequestAndSendResponseAsync(server,
-                        $"HTTP/1.1 200 OK\r\n" +
-                        $"Date: {utcNow:R}\r\n" +
-                        "Content-Length: 0\r\n" +
-                        "\r\n");
+                await server.AcceptConnectionSendResponseAndCloseAsync();
 
                 using (WebResponse response = await getResponse)
                 {
@@ -135,18 +141,11 @@ namespace System.Net.Tests
                         BinaryFormatter formatter = new BinaryFormatter();
                         HttpWebResponse hwr = (HttpWebResponse)response;
 
-                        if (PlatformDetection.IsFullFramework)
-                        {
-                            formatter.Serialize(fs, hwr);
-                        }
-                        else
-                        {
-                            // HttpWebResponse is not serializable on .NET Core.
-                            Assert.Throws<SerializationException>(() => formatter.Serialize(fs, hwr));
-                        }
+                        // HttpWebResponse is not serializable on .NET Core.
+                        Assert.Throws<SerializationException>(() => formatter.Serialize(fs, hwr));
                     }
                 }
             });
-        } 
+        }
     }
 }

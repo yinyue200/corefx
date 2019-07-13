@@ -137,22 +137,6 @@ internal static partial class Interop
             internal HTTP_RESPONSE_INFO* pResponseInfo;
         }
 
-        [StructLayout(LayoutKind.Sequential)]
-        internal unsafe struct HTTP_REQUEST_INFO
-        {
-            internal HTTP_REQUEST_INFO_TYPE InfoType;
-            internal uint InfoLength;
-            internal void* pInfo;
-        }
-
-        internal enum HTTP_REQUEST_INFO_TYPE
-        {
-            HttpRequestInfoTypeAuth,
-            HttpRequestInfoTypeChannelBind,
-            HttpRequestInfoTypeSslProtocol,
-            HttpRequestInfoTypeSslTokenBinding
-        }
-
         internal enum HTTP_VERB : int
         {
             HttpVerbUnparsed = 0,
@@ -302,14 +286,6 @@ internal static partial class Interop
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        internal unsafe struct HTTP_REQUEST_V2
-        {
-            internal HTTP_REQUEST RequestV1;
-            internal ushort RequestInfoCount;
-            internal HTTP_REQUEST_INFO* pRequestInfo;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
         internal unsafe struct HTTP_COOKED_URL
         {
             internal ushort FullUrlLength;
@@ -347,16 +323,6 @@ internal static partial class Interop
             HttpServerProtectionLevelProperty,
         }
 
-        [StructLayout(LayoutKind.Sequential)]
-        internal unsafe struct HTTP_REQUEST_TOKEN_BINDING_INFO
-        {
-            public byte* TokenBinding;
-            public uint TokenBindingSize;
-            public byte* TlsUnique;
-            public uint TlsUniqueSize;
-            public IntPtr KeyType;
-        }
-
         internal enum TOKENBINDING_HASH_ALGORITHM : byte
         {
             TOKENBINDING_HASH_ALGORITHM_SHA256 = 4,
@@ -377,31 +343,6 @@ internal static partial class Interop
         internal enum TOKENBINDING_EXTENSION_FORMAT
         {
             TOKENBINDING_EXTENSION_FORMAT_UNDEFINED = 0,
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct TOKENBINDING_IDENTIFIER
-        {
-            public TOKENBINDING_TYPE bindingType;
-            public TOKENBINDING_HASH_ALGORITHM hashAlgorithm;
-            public TOKENBINDING_SIGNATURE_ALGORITHM signatureAlgorithm;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal unsafe struct TOKENBINDING_RESULT_DATA
-        {
-            public uint identifierSize;
-            public TOKENBINDING_IDENTIFIER* identifierData;
-            public TOKENBINDING_EXTENSION_FORMAT extensionFormat;
-            public uint extensionSize;
-            public IntPtr extensionData;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal unsafe struct TOKENBINDING_RESULT_LIST
-        {
-            public uint resultCount;
-            public TOKENBINDING_RESULT_DATA* resultData;
         }
 
         [Flags]
@@ -728,11 +669,6 @@ internal static partial class Interop
                 int index;
                 return s_hashtable.TryGetValue(headerName, out index) ? index : -1;
             }
-
-            internal static string ToString(int position)
-            {
-                return s_strings[position];
-            }
         }
 
         private static unsafe string GetKnownHeader(HTTP_REQUEST* request, long fixup, int headerIndex)
@@ -786,75 +722,69 @@ internal static partial class Interop
             return GetVerb(request, 0);
         }
 
-        internal static unsafe string GetVerb(byte[] memoryBlob, IntPtr originalAddress)
+        internal static unsafe string GetVerb(IntPtr memoryBlob, IntPtr originalAddress)
         {
-            fixed (byte* pMemoryBlob = memoryBlob)
-            {
-                return GetVerb((HTTP_REQUEST*)pMemoryBlob, pMemoryBlob - (byte*)originalAddress);
-            }
+            return GetVerb((HTTP_REQUEST*)memoryBlob.ToPointer(), (byte*)memoryBlob - (byte*)originalAddress);
         }
 
         // Server API
 
-        internal static unsafe WebHeaderCollection GetHeaders(byte[] memoryBlob, IntPtr originalAddress)
+        internal static unsafe WebHeaderCollection GetHeaders(IntPtr memoryBlob, IntPtr originalAddress)
         {
             NetEventSource.Enter(null);
 
             // Return value.
             WebHeaderCollection headerCollection = new WebHeaderCollection();
-            fixed (byte* pMemoryBlob = memoryBlob)
+            byte* pMemoryBlob = (byte*)memoryBlob;       
+            HTTP_REQUEST* request = (HTTP_REQUEST*)pMemoryBlob;
+            long fixup = pMemoryBlob - (byte*)originalAddress;
+            int index;
+
+            // unknown headers
+            if (request->Headers.UnknownHeaderCount != 0)
             {
-                HTTP_REQUEST* request = (HTTP_REQUEST*)pMemoryBlob;
-                long fixup = pMemoryBlob - (byte*)originalAddress;
-                int index;
-
-                // unknown headers
-                if (request->Headers.UnknownHeaderCount != 0)
+                HTTP_UNKNOWN_HEADER* pUnknownHeader = (HTTP_UNKNOWN_HEADER*)(fixup + (byte*)request->Headers.pUnknownHeaders);
+                for (index = 0; index < request->Headers.UnknownHeaderCount; index++)
                 {
-                    HTTP_UNKNOWN_HEADER* pUnknownHeader = (HTTP_UNKNOWN_HEADER*)(fixup + (byte*)request->Headers.pUnknownHeaders);
-                    for (index = 0; index < request->Headers.UnknownHeaderCount; index++)
+                    // For unknown headers, when header value is empty, RawValueLength will be 0 and 
+                    // pRawValue will be null.
+                    if (pUnknownHeader->pName != null && pUnknownHeader->NameLength > 0)
                     {
-                        // For unknown headers, when header value is empty, RawValueLength will be 0 and 
-                        // pRawValue will be null.
-                        if (pUnknownHeader->pName != null && pUnknownHeader->NameLength > 0)
+                        string headerName = new string(pUnknownHeader->pName + fixup, 0, pUnknownHeader->NameLength);
+                        string headerValue;
+                        if (pUnknownHeader->pRawValue != null && pUnknownHeader->RawValueLength > 0)
                         {
-                            string headerName = new string(pUnknownHeader->pName + fixup, 0, pUnknownHeader->NameLength);
-                            string headerValue;
-                            if (pUnknownHeader->pRawValue != null && pUnknownHeader->RawValueLength > 0)
-                            {
-                                headerValue = new string(pUnknownHeader->pRawValue + fixup, 0, pUnknownHeader->RawValueLength);
-                            }
-                            else
-                            {
-                                headerValue = string.Empty;
-                            }
-                            headerCollection.Add(headerName, headerValue);
+                            headerValue = new string(pUnknownHeader->pRawValue + fixup, 0, pUnknownHeader->RawValueLength);
                         }
-                        pUnknownHeader++;
+                        else
+                        {
+                            headerValue = string.Empty;
+                        }
+                        headerCollection.Add(headerName, headerValue);
                     }
+                    pUnknownHeader++;
                 }
+            }
 
-                // known headers
-                HTTP_KNOWN_HEADER* pKnownHeader = &request->Headers.KnownHeaders;
-                for (index = 0; index < HttpHeaderRequestMaximum; index++)
+            // known headers
+            HTTP_KNOWN_HEADER* pKnownHeader = &request->Headers.KnownHeaders;
+            for (index = 0; index < HttpHeaderRequestMaximum; index++)
+            {
+                // For known headers, when header value is empty, RawValueLength will be 0 and 
+                // pRawValue will point to empty string ("\0")
+                if (pKnownHeader->pRawValue != null)
                 {
-                    // For known headers, when header value is empty, RawValueLength will be 0 and 
-                    // pRawValue will point to empty string ("\0")
-                    if (pKnownHeader->pRawValue != null)
-                    {
-                        string headerValue = new string(pKnownHeader->pRawValue + fixup, 0, pKnownHeader->RawValueLength);
-                        headerCollection.Add(HTTP_REQUEST_HEADER_ID.ToString(index), headerValue);
-                    }
-                    pKnownHeader++;
+                    string headerValue = new string(pKnownHeader->pRawValue + fixup, 0, pKnownHeader->RawValueLength);
+                    headerCollection.Add(HTTP_REQUEST_HEADER_ID.ToString(index), headerValue);
                 }
+                pKnownHeader++;
             }
 
             NetEventSource.Exit(null);
             return headerCollection;
         }
 
-
-        internal static unsafe uint GetChunks(byte[] memoryBlob, IntPtr originalAddress, ref int dataChunkIndex, ref uint dataChunkOffset, byte[] buffer, int offset, int size)
+        internal static unsafe uint GetChunks(IntPtr memoryBlob, IntPtr originalAddress, ref int dataChunkIndex, ref uint dataChunkOffset, byte[] buffer, int offset, int size)
         {
             if (NetEventSource.IsEnabled)
             {
@@ -863,53 +793,51 @@ internal static partial class Interop
 
             // Return value.
             uint dataRead = 0;
-            fixed (byte* pMemoryBlob = memoryBlob)
+            byte* pMemoryBlob = (byte*)memoryBlob;            
+            HTTP_REQUEST* request = (HTTP_REQUEST*)pMemoryBlob;
+            long fixup = pMemoryBlob - (byte*)originalAddress;
+
+            if (request->EntityChunkCount > 0 && dataChunkIndex < request->EntityChunkCount && dataChunkIndex != -1)
             {
-                HTTP_REQUEST* request = (HTTP_REQUEST*)pMemoryBlob;
-                long fixup = pMemoryBlob - (byte*)originalAddress;
+                HTTP_DATA_CHUNK* pDataChunk = (HTTP_DATA_CHUNK*)(fixup + (byte*)&request->pEntityChunks[dataChunkIndex]);
 
-                if (request->EntityChunkCount > 0 && dataChunkIndex < request->EntityChunkCount && dataChunkIndex != -1)
+                fixed (byte* pReadBuffer = buffer)
                 {
-                    HTTP_DATA_CHUNK* pDataChunk = (HTTP_DATA_CHUNK*)(fixup + (byte*)&request->pEntityChunks[dataChunkIndex]);
+                    byte* pTo = &pReadBuffer[offset];
 
-                    fixed (byte* pReadBuffer = buffer)
+                    while (dataChunkIndex < request->EntityChunkCount && dataRead < size)
                     {
-                        byte* pTo = &pReadBuffer[offset];
-
-                        while (dataChunkIndex < request->EntityChunkCount && dataRead < size)
+                        if (dataChunkOffset >= pDataChunk->BufferLength)
                         {
-                            if (dataChunkOffset >= pDataChunk->BufferLength)
-                            {
-                                dataChunkOffset = 0;
-                                dataChunkIndex++;
-                                pDataChunk++;
-                            }
-                            else
-                            {
-                                byte* pFrom = pDataChunk->pBuffer + dataChunkOffset + fixup;
+                            dataChunkOffset = 0;
+                            dataChunkIndex++;
+                            pDataChunk++;
+                        }
+                        else
+                        {
+                            byte* pFrom = pDataChunk->pBuffer + dataChunkOffset + fixup;
 
-                                uint bytesToRead = pDataChunk->BufferLength - (uint)dataChunkOffset;
-                                if (bytesToRead > (uint)size)
-                                {
-                                    bytesToRead = (uint)size;
-                                }
-                                for (uint i = 0; i < bytesToRead; i++)
-                                {
-                                    *(pTo++) = *(pFrom++);
-                                }
-                                dataRead += bytesToRead;
-                                dataChunkOffset += bytesToRead;
+                            uint bytesToRead = pDataChunk->BufferLength - (uint)dataChunkOffset;
+                            if (bytesToRead > (uint)size)
+                            {
+                                bytesToRead = (uint)size;
                             }
+                            for (uint i = 0; i < bytesToRead; i++)
+                            {
+                                *(pTo++) = *(pFrom++);
+                            }
+                            dataRead += bytesToRead;
+                            dataChunkOffset += bytesToRead;
                         }
                     }
                 }
-                //we're finished.
-                if (dataChunkIndex == request->EntityChunkCount)
-                {
-                    dataChunkIndex = -1;
-                }
             }
-
+            //we're finished.
+            if (dataChunkIndex == request->EntityChunkCount)
+            {
+                dataChunkIndex = -1;
+            }
+            
             if (NetEventSource.IsEnabled)
             {
                 NetEventSource.Exit(null);
@@ -917,38 +845,34 @@ internal static partial class Interop
             return dataRead;
         }
 
-        internal static unsafe HTTP_VERB GetKnownVerb(byte[] memoryBlob, IntPtr originalAddress)
+        internal static unsafe HTTP_VERB GetKnownVerb(IntPtr memoryBlob, IntPtr originalAddress)
         {
             NetEventSource.Enter(null);
 
             // Return value.
             HTTP_VERB verb = HTTP_VERB.HttpVerbUnknown;
-            fixed (byte* pMemoryBlob = memoryBlob)
+
+            HTTP_REQUEST* request = (HTTP_REQUEST*)memoryBlob.ToPointer();
+            if ((int)request->Verb > (int)HTTP_VERB.HttpVerbUnparsed && (int)request->Verb < (int)HTTP_VERB.HttpVerbMaximum)
             {
-                HTTP_REQUEST* request = (HTTP_REQUEST*)pMemoryBlob;
-                if ((int)request->Verb > (int)HTTP_VERB.HttpVerbUnparsed && (int)request->Verb < (int)HTTP_VERB.HttpVerbMaximum)
-                {
-                    verb = request->Verb;
-                }
+                verb = request->Verb;
             }
 
             NetEventSource.Exit(null);
             return verb;
         }
 
-        internal static unsafe IPEndPoint GetRemoteEndPoint(byte[] memoryBlob, IntPtr originalAddress)
+        internal static unsafe IPEndPoint GetRemoteEndPoint(IntPtr memoryBlob, IntPtr originalAddress)
         {
             if (NetEventSource.IsEnabled) NetEventSource.Enter(null);
 
             SocketAddress v4address = new SocketAddress(AddressFamily.InterNetwork, IPv4AddressSize);
             SocketAddress v6address = new SocketAddress(AddressFamily.InterNetworkV6, IPv6AddressSize);
 
-            fixed (byte* pMemoryBlob = memoryBlob)
-            {
-                HTTP_REQUEST* request = (HTTP_REQUEST*)pMemoryBlob;
-                IntPtr address = request->Address.pRemoteAddress != null ? (IntPtr)(pMemoryBlob - (byte*)originalAddress + (byte*)request->Address.pRemoteAddress) : IntPtr.Zero;
-                CopyOutAddress(address, ref v4address, ref v6address);
-            }
+            byte* pMemoryBlob = (byte*)memoryBlob;       
+            HTTP_REQUEST* request = (HTTP_REQUEST*)pMemoryBlob;
+            IntPtr address = request->Address.pRemoteAddress != null ? (IntPtr)(pMemoryBlob - (byte*)originalAddress + (byte*)request->Address.pRemoteAddress) : IntPtr.Zero;
+            CopyOutAddress(address, ref v4address, ref v6address);
 
             IPEndPoint endpoint = null;
             if (v4address != null)
@@ -964,19 +888,17 @@ internal static partial class Interop
             return endpoint;
         }
 
-        internal static unsafe IPEndPoint GetLocalEndPoint(byte[] memoryBlob, IntPtr originalAddress)
+        internal static unsafe IPEndPoint GetLocalEndPoint(IntPtr memoryBlob, IntPtr originalAddress)
         {
             if (NetEventSource.IsEnabled) NetEventSource.Enter(null);
 
             SocketAddress v4address = new SocketAddress(AddressFamily.InterNetwork, IPv4AddressSize);
             SocketAddress v6address = new SocketAddress(AddressFamily.InterNetworkV6, IPv6AddressSize);
 
-            fixed (byte* pMemoryBlob = memoryBlob)
-            {
-                HTTP_REQUEST* request = (HTTP_REQUEST*)pMemoryBlob;
-                IntPtr address = request->Address.pLocalAddress != null ? (IntPtr)(pMemoryBlob - (byte*)originalAddress + (byte*)request->Address.pLocalAddress) : IntPtr.Zero;
-                CopyOutAddress(address, ref v4address, ref v6address);
-            }
+            byte* pMemoryBlob = (byte*)memoryBlob;        
+            HTTP_REQUEST* request = (HTTP_REQUEST*)pMemoryBlob;
+            IntPtr address = request->Address.pLocalAddress != null ? (IntPtr)(pMemoryBlob - (byte*)originalAddress + (byte*)request->Address.pLocalAddress) : IntPtr.Zero;
+            CopyOutAddress(address, ref v4address, ref v6address);
 
             IPEndPoint endpoint = null;
             if (v4address != null)

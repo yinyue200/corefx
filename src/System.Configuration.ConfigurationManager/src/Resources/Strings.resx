@@ -1,5 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<root>
+﻿<root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -94,10 +93,7 @@
   </data>
   <!--
     other exceptions
-  -->
-  <data name="Argument_AddingDuplicate" xml:space="preserve">
-    <value>An entry with the same key already exists.</value>
-  </data>
+  -->  
   <data name="Config_add_configurationsection_already_added" xml:space="preserve">
     <value>Cannot add a ConfigurationSection that already belongs to the Configuration.</value>
   </data>
@@ -597,7 +593,7 @@
     <value>The machine.config file '{0}' was not found.</value>
   </data>
   <data name="ObjectDisposed_StreamClosed" xml:space="preserve">
-    <value>Cannot access a closed Stream.</value>
+    <value>Cannot access a closed stream.</value>
   </data>
   <data name="Unable_to_convert_type_from_string" xml:space="preserve">
     <value>Could not find a type-converter to convert object if type '{0}' from string.</value>

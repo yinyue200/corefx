@@ -2,29 +2,27 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Xunit;
-using Xunit.NetCore.Extensions;
+using Microsoft.DotNet.XUnitExtensions;
 
 namespace System.IO.Tests
 {
     public class File_Delete : FileSystemTest
     {
-        #region Utilities
+        static bool IsBindMountSupported => RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && !PlatformDetection.IsInContainer && !PlatformDetection.IsRedHatFamily6;
 
-        public virtual void Delete(string path)
+        protected virtual void Delete(string path)
         {
             File.Delete(path);
         }
 
-        public virtual FileInfo Create(string path)
+        protected virtual FileInfo Create(string path)
         {
             var ret = new FileInfo(path);
             ret.Create().Dispose();
             return ret;
         }
-
-        #endregion
 
         #region UniversalTests
 
@@ -75,6 +73,7 @@ namespace System.IO.Tests
         [Fact]
         public void NonExistentFile()
         {
+            Delete(Path.Combine(Path.GetPathRoot(TestDirectory), Path.GetRandomFileName()));
             Delete(GetTestFilePath());
         }
 
@@ -105,25 +104,19 @@ namespace System.IO.Tests
             Assert.False(File.Exists(linkPath), "linkPath should no longer exist");
         }
 
+        [Fact]
+        public void NonExistentPath_Throws_DirectoryNotFoundException()
+        {
+            Assert.Throws<DirectoryNotFoundException>(() => Delete(Path.Combine(Path.GetRandomFileName(), "C")));
+            Assert.Throws<DirectoryNotFoundException>(() => Delete(Path.Combine(Path.GetPathRoot(TestDirectory), Path.GetRandomFileName(), "C")));
+            Assert.Throws<DirectoryNotFoundException>(() => Delete(Path.Combine(TestDirectory, GetTestFileName(), "C")));
+        }
+
         #endregion
 
         #region PlatformSpecific
 
-        [Fact]
-        [PlatformSpecific(TestPlatforms.Windows)]  // Deleting non-existent path throws
-        public void Windows_NonExistentPath_Throws_DirectoryNotFoundException()
-        {
-            Assert.Throws<DirectoryNotFoundException>(() => Delete(Path.Combine(TestDirectory, GetTestFileName(), "C")));
-        }
-
-        [Fact]
-        [PlatformSpecific(TestPlatforms.AnyUnix)]  // Deleting non-existent path doesn't throw
-        public void Unix_NonExistentPath_Nop()
-        {
-            Delete(Path.Combine(TestDirectory, GetTestFileName(), "C"));
-        }
-
-        [Fact]
+        [ConditionalFact(nameof(IsBindMountSupported))]
         [OuterLoop("Needs sudo access")]
         [PlatformSpecific(TestPlatforms.Linux)]
         [Trait(XunitConstants.Category, XunitConstants.RequiresElevation)]
@@ -135,7 +128,7 @@ namespace System.IO.Tests
             });
         }
 
-        [Fact]
+        [ConditionalFact(nameof(IsBindMountSupported))]
         [OuterLoop("Needs sudo access")]
         [PlatformSpecific(TestPlatforms.Linux)]
         [Trait(XunitConstants.Category, XunitConstants.RequiresElevation)]
@@ -191,6 +184,23 @@ namespace System.IO.Tests
             testFile.Attributes = FileAttributes.ReadOnly;
             Delete(testFile.FullName);
             Assert.False(testFile.Exists);
+        }
+
+        [Theory,
+            InlineData(":bar"),
+            InlineData(":bar:$DATA")]
+        [PlatformSpecific(TestPlatforms.Windows)]
+        public void WindowsDeleteAlternateDataStream(string streamName)
+        {
+            FileInfo testFile = Create(GetTestFilePath());
+            testFile.Create().Dispose();
+            streamName = testFile.FullName + streamName;
+            File.Create(streamName).Dispose();
+            Assert.True(File.Exists(streamName));
+            Delete(streamName);
+            Assert.False(File.Exists(streamName));
+            testFile.Refresh();
+            Assert.True(testFile.Exists);
         }
 
         #endregion

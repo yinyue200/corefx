@@ -254,7 +254,7 @@ namespace System.Net.Sockets.Tests
         public void Send_Buffers_NullBuffers_Throws_ArgumentNull()
         {
             SocketError errorCode;
-            Assert.Throws<ArgumentNullException>(() => GetSocket().Send(null, SocketFlags.None, out errorCode));
+            Assert.Throws<ArgumentNullException>(() => GetSocket().Send((IList<ArraySegment<byte>>)null, SocketFlags.None, out errorCode));
         }
 
         [Fact]
@@ -321,7 +321,7 @@ namespace System.Net.Sockets.Tests
         public void Receive_Buffers_NullBuffers_Throws_ArgumentNull()
         {
             SocketError errorCode;
-            Assert.Throws<ArgumentNullException>(() => GetSocket().Receive(null, SocketFlags.None, out errorCode));
+            Assert.Throws<ArgumentNullException>(() => GetSocket().Receive((IList<ArraySegment<byte>>)null, SocketFlags.None, out errorCode));
         }
 
         [Fact]
@@ -503,7 +503,6 @@ namespace System.Net.Sockets.Tests
             Assert.Throws<ArgumentOutOfRangeException>(() => Socket.Select(null, null, largeList, -1));
         }
 
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Bug in AcceptAsync that dereferences null SAEA argument")]
         [Fact]
         public void AcceptAsync_NullAsyncEventArgs_Throws_ArgumentNull()
         {
@@ -536,7 +535,6 @@ namespace System.Net.Sockets.Tests
             }
         }
 
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Bug in ReceiveAsync that dereferences null SAEA argument")]
         [Fact]
         public void ConnectAsync_NullAsyncEventArgs_Throws_ArgumentNull()
         {
@@ -587,7 +585,6 @@ namespace System.Net.Sockets.Tests
             Assert.Throws<NotSupportedException>(() => GetSocket(AddressFamily.InterNetwork).ConnectAsync(eventArgs));
         }
 
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Bug in ConnectAsync that dereferences null SAEA argument")]
         [Fact]
         public void ConnectAsync_Static_NullAsyncEventArgs_Throws_ArgumentNull()
         {
@@ -610,14 +607,12 @@ namespace System.Net.Sockets.Tests
             Assert.Throws<ArgumentNullException>(() => Socket.ConnectAsync(SocketType.Stream, ProtocolType.Tcp, s_eventArgs));
         }
 
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Bug in ReceiveAsync that dereferences null SAEA argument")]
         [Fact]
         public void ReceiveAsync_NullAsyncEventArgs_Throws_ArgumentNull()
         {
             Assert.Throws<ArgumentNullException>(() => GetSocket().ReceiveAsync(null));
         }
 
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Bug in ReceiveFromAsync that dereferences null SAEA argument")]
         [Fact]
         public void ReceiveFromAsync_NullAsyncEventArgs_Throws_ArgumentNull()
         {
@@ -640,7 +635,6 @@ namespace System.Net.Sockets.Tests
             AssertExtensions.Throws<ArgumentException>("RemoteEndPoint", () => GetSocket(AddressFamily.InterNetwork).ReceiveFromAsync(eventArgs));
         }
 
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Bug in ReceiveMessageFromAsync that dereferences null SAEA argument")]
         [Fact]
         public void ReceiveMessageFromAsync_NullAsyncEventArgs_Throws_ArgumentNull()
         {
@@ -663,21 +657,18 @@ namespace System.Net.Sockets.Tests
             AssertExtensions.Throws<ArgumentException>("RemoteEndPoint", () => GetSocket(AddressFamily.InterNetwork).ReceiveMessageFromAsync(eventArgs));
         }
 
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Bug in SendAsync that dereferences null SAEA argument")]
         [Fact]
         public void SendAsync_NullAsyncEventArgs_Throws_ArgumentNull()
         {
             Assert.Throws<ArgumentNullException>(() => GetSocket().SendAsync(null));
         }
 
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Bug in SendPacketsAsync that dereferences null SAEA argument")]
         [Fact]
         public void SendPacketsAsync_NullAsyncEventArgs_Throws_ArgumentNull()
         {
             Assert.Throws<ArgumentNullException>(() => GetSocket().SendPacketsAsync(null));
         }
 
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Bug in SendPacketsAsync that dereferences null SAEA.SendPacketsElements")]
         [Fact]
         public void SendPacketsAsync_NullSendPacketsElements_Throws_ArgumentNull()
         {
@@ -694,7 +685,6 @@ namespace System.Net.Sockets.Tests
             Assert.Throws<NotSupportedException>(() => GetSocket().SendPacketsAsync(eventArgs));
         }
 
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Bug in SendToAsync that dereferences null SAEA argument")]
         [Fact]
         public void SendToAsync_NullAsyncEventArgs_Throws_ArgumentNull()
         {
@@ -989,10 +979,23 @@ namespace System.Net.Sockets.Tests
         [Fact]
         public void BeginConnect_EndPoint_AddressFamily_Throws_NotSupported()
         {
-            Assert.Throws<NotSupportedException>(() => GetSocket(AddressFamily.InterNetwork).BeginConnect(
-                new DnsEndPoint("localhost", 1, AddressFamily.InterNetworkV6), TheAsyncCallback, null));
-            Assert.Throws<NotSupportedException>(() => { GetSocket(AddressFamily.InterNetwork).ConnectAsync(
-                new DnsEndPoint("localhost", 1, AddressFamily.InterNetworkV6)); });
+            // Unlike other tests that reuse a static Socket instance, this test avoids doing so
+            // to work around a behavior of .NET 4.7.2. See https://github.com/dotnet/corefx/issues/29481
+            // for more details.
+
+            using (var s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            {
+                Assert.Throws<NotSupportedException>(() => s.BeginConnect(
+                    new DnsEndPoint("localhost", 1, AddressFamily.InterNetworkV6),
+                    TheAsyncCallback, null));
+            }
+
+            using (var s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            {
+                Assert.Throws<NotSupportedException>(() => { s.ConnectAsync(
+                    new DnsEndPoint("localhost", 1, AddressFamily.InterNetworkV6));
+                });
+            }
         }
 
         [Fact]

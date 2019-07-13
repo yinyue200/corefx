@@ -2,17 +2,20 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Runtime.InteropServices;
 using System.Text;
 using Xunit;
-using Xunit.NetCore.Extensions;
+using Microsoft.DotNet.XUnitExtensions;
 
 namespace System.IO.Tests
 {
     public class Directory_Delete_str : FileSystemTest
     {
+        static bool IsBindMountSupported => RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && !PlatformDetection.IsInContainer && !PlatformDetection.IsRedHatFamily6;
+
         #region Utilities
 
-        public virtual void Delete(string path)
+        protected virtual void Delete(string path)
         {
             Directory.Delete(path);
         }
@@ -202,7 +205,7 @@ namespace System.IO.Tests
             Assert.False(Directory.Exists(testDir));
         }
 
-        [Fact]
+        [ConditionalFact(nameof(IsBindMountSupported))]
         [OuterLoop("Needs sudo access")]
         [PlatformSpecific(TestPlatforms.Linux)]
         [Trait(XunitConstants.Category, XunitConstants.RequiresElevation)]
@@ -220,12 +223,12 @@ namespace System.IO.Tests
     {
         #region Utilities
 
-        public override void Delete(string path)
+        protected override void Delete(string path)
         {
             Directory.Delete(path, false);
         }
 
-        public virtual void Delete(string path, bool recursive)
+        protected virtual void Delete(string path, bool recursive)
         {
             Directory.Delete(path, recursive);
         }
@@ -251,6 +254,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
+        [ActiveIssue(24242)]
         [PlatformSpecific(TestPlatforms.Windows)]
         [OuterLoop("This test is very slow.")]
         public void RecursiveDelete_DeepNesting()

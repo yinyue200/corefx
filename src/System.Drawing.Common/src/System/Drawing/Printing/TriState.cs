@@ -4,9 +4,9 @@
 
 namespace System.Drawing.Printing
 {
-    internal partial struct TriState
+    internal readonly partial struct TriState
     {
-        private byte _value; // 0 is "default", not false
+        private readonly byte _value; // 0 is "default", not false
 
         public static readonly TriState Default = new TriState(0);
         public static readonly TriState False = new TriState(1);
@@ -66,7 +66,7 @@ namespace System.Drawing.Printing
         public static explicit operator bool (TriState value)
         {
             if (value.IsDefault)
-                throw new InvalidCastException(SR.Format(SR.TriStateCompareError));
+                throw new InvalidCastException(SR.TriStateCompareError);
             else
                 return (value == TriState.True);
         }

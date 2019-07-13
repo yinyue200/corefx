@@ -3,17 +3,26 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Generic;
+using System.Threading;
 using Xunit;
 
 namespace System.IO.Tests
 {
     public abstract class BaseGetSetTimes<T> : FileSystemTest
     {
+        protected const string HFS = "hfs";
         public delegate void SetTime(T item, DateTime time);
         public delegate DateTime GetTime(T item);
+        // AppContainer restricts access to DriveFormat (::GetVolumeInformation)
+        private static string driveFormat = PlatformDetection.IsInAppContainer ? string.Empty : new DriveInfo(Path.GetTempPath()).DriveFormat;
 
-        public abstract T GetExistingItem();
-        public abstract T GetMissingItem();
+        protected static bool isHFS => driveFormat != null && driveFormat.Equals(HFS, StringComparison.InvariantCultureIgnoreCase);
+        protected static bool isNotHFS => !isHFS;
+
+        protected abstract T GetExistingItem();
+        protected abstract T GetMissingItem();
+
+        protected abstract string GetItemPath(T item);
 
         public abstract IEnumerable<TimeFunction> TimeFunctions(bool requiresRoundtripping = false);
 
@@ -39,7 +48,8 @@ namespace System.IO.Tests
 
             Assert.All(TimeFunctions(requiresRoundtripping: true), (function) =>
             {
-                DateTime dt = new DateTime(2014, 12, 1, 12, 0, 0, function.Kind);
+                // Checking that milliseconds are not dropped after setter.
+                DateTime dt = new DateTime(2014, 12, 1, 12, 3, 3, isHFS ? 0 : 321, function.Kind);
                 function.Setter(item, dt);
                 DateTime result = function.Getter(item);
                 Assert.Equal(dt, result);
@@ -65,6 +75,50 @@ namespace System.IO.Tests
             T item = GetExistingItem();
             DateTime afterTime = DateTime.UtcNow.AddSeconds(3);
             ValidateSetTimes(item, beforeTime, afterTime);
+        }
+
+        [ConditionalFact(nameof(isNotHFS))] // OSX HFS driver format does not support millisec granularity
+        public void TimesIncludeMillisecondPart()
+        {
+            T item = GetExistingItem();
+            Assert.All(TimeFunctions(), (function) =>
+            {
+                var msec = 0;
+                for (int i = 0; i < 5; i++)
+                {
+                    DateTime time = function.Getter(item);
+                    msec = time.Millisecond;
+                    if (msec != 0)
+                        break;
+
+                    // This case should only happen 1/1000 times, unless the OS/Filesystem does
+                    // not support millisecond granularity.
+
+                    // If it's 1/1000, or low granularity, this may help:
+                    Thread.Sleep(1234);
+
+                    // If it's the OS/Filesystem often returns 0 for the millisecond part, this may
+                    // help prove it. This should only be written 1/1000 runs, unless the test is going to
+                    // fail.
+                    Console.WriteLine($"## TimesIncludeMillisecondPart got a file time of {time.ToString("o")} on {driveFormat}");
+
+                    item = GetExistingItem(); // try a new file/directory
+                }
+
+                Assert.NotEqual(0, msec);
+            });
+        }
+
+        [ConditionalFact(nameof(isHFS))]
+        public void TimesIncludeMillisecondPart_HFS()
+        {
+            T item = GetExistingItem();
+            // OSX HFS driver format does not support millisec granularity
+            Assert.All(TimeFunctions(), (function) =>
+            {
+                DateTime time = function.Getter(item);
+                Assert.Equal(0, time.Millisecond);
+            });
         }
 
         protected void ValidateSetTimes(T item, DateTime beforeTime, DateTime afterTime)

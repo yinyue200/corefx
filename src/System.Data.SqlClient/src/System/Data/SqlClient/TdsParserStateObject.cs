@@ -10,6 +10,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text;
+using System.Security;
+using System.Runtime.InteropServices;
 
 namespace System.Data.SqlClient
 {
@@ -61,8 +63,8 @@ namespace System.Data.SqlClient
         // Packet state variables
         internal byte _outputMessageType = 0;                   // tds header type
         internal byte _messageStatus;                               // tds header status
-        internal byte _outputPacketNumber = 1;                   // number of packets sent to server
-                                                                 // in message - start at 1 per ramas
+        internal byte _outputPacketNumber = 1;                   // number of packets sent to server in message - start at 1 per ramas
+        internal uint _outputPacketCount;
         internal bool _pendingData = false;
         internal volatile bool _fResetEventOwned = false;               // ResetEvent serializing call to sp_reset_connection
         internal volatile bool _fResetConnectionSent = false;               // For multiple packet execute
@@ -90,6 +92,10 @@ namespace System.Data.SqlClient
 
         private readonly LastIOTimer _lastSuccessfulIOTimer;
 
+        // secure password information to be stored
+        //  At maximum number of secure string that need to be stored is two; one for login password and the other for new change password
+        private SecureString[] _securePasswords = new SecureString[2] { null, null };
+        private int[] _securePasswordOffsetsInBuffer = new int[2];
 
         // This variable is used to track whether another thread has requested a cancel.  The
         // synchronization points are
@@ -364,7 +370,7 @@ namespace System.Data.SqlClient
             }
         }
 
-        internal abstract uint EnableMars(ref UInt32 info);
+        internal abstract uint EnableMars(ref uint info);
 
         internal SniContext SniContext
         {
@@ -381,12 +387,12 @@ namespace System.Data.SqlClient
             }
         }
 
-        internal abstract UInt32 Status
+        internal abstract uint Status
         {
             get;
         }
 
-        internal abstract object SessionHandle
+        internal abstract SessionHandle SessionHandle
         {
             get;
         }
@@ -423,7 +429,7 @@ namespace System.Data.SqlClient
             int remaining;
             if (0 != _timeoutMilliseconds)
             {
-                remaining = (int)Math.Min((long)Int32.MaxValue, _timeoutMilliseconds);
+                remaining = (int)Math.Min((long)int.MaxValue, _timeoutMilliseconds);
                 _timeoutTime = TdsParserStaticMethods.GetTimeout(_timeoutMilliseconds);
                 _timeoutMilliseconds = 0;
             }
@@ -511,7 +517,7 @@ namespace System.Data.SqlClient
                 }
 
                 // read the null bitmap compression information from TDS
-                if (!stateObj.TryReadByteArray(_nullBitmap, 0, _nullBitmap.Length))
+                if (!stateObj.TryReadByteArray(_nullBitmap, _nullBitmap.Length))
                 {
                     return false;
                 }
@@ -653,7 +659,7 @@ namespace System.Data.SqlClient
             // If the first sqlbulkcopy timeout, _outputPacketNumber may not be 1, 
             // the next sqlbulkcopy (same connection string) requires this to be 1, hence reset 
             // it here when exception happens in the first sqlbulkcopy
-            _outputPacketNumber = 1;
+            ResetPacketCounters();
 
             // VSDD#907507, if bulkcopy write timeout happens, it already sent the attention, 
             // so no need to send it again
@@ -664,7 +670,7 @@ namespace System.Data.SqlClient
             }
         }
 
-        public void CheckSetResetConnectionState(UInt32 error, CallbackType callbackType)
+        public void CheckSetResetConnectionState(uint error, CallbackType callbackType)
         {
             // Should only be called for MARS - that is the only time we need to take
             // the ResetConnection lock!
@@ -755,27 +761,27 @@ namespace System.Data.SqlClient
 
         internal abstract void DisposePacketCache();
 
-        internal abstract bool IsPacketEmpty(object readPacket);
+        internal abstract bool IsPacketEmpty(PacketHandle readPacket);
 
-        internal abstract object ReadSyncOverAsync(int timeoutRemaining, bool isMarsOn, out uint error);
+        internal abstract PacketHandle ReadSyncOverAsync(int timeoutRemaining, out uint error);
 
-        internal abstract object ReadAsync(out uint error, ref object handle);
+        internal abstract PacketHandle ReadAsync(SessionHandle handle, out uint error);
 
         internal abstract uint CheckConnection();
 
         internal abstract uint SetConnectionBufferSize(ref uint unsignedPacketSize);
 
-        internal abstract void ReleasePacket(object syncReadPacket);
+        internal abstract void ReleasePacket(PacketHandle syncReadPacket);
 
-        protected abstract uint SNIPacketGetData(object packet, byte[] _inBuff, ref uint dataSize);
+        protected abstract uint SNIPacketGetData(PacketHandle packet, byte[] _inBuff, ref uint dataSize);
 
-        internal abstract object GetResetWritePacket();
+        internal abstract PacketHandle GetResetWritePacket(int dataSize);
 
         internal abstract void ClearAllWritePackets();
 
-        internal abstract object AddPacketToPendingList(object packet);
+        internal abstract PacketHandle AddPacketToPendingList(PacketHandle packet);
 
-        protected abstract void RemovePacketFromPendingList(object pointer);
+        protected abstract void RemovePacketFromPendingList(PacketHandle pointer);
 
         internal abstract uint GenerateSspiClientContext(byte[] receivedBuff, uint receivedLength, ref byte[] sendBuff, ref uint sendLength, byte[] _sniSpnBuffer);
 
@@ -849,7 +855,7 @@ namespace System.Data.SqlClient
 
             // NOTE: TdsParserSessionPool may call DecrementPendingCallbacks on a TdsParserStateObject which is already disposed
             // This is not dangerous (since the stateObj is no longer in use), but we need to add a workaround in the assert for it
-            Debug.Assert((remaining == -1 && SessionHandle == null) || (0 <= remaining && remaining < 3), string.Format("_pendingCallbacks values is invalid after decrementing: {0}", remaining));
+            Debug.Assert((remaining == -1 && SessionHandle.IsNull) || (0 <= remaining && remaining < 3), $"_pendingCallbacks values is invalid after decrementing: {remaining}");
             return remaining;
         }
 
@@ -876,7 +882,7 @@ namespace System.Data.SqlClient
             }
         }
 
-        internal Int32 IncrementAndObtainOpenResultCount(SqlInternalTransaction transaction)
+        internal int IncrementAndObtainOpenResultCount(SqlInternalTransaction transaction)
         {
             _hasOpenResult = true;
 
@@ -898,7 +904,7 @@ namespace System.Data.SqlClient
         internal int IncrementPendingCallbacks()
         {
             int remaining = Interlocked.Increment(ref _pendingCallbacks);
-            Debug.Assert(0 < remaining && remaining <= 3, string.Format("_pendingCallbacks values is invalid after incrementing: {0}", remaining));
+            Debug.Assert(0 < remaining && remaining <= 3, $"_pendingCallbacks values is invalid after incrementing: {remaining}");
             return remaining;
         }
 
@@ -1098,7 +1104,7 @@ namespace System.Data.SqlClient
                 }
                 else
                 {
-                    Debug.Assert(false, "entered negative _inBytesPacket loop");
+                    Debug.Fail("entered negative _inBytesPacket loop");
                 }
                 AssertValidState();
             }
@@ -1109,6 +1115,12 @@ namespace System.Data.SqlClient
         internal void ResetBuffer()
         {
             _outBytesUsed = _outputHeaderLen;
+        }
+
+        internal void ResetPacketCounters()
+        {
+            _outputPacketNumber = 1;
+            _outputPacketCount = 0;
         }
 
         internal bool SetPacketSize(int size)
@@ -1208,15 +1220,14 @@ namespace System.Data.SqlClient
 
         // Takes a byte array, an offset, and a len and fills the array from the offset to len number of
         // bytes from the in buffer.
-        public bool TryReadByteArray(byte[] buff, int offset, int len)
+        public bool TryReadByteArray(Span<byte> buff, int len)
         {
-            int ignored;
-            return TryReadByteArray(buff, offset, len, out ignored);
+            return TryReadByteArray(buff, len, out _);
         }
 
         // NOTE: This method must be retriable WITHOUT replaying a snapshot
         // Every time you call this method increment the offset and decrease len by the value of totalRead
-        public bool TryReadByteArray(byte[] buff, int offset, int len, out int totalRead)
+        public bool TryReadByteArray(Span<byte> buff, int len, out int totalRead)
         {
             totalRead = 0;
 
@@ -1239,7 +1250,7 @@ namespace System.Data.SqlClient
             }
 #endif
 
-            Debug.Assert(buff == null || buff.Length >= len, "Invalid length sent to ReadByteArray()!");
+            Debug.Assert(buff.IsEmpty || buff.Length >= len, "Invalid length sent to ReadByteArray()!");
 
             // loop through and read up to array length
             while (len > 0)
@@ -1254,9 +1265,11 @@ namespace System.Data.SqlClient
 
                 int bytesToRead = Math.Min(len, Math.Min(_inBytesPacket, _inBytesRead - _inBytesUsed));
                 Debug.Assert(bytesToRead > 0, "0 byte read in TryReadByteArray");
-                if (buff != null)
+                if (!buff.IsEmpty)
                 {
-                    Buffer.BlockCopy(_inBuff, _inBytesUsed, buff, offset + totalRead, bytesToRead);
+                    var copyFrom = new ReadOnlySpan<byte>(_inBuff, _inBytesUsed, bytesToRead);
+                    Span<byte> copyTo = buff.Slice(totalRead, bytesToRead);
+                    copyFrom.CopyTo(copyTo);
                 }
 
                 totalRead += bytesToRead;
@@ -1266,16 +1279,6 @@ namespace System.Data.SqlClient
 
                 AssertValidState();
             }
-
-            if ((_messageStatus != TdsEnums.ST_EOM) && ((_inBytesPacket == 0) || (_inBytesUsed == _inBytesRead)))
-            {
-                if (!TryPrepareBuffer())
-                {
-                    return false;
-                }
-            }
-
-            AssertValidState();
 
             return true;
         }
@@ -1337,7 +1340,7 @@ namespace System.Data.SqlClient
                 // If the char isn't fully in the buffer, or if it isn't fully in the packet,
                 // then use ReadByteArray since the logic is there to take care of that.
 
-                if (!TryReadByteArray(_bTmp, 0, 2))
+                if (!TryReadByteArray(_bTmp, 2))
                 {
                     value = '\0';
                     return false;
@@ -1374,9 +1377,9 @@ namespace System.Data.SqlClient
                 // If the int16 isn't fully in the buffer, or if it isn't fully in the packet,
                 // then use ReadByteArray since the logic is there to take care of that.
 
-                if (!TryReadByteArray(_bTmp, 0, 2))
+                if (!TryReadByteArray(_bTmp, 2))
                 {
-                    value = default(short);
+                    value = default;
                     return false;
                 }
 
@@ -1408,7 +1411,7 @@ namespace System.Data.SqlClient
                 // If the int isn't fully in the buffer, or if it isn't fully in the packet,
                 // then use ReadByteArray since the logic is there to take care of that.
 
-                if (!TryReadByteArray(_bTmp, 0, 4))
+                if (!TryReadByteArray(_bTmp, 4))
                 {
                     value = 0;
                     return false;
@@ -1451,7 +1454,7 @@ namespace System.Data.SqlClient
                 // then use ReadByteArray since the logic is there to take care of that.
 
                 int bytesRead = 0;
-                if (!TryReadByteArray(_bTmp, _bTmpRead, 8 - _bTmpRead, out bytesRead))
+                if (!TryReadByteArray(_bTmp.AsSpan(_bTmpRead), 8 - _bTmpRead, out bytesRead))
                 {
                     Debug.Assert(_bTmpRead + bytesRead <= 8, "Read more data than required");
                     _bTmpRead += bytesRead;
@@ -1493,9 +1496,9 @@ namespace System.Data.SqlClient
                 // If the uint16 isn't fully in the buffer, or if it isn't fully in the packet,
                 // then use ReadByteArray since the logic is there to take care of that.
 
-                if (!TryReadByteArray(_bTmp, 0, 2))
+                if (!TryReadByteArray(_bTmp, 2))
                 {
-                    value = default(ushort);
+                    value = default;
                     return false;
                 }
 
@@ -1537,7 +1540,7 @@ namespace System.Data.SqlClient
                 // then use ReadByteArray since the logic is there to take care of that.
 
                 int bytesRead = 0;
-                if (!TryReadByteArray(_bTmp, _bTmpRead, 4 - _bTmpRead, out bytesRead))
+                if (!TryReadByteArray(_bTmp.AsSpan(_bTmpRead), 4 - _bTmpRead, out bytesRead))
                 {
                     Debug.Assert(_bTmpRead + bytesRead <= 4, "Read more data than required");
                     _bTmpRead += bytesRead;
@@ -1576,9 +1579,9 @@ namespace System.Data.SqlClient
                 // If the float isn't fully in the buffer, or if it isn't fully in the packet,
                 // then use ReadByteArray since the logic is there to take care of that.
 
-                if (!TryReadByteArray(_bTmp, 0, 4))
+                if (!TryReadByteArray(_bTmp, 4))
                 {
-                    value = default(float);
+                    value = default;
                     return false;
                 }
 
@@ -1609,9 +1612,9 @@ namespace System.Data.SqlClient
                 // If the double isn't fully in the buffer, or if it isn't fully in the packet,
                 // then use ReadByteArray since the logic is there to take care of that.
 
-                if (!TryReadByteArray(_bTmp, 0, 8))
+                if (!TryReadByteArray(_bTmp, 8))
                 {
-                    value = default(double);
+                    value = default;
                     return false;
                 }
 
@@ -1648,7 +1651,7 @@ namespace System.Data.SqlClient
                     _bTmp = new byte[cBytes];
                 }
 
-                if (!TryReadByteArray(_bTmp, 0, cBytes))
+                if (!TryReadByteArray(_bTmp, cBytes))
                 {
                     value = null;
                     return false;
@@ -1706,7 +1709,7 @@ namespace System.Data.SqlClient
 
             if (isPlp)
             {
-                if (!TryReadPlpBytes(ref buf, 0, Int32.MaxValue, out length))
+                if (!TryReadPlpBytes(ref buf, 0, int.MaxValue, out length))
                 {
                     value = null;
                     return false;
@@ -1723,7 +1726,7 @@ namespace System.Data.SqlClient
                         _bTmp = new byte[length];
                     }
 
-                    if (!TryReadByteArray(_bTmp, 0, length))
+                    if (!TryReadByteArray(_bTmp, length))
                     {
                         value = null;
                         return false;
@@ -1831,7 +1834,7 @@ namespace System.Data.SqlClient
 
             int value;
             int bytesToRead = (int)Math.Min(_longlenleft, (ulong)len);
-            bool result = TryReadByteArray(buff, offset, bytesToRead, out value);
+            bool result = TryReadByteArray(buff.AsSpan(offset), bytesToRead, out value);
             _longlenleft -= (ulong)bytesToRead;
             if (!result) { throw SQL.SynchronousCallMayNotPend(); }
             return value;
@@ -1907,7 +1910,7 @@ namespace System.Data.SqlClient
                     buff = newbuf;
                 }
 
-                bool result = TryReadByteArray(buff, offset, bytesToRead, out bytesRead);
+                bool result = TryReadByteArray(buff.AsSpan(offset), bytesToRead, out bytesRead);
                 Debug.Assert(bytesRead <= bytesLeft, "Read more bytes than we needed");
                 Debug.Assert((ulong)bytesRead <= _longlenleft, "Read more bytes than is available");
 
@@ -1953,8 +1956,8 @@ namespace System.Data.SqlClient
 
             while (num > 0)
             {
-                cbSkip = (int)Math.Min((long)Int32.MaxValue, num);
-                if (!TryReadByteArray(null, 0, cbSkip))
+                cbSkip = (int)Math.Min((long)int.MaxValue, num);
+                if (!TryReadByteArray(Span<byte>.Empty, cbSkip))
                 {
                     return false;
                 }
@@ -1968,7 +1971,7 @@ namespace System.Data.SqlClient
         internal bool TrySkipBytes(int num)
         {
             Debug.Assert(_syncOverAsync || !_asyncReadWithoutSnapshot, "This method is not safe to call when doing sync over async");
-            return TryReadByteArray(null, 0, num);
+            return TryReadByteArray(Span<byte>.Empty, num);
         }
 
         /////////////////////////////////////////
@@ -2063,9 +2066,9 @@ namespace System.Data.SqlClient
                 throw ADP.ClosedConnectionError();
             }
 
-            object readPacket = null;
+            PacketHandle readPacket = default;
 
-            UInt32 error;
+            uint error;
 
             bool shouldDecrement = false;
             try
@@ -2073,7 +2076,7 @@ namespace System.Data.SqlClient
                 Interlocked.Increment(ref _readingCount);
                 shouldDecrement = true;
 
-                readPacket = ReadSyncOverAsync(GetTimeoutRemaining(), false, out error);
+                readPacket = ReadSyncOverAsync(GetTimeoutRemaining(), out error);
 
                 Interlocked.Decrement(ref _readingCount);
                 shouldDecrement = false;
@@ -2285,9 +2288,9 @@ namespace System.Data.SqlClient
 #endif
 
 
-            object readPacket = null;
+            PacketHandle readPacket = default;
 
-            UInt32 error = 0;
+            uint error = 0;
 
             try
             {
@@ -2295,7 +2298,11 @@ namespace System.Data.SqlClient
 
                 if (_networkPacketTimeout == null)
                 {
-                    _networkPacketTimeout = new Timer(OnTimeout, null, Timeout.Infinite, Timeout.Infinite);
+                    _networkPacketTimeout = ADP.UnsafeCreateTimer(
+                        new TimerCallback(OnTimeout),
+                        null,
+                        Timeout.Infinite,
+                        Timeout.Infinite);
                 }
 
                 // -1 == Infinite
@@ -2307,16 +2314,14 @@ namespace System.Data.SqlClient
                     ChangeNetworkPacketTimeout(msecsRemaining, Timeout.Infinite);
                 }
 
-                object handle = null;
-
                 Interlocked.Increment(ref _readingCount);
 
-                handle = SessionHandle;
-                if (handle != null)
+                SessionHandle handle = SessionHandle;
+                if (!handle.IsNull)
                 {
                     IncrementPendingCallbacks();
 
-                    readPacket = ReadAsync(out error, ref handle);
+                    readPacket = ReadAsync(handle, out error);
 
                     if (!(TdsEnums.SNI_SUCCESS == error || TdsEnums.SNI_SUCCESS_IO_PENDING == error))
                     {
@@ -2325,8 +2330,8 @@ namespace System.Data.SqlClient
                 }
 
                 Interlocked.Decrement(ref _readingCount);
-                
-                if (handle == null)
+
+                if (handle.IsNull)
                 {
                     throw ADP.ClosedConnectionError();
                 }
@@ -2407,38 +2412,24 @@ namespace System.Data.SqlClient
                 }
                 else
                 {
-                    UInt32 error;
+                    uint error;
+                    SniContext = SniContext.Snix_Connect;
+                    error = CheckConnection();
 
-                    object readPacket = EmptyReadPacket;
-
-                    try
+                    if ((error != TdsEnums.SNI_SUCCESS) && (error != TdsEnums.SNI_WAIT_TIMEOUT))
                     {
-                        SniContext = SniContext.Snix_Connect;
-
-                        error = CheckConnection();
-
-                        if ((error != TdsEnums.SNI_SUCCESS) && (error != TdsEnums.SNI_WAIT_TIMEOUT))
+                        // Connection is dead
+                        isAlive = false;
+                        if (throwOnException)
                         {
-                            // Connection is dead
-                            isAlive = false;
-                            if (throwOnException)
-                            {
-                                // Get the error from SNI so that we can throw the correct exception
-                                AddError(_parser.ProcessSNIError(this));
-                                ThrowExceptionAndWarning();
-                            }
-                        }
-                        else
-                        {
-                            _lastSuccessfulIOTimer._value = DateTime.UtcNow.Ticks;
+                            // Get the error from SNI so that we can throw the correct exception
+                            AddError(_parser.ProcessSNIError(this));
+                            ThrowExceptionAndWarning();
                         }
                     }
-                    finally
+                    else
                     {
-                        if (!IsPacketEmpty(readPacket))
-                        {
-                            ReleasePacket(readPacket);
-                        }
+                        _lastSuccessfulIOTimer._value = DateTime.UtcNow.Ticks;
                     }
                 }
             }
@@ -2464,7 +2455,7 @@ namespace System.Data.SqlClient
                 return true;
             }
 
-            UInt32 error = TdsEnums.SNI_SUCCESS;
+            uint error = TdsEnums.SNI_SUCCESS;
             SniContext = SniContext.Snix_Connect;
             try
             {
@@ -2479,7 +2470,7 @@ namespace System.Data.SqlClient
         }
 
         // This method should only be called by ReadSni!  If not - it may have problems with timeouts!
-        private void ReadSniError(TdsParserStateObject stateObj, UInt32 error)
+        private void ReadSniError(TdsParserStateObject stateObj, uint error)
         {
             if (TdsEnums.SNI_WAIT_TIMEOUT == error)
             {
@@ -2502,7 +2493,7 @@ namespace System.Data.SqlClient
                         {
                             stateObj.SendAttention(mustTakeWriteLock: true);
 
-                            object syncReadPacket = null;
+                            PacketHandle syncReadPacket = default;
 
                             bool shouldDecrement = false;
                             try
@@ -2510,7 +2501,7 @@ namespace System.Data.SqlClient
                                 Interlocked.Increment(ref _readingCount);
                                 shouldDecrement = true;
 
-                                syncReadPacket = ReadSyncOverAsync(stateObj.GetTimeoutRemaining(), _parser.MARSOn, out error);
+                                syncReadPacket = ReadSyncOverAsync(stateObj.GetTimeoutRemaining(), out error);
 
                                 Interlocked.Decrement(ref _readingCount);
                                 shouldDecrement = false;
@@ -2574,7 +2565,7 @@ namespace System.Data.SqlClient
             AssertValidState();
         }
 
-        public void ProcessSniPacket(object packet, UInt32 error)
+        public void ProcessSniPacket(PacketHandle packet, uint error)
         {
             if (error != 0)
             {
@@ -2590,9 +2581,9 @@ namespace System.Data.SqlClient
             }
             else
             {
-                UInt32 dataSize = 0;
+                uint dataSize = 0;
 
-                UInt32 getDataError = SNIPacketGetData(packet, _inBuff, ref dataSize);
+                uint getDataError = SNIPacketGetData(packet, _inBuff, ref dataSize);
 
                 if (getDataError == TdsEnums.SNI_SUCCESS)
                 {
@@ -2647,13 +2638,38 @@ namespace System.Data.SqlClient
             }
         }
 
-        public void ReadAsyncCallback<T>(T packet, UInt32 error)
+        private void SetBufferSecureStrings()
+        {
+            if (_securePasswords != null)
+            {
+                for (int i = 0; i < _securePasswords.Length; i++)
+                {
+                    if (_securePasswords[i] != null)
+                    {
+                        IntPtr str = IntPtr.Zero;
+                        try
+                        {
+                            str = Marshal.SecureStringToBSTR(_securePasswords[i]);
+                            byte[] data = new byte[_securePasswords[i].Length * 2];
+                            Marshal.Copy(str, data, 0, _securePasswords[i].Length * 2);
+                            TdsParserStaticMethods.ObfuscatePassword(data);
+                            data.CopyTo(_outBuff, _securePasswordOffsetsInBuffer[i]);
+                        }
+                        finally
+                        {
+                            Marshal.ZeroFreeBSTR(str);
+                        }
+                    }
+                }
+            }
+        }
+
+        public void ReadAsyncCallback(PacketHandle packet, uint error)
         {
             ReadAsyncCallback(IntPtr.Zero, packet, error);
         }
 
-
-        public void ReadAsyncCallback<T>(IntPtr key, T packet, UInt32 error)
+        public void ReadAsyncCallback(IntPtr key, PacketHandle packet, uint error)
         {
             // Key never used.
             // Note - it's possible that when native calls managed that an asynchronous exception
@@ -2733,7 +2749,7 @@ namespace System.Data.SqlClient
             }
         }
 
-        protected abstract bool CheckPacket(object packet, TaskCompletionSource<object> source);
+        protected abstract bool CheckPacket(PacketHandle packet, TaskCompletionSource<object> source);
 
         private void ReadAsyncCallbackCaptureException(TaskCompletionSource<object> source)
         {
@@ -2777,14 +2793,12 @@ namespace System.Data.SqlClient
             }
         }
 
-#pragma warning disable 0420 // a reference to a volatile field will not be treated as volatile
-
-        public void WriteAsyncCallback<T>(T packet, UInt32 sniError)
+        public void WriteAsyncCallback(PacketHandle packet, uint sniError)
         {
             WriteAsyncCallback(IntPtr.Zero, packet, sniError);
         }
 
-        public void WriteAsyncCallback<T>(IntPtr key, T packet, UInt32 sniError)
+        public void WriteAsyncCallback(IntPtr key, PacketHandle packet, uint sniError)
         { // Key never used.
             RemovePacketFromPendingList(packet);
             try
@@ -2866,24 +2880,47 @@ namespace System.Data.SqlClient
             }
         }
 
-#pragma warning restore 0420
-
         /////////////////////////////////////////
         // Network/Packet Writing & Processing //
         /////////////////////////////////////////
 
+        internal void WriteSecureString(SecureString secureString)
+        {
+            Debug.Assert(_securePasswords[0] == null || _securePasswords[1] == null, "There are more than two secure passwords");
 
+            int index = _securePasswords[0] != null ? 1 : 0;
+
+            _securePasswords[index] = secureString;
+            _securePasswordOffsetsInBuffer[index] = _outBytesUsed;
+
+            // loop through and write the entire array
+            int lengthInBytes = secureString.Length * 2;
+
+            // It is guaranteed both secure password and secure change password should fit into the first packet
+            // Given current TDS format and implementation it is not possible that one of secure string is the last item and exactly fill up the output buffer
+            //  if this ever happens and it is correct situation, the packet needs to be written out after _outBytesUsed is update
+            Debug.Assert((_outBytesUsed + lengthInBytes) < _outBuff.Length, "Passwords cannot be splited into two different packet or the last item which fully fill up _outBuff!!!");
+
+            _outBytesUsed += lengthInBytes;
+        }
+
+        internal void ResetSecurePasswordsInformation()
+        {
+            for (int i = 0; i < _securePasswords.Length; ++i)
+            {
+                _securePasswords[i] = null;
+                _securePasswordOffsetsInBuffer[i] = 0;
+            }
+        }
 
         internal Task WaitForAccumulatedWrites()
         {
             // Checked for stored exceptions
-#pragma warning disable 420 // A reference to a volatile field will not be treated as volatile - Disabling since the Interlocked APIs are volatile aware
             var delayedException = Interlocked.Exchange(ref _delayedWriteAsyncCallbackException, null);
             if (delayedException != null)
             {
                 throw delayedException;
             }
-#pragma warning restore 420
 
             if (_asyncWriteCount == 0)
             {
@@ -2903,13 +2940,11 @@ namespace System.Data.SqlClient
             }
 
             // Check for stored exceptions
-#pragma warning disable 420 // A reference to a volatile field will not be treated as volatile - Disabling since the Interlocked APIs are volatile aware
             delayedException = Interlocked.Exchange(ref _delayedWriteAsyncCallbackException, null);
             if (delayedException != null)
             {
                 throw delayedException;
             }
-#pragma warning restore 420
 
             // If there are no outstanding writes, see if we can shortcut and return null
             if ((_asyncWriteCount == 0) && ((!task.IsCompleted) || (task.Exception == null)))
@@ -2935,11 +2970,29 @@ namespace System.Data.SqlClient
             _outBuff[_outBytesUsed++] = b;
         }
 
-        //
-        // Takes a byte array and writes it to the buffer.
-        //
-        internal Task WriteByteArray(Byte[] b, int len, int offsetBuffer, bool canAccumulate = true, TaskCompletionSource<object> completion = null)
+
+        internal Task WriteByteSpan(ReadOnlySpan<byte> span, bool canAccumulate = true, TaskCompletionSource<object> completion = null)
         {
+            return WriteBytes(span, span.Length, 0, canAccumulate, completion);
+        }
+
+        internal Task WriteByteArray(byte[] b, int len, int offsetBuffer, bool canAccumulate = true, TaskCompletionSource<object> completion = null)
+        {
+            return WriteBytes(ReadOnlySpan<byte>.Empty, len, offsetBuffer, canAccumulate, completion, b);
+        }
+
+        //
+        // Takes a span or a byte array and writes it to the buffer
+        // If you pass in a span and a null array then the span wil be used.
+        // If you pass in a non-null array then the array will be used and the span is ignored.
+        // if the span cannot be written into the current packet then the remaining contents of the span are copied to a 
+        //  new heap allocated array that will used to callback into the method to continue the write operation.
+        private Task WriteBytes(ReadOnlySpan<byte> b, int len, int offsetBuffer, bool canAccumulate = true, TaskCompletionSource<object> completion = null, byte[] array = null)
+        {
+            if (array != null)
+            {
+                b = new ReadOnlySpan<byte>(array, offsetBuffer, len);
+            }
             try
             {
                 bool async = _parser._asyncWrite;  // NOTE: We are capturing this now for the assert after the Task is returned, since WritePacket will turn off async if there is an exception
@@ -2954,26 +3007,31 @@ namespace System.Data.SqlClient
 
                 int offset = offsetBuffer;
 
-                Debug.Assert(b.Length >= len, "Invalid length sent to WriteByteArray()!");
+                Debug.Assert(b.Length >= len, "Invalid length sent to WriteBytes()!");
 
                 // loop through and write the entire array
                 do
                 {
                     if ((_outBytesUsed + len) > _outBuff.Length)
                     {
-                        // If the remainder of the string won't fit into the buffer, then we have to put
+                        // If the remainder of the data won't fit into the buffer, then we have to put
                         // whatever we can into the buffer, and flush that so we can then put more into
                         // the buffer on the next loop of the while.
 
                         int remainder = _outBuff.Length - _outBytesUsed;
 
                         // write the remainder
-                        Buffer.BlockCopy(b, offset, _outBuff, _outBytesUsed, remainder);
+                        Span<byte> copyTo = _outBuff.AsSpan(_outBytesUsed, remainder);
+                        ReadOnlySpan<byte> copyFrom = b.Slice(0, remainder);
 
-                        // handle counters
+                        Debug.Assert(copyTo.Length == copyFrom.Length, $"copyTo.Length:{copyTo.Length} and copyFrom.Length{copyFrom.Length:D} should be the same");
+
+                        copyFrom.CopyTo(copyTo);
+
                         offset += remainder;
                         _outBytesUsed += remainder;
                         len -= remainder;
+                        b = b.Slice(remainder, len);
 
                         Task packetTask = WritePacket(TdsEnums.SOFTFLUSH, canAccumulate);
 
@@ -2986,16 +3044,35 @@ namespace System.Data.SqlClient
                                 completion = new TaskCompletionSource<object>();
                                 task = completion.Task; // we only care about return from topmost call, so do not access Task property in other cases
                             }
-                            WriteByteArraySetupContinuation(b, len, completion, offset, packetTask);
+
+                            if (array == null)
+                            {
+                                byte[] tempArray = new byte[len];
+                                Span<byte> copyTempTo = tempArray.AsSpan();
+
+                                Debug.Assert(copyTempTo.Length == b.Length, $"copyTempTo.Length:{copyTempTo.Length} and copyTempFrom.Length:{b.Length:D} should be the same");
+
+                                b.CopyTo(copyTempTo);
+                                array = tempArray;
+                                offset = 0;
+                            }
+
+                            WriteBytesSetupContinuation(array, len, completion, offset, packetTask);
                             return task;
                         }
                     }
                     else
-                    { //((stateObj._outBytesUsed + len) <= stateObj._outBuff.Length )
+                    {
+                        //((stateObj._outBytesUsed + len) <= stateObj._outBuff.Length )
                         // Else the remainder of the string will fit into the buffer, so copy it into the
                         // buffer and then break out of the loop.
 
-                        Buffer.BlockCopy(b, offset, _outBuff, _outBytesUsed, len);
+                        Span<byte> copyTo = _outBuff.AsSpan(_outBytesUsed, len);
+                        ReadOnlySpan<byte> copyFrom = b.Slice(0, len);
+
+                        Debug.Assert(copyTo.Length == copyFrom.Length, $"copyTo.Length:{copyTo.Length} and copyFrom.Length:{copyFrom.Length:D} should be the same");
+
+                        copyFrom.CopyTo(copyTo);
 
                         // handle out buffer bytes used counter
                         _outBytesUsed += len;
@@ -3023,18 +3100,19 @@ namespace System.Data.SqlClient
             }
         }
 
-        // This is in its own method to avoid always allocating the lambda in WriteByteArray
-        private void WriteByteArraySetupContinuation(Byte[] b, int len, TaskCompletionSource<object> completion, int offset, Task packetTask)
+        // This is in its own method to avoid always allocating the lambda in WriteBytes
+        private void WriteBytesSetupContinuation(byte[] array, int len, TaskCompletionSource<object> completion, int offset, Task packetTask)
         {
             AsyncHelper.ContinueTask(packetTask, completion,
-                () => WriteByteArray(b, len: len, offsetBuffer: offset, canAccumulate: false, completion: completion),
-                connectionToDoom: _parser.Connection);
+                onSuccess: () => WriteBytes(ReadOnlySpan<byte>.Empty, len: len, offsetBuffer: offset, canAccumulate: false, completion: completion, array)
+            );
         }
 
         // Dumps contents of buffer to SNI for network write.
         internal Task WritePacket(byte flushMode, bool canAccumulate = false)
         {
-            if ((_parser.State == TdsParserState.Closed) || (_parser.State == TdsParserState.Broken))
+            TdsParserState state = _parser.State;
+            if ((state == TdsParserState.Closed) || (state == TdsParserState.Broken))
             {
                 throw ADP.ClosedConnectionError();
             }
@@ -3044,12 +3122,12 @@ namespace System.Data.SqlClient
                 // However, since we don't know the version prior to login IsYukonOrNewer was always false prior to login
                 // So removing the IsYukonOrNewer check causes issues since the login packet happens to meet the rest of the conditions below
                 // So we need to avoid this check prior to login completing
-                _parser.State == TdsParserState.OpenLoggedIn &&
+                state == TdsParserState.OpenLoggedIn &&
                 !_bulkCopyOpperationInProgress && // ignore the condition checking for bulk copy
                     _outBytesUsed == (_outputHeaderLen + BitConverter.ToInt32(_outBuff, _outputHeaderLen))
-                    && _outputPacketNumber == 1
+                    && _outputPacketCount == 0
                 || _outBytesUsed == _outputHeaderLen
-                    && _outputPacketNumber == 1)
+                    && _outputPacketCount == 0)
             {
                 return null;
             }
@@ -3062,22 +3140,23 @@ namespace System.Data.SqlClient
             if (willCancel)
             {
                 status = TdsEnums.ST_EOM | TdsEnums.ST_IGNORE;
-                _outputPacketNumber = 1;
+                ResetPacketCounters();
             }
             else if (TdsEnums.HARDFLUSH == flushMode)
             {
                 status = TdsEnums.ST_EOM;
-                _outputPacketNumber = 1;              // end of message - reset to 1 - per ramas                
+                ResetPacketCounters();
             }
             else if (TdsEnums.SOFTFLUSH == flushMode)
             {
                 status = TdsEnums.ST_BATCH;
                 _outputPacketNumber++;
+                _outputPacketCount++;
             }
             else
             {
                 status = TdsEnums.ST_EOM;
-                Debug.Assert(false, String.Format((IFormatProvider)null, "Unexpected argument {0,-2:x2} to WritePacket", flushMode));
+                Debug.Fail($"Unexpected argument {flushMode,-2:x2} to WritePacket");
             }
 
             _outBuff[0] = _outputMessageType;         // Message Type
@@ -3098,7 +3177,7 @@ namespace System.Data.SqlClient
             if (willCancel)
             {
                 // If we have been cancelled, then ensure that we write the ATTN packet as well
-                task = AsyncHelper.CreateContinuationTask(task, CancelWritePacket, _parser.Connection);
+                task = AsyncHelper.CreateContinuationTask(task, CancelWritePacket);
             }
 
             return task;
@@ -3124,9 +3203,7 @@ namespace System.Data.SqlClient
             }
         }
 
-#pragma warning disable 0420 // a reference to a volatile field will not be treated as volatile
-
-        private Task SNIWritePacket(object packet, out UInt32 sniError, bool canAccumulate, bool callerHasConnectionLock)
+        private Task SNIWritePacket(PacketHandle packet, out uint sniError, bool canAccumulate, bool callerHasConnectionLock)
         {
             // Check for a stored exception
             var delayedException = Interlocked.Exchange(ref _delayedWriteAsyncCallbackException, null);
@@ -3138,7 +3215,7 @@ namespace System.Data.SqlClient
             Task task = null;
             _writeCompletionSource = null;
 
-            object packetPointer = EmptyReadPacket;
+            PacketHandle packetPointer = EmptyReadPacket;
 
             bool sync = !_parser._asyncWrite;
             if (sync && _asyncWriteCount > 0)
@@ -3162,15 +3239,16 @@ namespace System.Data.SqlClient
                 // Add packet to the pending list (since the callback can happen any time after we call SNIWritePacket)
                 packetPointer = AddPacketToPendingList(packet);
             }
+
             // Async operation completion may be delayed (success pending).
             try
             {
             }
             finally
             {
-
                 sniError = WritePacket(packet, sync);
             }
+
             if (sniError == TdsEnums.SNI_SUCCESS_IO_PENDING)
             {
                 Debug.Assert(!sync, "Completion should be handled in SniManagedWwrapper");
@@ -3258,10 +3336,9 @@ namespace System.Data.SqlClient
             return task;
         }
 
-        internal abstract bool IsValidPacket(object packetPointer);
-        internal abstract uint WritePacket(object packet, bool sync);
+        internal abstract bool IsValidPacket(PacketHandle packetPointer);
 
-#pragma warning restore 0420
+        internal abstract uint WritePacket(PacketHandle packet, bool sync);
 
         // Sends an attention signal - executing thread will consume attn.
         internal void SendAttention(bool mustTakeWriteLock = false)
@@ -3276,7 +3353,7 @@ namespace System.Data.SqlClient
                     return;
                 }
 
-                object attnPacket = CreateAndSetAttentionPacket();
+                PacketHandle attnPacket = CreateAndSetAttentionPacket();
 
                 try
                 {
@@ -3305,7 +3382,7 @@ namespace System.Data.SqlClient
                                 return;
                             }
 
-                            UInt32 sniError;
+                            uint sniError;
                             _parser._asyncWrite = false; // stop async write 
                             SNIWritePacket(attnPacket, out sniError, canAccumulate: false, callerHasConnectionLock: false);
                         }
@@ -3334,15 +3411,16 @@ namespace System.Data.SqlClient
             }
         }
 
-        internal abstract object CreateAndSetAttentionPacket();
+        internal abstract PacketHandle CreateAndSetAttentionPacket();
 
-        internal abstract void SetPacketData(object packet, byte[] buffer, int bytesUsed);
+        internal abstract void SetPacketData(PacketHandle packet, byte[] buffer, int bytesUsed);
 
         private Task WriteSni(bool canAccumulate)
         {
             // Prepare packet, and write to packet.
-            object packet = GetResetWritePacket();
+            PacketHandle packet = GetResetWritePacket(_outBytesUsed);
 
+            SetBufferSecureStrings();
             SetPacketData(packet, _outBuff, _outBytesUsed);
 
             uint sniError;
@@ -3429,26 +3507,13 @@ namespace System.Data.SqlClient
 
         private void AssertValidState()
         {
-            string assertMessage = null;
-
             if (_inBytesUsed < 0 || _inBytesRead < 0)
             {
-                assertMessage = string.Format(
-                    CultureInfo.InvariantCulture,
-                    "either _inBytesUsed or _inBytesRead is negative: {0}, {1}",
-                    _inBytesUsed, _inBytesRead);
+                Debug.Fail($"Invalid TDS Parser State: either _inBytesUsed or _inBytesRead is negative: {_inBytesUsed}, {_inBytesRead}");
             }
             else if (_inBytesUsed > _inBytesRead)
             {
-                assertMessage = string.Format(
-                    CultureInfo.InvariantCulture,
-                    "_inBytesUsed > _inBytesRead: {0} > {1}",
-                    _inBytesUsed, _inBytesRead);
-            }
-
-            if (assertMessage != null)
-            {
-                Debug.Assert(false, "Invalid TDS Parser State: " + assertMessage);
+                Debug.Fail($"Invalid TDS Parser State: _inBytesUsed > _inBytesRead: {_inBytesUsed} > {_inBytesRead}");
             }
 
             Debug.Assert(_inBytesPacket >= 0, "Packet must not be negative");
@@ -3552,7 +3617,7 @@ namespace System.Data.SqlClient
             }
         }
 
-        protected abstract object EmptyReadPacket { get; }
+        protected abstract PacketHandle EmptyReadPacket { get; }
 
         /// <summary>
         /// Gets the full list of errors and warnings (including the pre-attention ones), then wipes all error and warning lists
@@ -3663,7 +3728,7 @@ namespace System.Data.SqlClient
                 Debug.Assert(_asyncWriteCount == 0, "StateObj still has outstanding async writes");
                 Debug.Assert(_delayedWriteAsyncCallbackException == null, "StateObj has an unobserved exceptions from an async write");
                 // Attention\Cancellation\Timeouts
-                Debug.Assert(!_attentionReceived && !_attentionSent && !_attentionSending, string.Format("StateObj is still dealing with attention: Sent: {0}, Received: {1}, Sending: {2}", _attentionSent, _attentionReceived, _attentionSending));
+                Debug.Assert(!_attentionReceived && !_attentionSent && !_attentionSending, $"StateObj is still dealing with attention: Sent: {_attentionSent}, Received: {_attentionReceived}, Sending: {_attentionSending}");
                 Debug.Assert(!_cancelled, "StateObj still has cancellation set");
                 Debug.Assert(!_internalTimeout, "StateObj still has internal timeout set");
                 // Errors and Warnings

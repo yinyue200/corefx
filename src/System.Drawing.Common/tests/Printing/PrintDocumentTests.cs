@@ -38,7 +38,7 @@ namespace System.Drawing.Printing.Tests
         };
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported, Helpers.WindowsRS3OrEarlier)] // RS4 failures: https://github.com/dotnet/corefx/issues/29858
         public void Ctor_Default_Success()
         {
             using (var document = new PrintDocument())
@@ -50,7 +50,7 @@ namespace System.Drawing.Printing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported, Helpers.WindowsRS3OrEarlier)] // RS4 failures: https://github.com/dotnet/corefx/issues/29858
         public void DefaultPageSettings_SetValue_ReturnsExpected()
         {
             using (var document = new PrintDocument())
@@ -63,8 +63,8 @@ namespace System.Drawing.Printing.Tests
             }
         }
 
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
         public void DefaultPageSettings_Null_ReturnsExpected()
         {
             using (var document = new PrintDocument())
@@ -87,7 +87,7 @@ namespace System.Drawing.Printing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void DocumentName_Null_ReturnsExpected()
         {
             using (var document = new PrintDocument())
@@ -110,7 +110,7 @@ namespace System.Drawing.Printing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void PrintController_SetValue_ReturnsExpected()
         {
             using (var document = new PrintDocument())
@@ -125,7 +125,7 @@ namespace System.Drawing.Printing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.AnyInstalledPrinters, Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.AnyInstalledPrinters, Helpers.IsDrawingSupported, Helpers.WindowsRS3OrEarlier)] // RS4 failures: https://github.com/dotnet/corefx/issues/29858
         public void PrinterSettings_SetValue_ReturnsExpected()
         {
             using (var document = new PrintDocument())
@@ -149,7 +149,7 @@ namespace System.Drawing.Printing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.AnyInstalledPrinters, Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.AnyInstalledPrinters, Helpers.IsDrawingSupported, Helpers.WindowsRS3OrEarlier)] // RS4 failures: https://github.com/dotnet/corefx/issues/29858
         public void BeginPrint_SetValue_ReturnsExpected()
         {
             bool flag = false;
@@ -170,7 +170,8 @@ namespace System.Drawing.Printing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.AnyInstalledPrinters, Helpers.GdiplusIsAvailable)]
+        [ActiveIssue(30223)]
+        [ConditionalFact(Helpers.AnyInstalledPrinters, Helpers.IsDrawingSupported)]
         public void EndPrint_SetValue_ReturnsExpected()
         {
             bool flag = false;
@@ -191,7 +192,7 @@ namespace System.Drawing.Printing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.AnyInstalledPrinters, Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.AnyInstalledPrinters, Helpers.IsDrawingSupported)]
         public void PrintPage_SetValue_ReturnsExpected()
         {
             bool flag = false;
@@ -212,7 +213,7 @@ namespace System.Drawing.Printing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.AnyInstalledPrinters, Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.AnyInstalledPrinters, Helpers.IsDrawingSupported, Helpers.WindowsRS3OrEarlier)] // RS4 failures: https://github.com/dotnet/corefx/issues/29858
         public void QueryPageSettings_SetValue_ReturnsExpected()
         {
             bool flag = false;
@@ -244,16 +245,18 @@ namespace System.Drawing.Printing.Tests
 
         private void AssertDefaultPageSettings(PageSettings pageSettings)
         {
-            Assert.Equal(new Rectangle(0, 0, 850, 1100), pageSettings.Bounds);
-            Assert.True(pageSettings.Color);
-            Assert.Equal(0, pageSettings.HardMarginX);
-            Assert.Equal(0, pageSettings.HardMarginY);
-            Assert.False(pageSettings.Landscape);
-            Assert.Equal(PaperKind.Letter, pageSettings.PaperSize.Kind);
-            Assert.Equal(PaperSourceKind.FormSource, pageSettings.PaperSource.Kind);
-            Assert.Equal(new PointF(0f, 0f), pageSettings.PrintableArea.Location);
-            Assert.Equal(850, pageSettings.PrintableArea.Width, 0);
-            Assert.Equal(1100, pageSettings.PrintableArea.Height, 0);
+            // A4 and Letter are both common default sizes for systems to have.
+            switch (pageSettings.PaperSize.Kind)
+            {
+                case PaperKind.A4:
+                    Assert.Equal(new Rectangle(0, 0, 827, 1169), pageSettings.Bounds);
+                    break;
+
+                case PaperKind.Letter:
+                    Assert.Equal(new Rectangle(0, 0, 850, 1100), pageSettings.Bounds);
+                    break;
+            }
+
             Assert.Equal(PrinterResolutionKind.Custom, pageSettings.PrinterResolution.Kind);
             Assert.True(pageSettings.PrinterSettings.IsDefaultPrinter);
         }

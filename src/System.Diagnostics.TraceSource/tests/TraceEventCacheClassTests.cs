@@ -56,11 +56,10 @@ namespace System.Diagnostics.TraceSourceTests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.UapAot, "Stack Traces are not so rich on AoT.")]
         public void CallstackTest_ContainsExpectedFrames()
         {
             var cache = new TraceEventCache();
-            Assert.Contains("at System.Environment.get_StackTrace()", cache.Callstack);
+            Assert.Contains("System.Environment.get_StackTrace()", cache.Callstack);
         }
 
         [Fact]

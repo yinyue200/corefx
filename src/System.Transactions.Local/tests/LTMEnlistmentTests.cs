@@ -10,12 +10,19 @@ using Xunit;
 
 namespace System.Transactions.Tests
 {
-    public class LTMEnlistmentTests
+    public class LTMEnlistmentTests : IDisposable
     {
         const int MaxTransactionCommitTimeoutInSeconds = 5;
 
         public LTMEnlistmentTests()
         {
+            // Make sure we start with Transaction.Current = null.
+            Transaction.Current = null;
+        }
+
+        public void Dispose()
+        {
+            Transaction.Current = null;
         }
 
         [Theory]
@@ -76,7 +83,6 @@ namespace System.Transactions.Tests
         [InlineData(0, EnlistmentOptions.None, EnlistmentOptions.None, Phase1Vote.Prepared, Phase1Vote.Prepared, true, EnlistmentOutcome.Aborted, EnlistmentOutcome.Aborted, TransactionStatus.Aborted)]
         [InlineData(1, EnlistmentOptions.None, EnlistmentOptions.None, Phase1Vote.Prepared, Phase1Vote.Prepared, true, EnlistmentOutcome.Aborted, EnlistmentOutcome.Aborted, TransactionStatus.Aborted)]
         [InlineData(2, EnlistmentOptions.None, EnlistmentOptions.None, Phase1Vote.Prepared, Phase1Vote.Prepared, true, EnlistmentOutcome.Aborted, EnlistmentOutcome.Aborted, TransactionStatus.Aborted)]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Expects PNSE due to not being supported on core")]
         public void TwoPhaseDurable(int volatileCount, EnlistmentOptions volatileEnlistmentOption, EnlistmentOptions durableEnlistmentOption, Phase1Vote volatilePhase1Vote, Phase1Vote durablePhase1Vote, bool commit, EnlistmentOutcome expectedVolatileOutcome, EnlistmentOutcome expectedDurableOutcome, TransactionStatus expectedTxStatus)
         {
             Transaction tx = null;
@@ -203,7 +209,11 @@ namespace System.Transactions.Tests
                 Assert.Equal(expectedTxStatus, TransactionStatus.Aborted);
             }
 
-            Assert.True(AutoResetEvent.WaitAll(outcomeEvents, TimeSpan.FromSeconds(MaxTransactionCommitTimeoutInSeconds)));
+            Task.Run(() => // in case current thread is STA thread, where WaitHandle.WaitAll isn't supported
+            {
+                Assert.True(WaitHandle.WaitAll(outcomeEvents, TimeSpan.FromSeconds(MaxTransactionCommitTimeoutInSeconds)));
+            }).GetAwaiter().GetResult();
+
             Assert.NotNull(tx);
             Assert.Equal(expectedTxStatus, tx.TransactionInformation.Status);
         }

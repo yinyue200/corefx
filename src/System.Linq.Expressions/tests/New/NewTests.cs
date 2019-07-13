@@ -285,7 +285,7 @@ namespace System.Linq.Expressions.Tests
 
         [Theory]
         [ClassData(typeof(CompilationTypes))]
-        public static void Compile_AbstractCtor_ThrowsInvalidOperationExeption(bool useInterpretation)
+        public static void Compile_AbstractCtor_ThrowsInvalidOperationException(bool useInterpretation)
         {
             ConstructorInfo ctor = typeof(AbstractCtor).GetTypeInfo().DeclaredConstructors.Single();
             Expression<Func<AbstractCtor>> f = Expression.Lambda<Func<AbstractCtor>>(Expression.New(ctor));
@@ -329,7 +329,7 @@ namespace System.Linq.Expressions.Tests
         }
 
         [Fact]
-        public static void Arguments_ExpressionNotReadable_ThrowsArgumentExeption()
+        public static void Arguments_ExpressionNotReadable_ThrowsArgumentException()
         {
             ConstructorInfo constructor = typeof(ClassWithCtors).GetConstructor(new Type[] { typeof(string) });
             Expression[] expressions = new Expression[] { Expression.Property(null, typeof(Unreachable<string>), nameof(Unreachable<string>.WriteOnly)) };
@@ -518,7 +518,7 @@ namespace System.Linq.Expressions.Tests
         [Fact]
         public static void GlobalMethodInMembers()
         {
-            ModuleBuilder module = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("Name"), AssemblyBuilderAccess.Run).DefineDynamicModule("Module");
+            ModuleBuilder module = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("Name"), AssemblyBuilderAccess.RunAndCollect).DefineDynamicModule("Module");
             MethodBuilder globalMethod = module.DefineGlobalMethod("GlobalMethod", MethodAttributes.Public | MethodAttributes.Static, typeof(int), Type.EmptyTypes);
             globalMethod.GetILGenerator().Emit(OpCodes.Ret);
             module.CreateGlobalFunctions();
@@ -532,7 +532,7 @@ namespace System.Linq.Expressions.Tests
         [Fact]
         public static void GlobalFieldInMembers()
         {
-            ModuleBuilder module = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("Name"), AssemblyBuilderAccess.Run).DefineDynamicModule("Module");
+            ModuleBuilder module = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("Name"), AssemblyBuilderAccess.RunAndCollect).DefineDynamicModule("Module");
             FieldBuilder fieldBuilder = module.DefineInitializedData("GlobalField", new byte[1], FieldAttributes.Public);
             module.CreateGlobalFunctions();
             FieldInfo globalField = module.GetField(fieldBuilder.Name);

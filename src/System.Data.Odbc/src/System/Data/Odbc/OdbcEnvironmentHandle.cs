@@ -9,16 +9,13 @@ namespace System.Data.Odbc
 {
     internal sealed class OdbcEnvironmentHandle : OdbcHandle
     {
-        // SxS: this method uses SQLSetEnvAttr to setup ODBC environment handle settings. Environment handle is safe in SxS.
-        [ResourceExposure(ResourceScope.None)]
-        [ResourceConsumption(ResourceScope.Process, ResourceScope.Process)]
         internal OdbcEnvironmentHandle() : base(ODBC32.SQL_HANDLE.ENV, null)
         {
             ODBC32.RetCode retcode;
 
             //Set the expected driver manager version
             //
-            retcode = UnsafeNativeMethods.SQLSetEnvAttr(
+            retcode = Interop.Odbc.SQLSetEnvAttr(
                 this,
                 ODBC32.SQL_ATTR.ODBC_VERSION,
                 ODBC32.SQL_OV_ODBC3,
@@ -30,7 +27,7 @@ namespace System.Data.Odbc
             //handle are pooled.  So we have to keep it alive and not create a new environment
             //for   every connection.
             //
-            retcode = UnsafeNativeMethods.SQLSetEnvAttr(
+            retcode = Interop.Odbc.SQLSetEnvAttr(
                 this,
                 ODBC32.SQL_ATTR.CONNECTION_POOLING,
                 ODBC32.SQL_CP_ONE_PER_HENV,

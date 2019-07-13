@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace System.Diagnostics.Tests
 {
-    public class ProcessThreadTests : ProcessTestBase
+    public partial class ProcessThreadTests : ProcessTestBase
     {
         [Fact]
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Retrieving information about local processes is not supported on uap")]
@@ -20,7 +20,7 @@ namespace System.Diagnostics.Tests
             CreateDefaultProcess();
 
             ProcessThreadCollection threadCollection = _process.Threads;
-            Assert.True(threadCollection.Count > 0);
+            Assert.InRange(threadCollection.Count, 1, int.MaxValue);
             ProcessThread thread = threadCollection[0];
             try
             {
@@ -29,12 +29,15 @@ namespace System.Diagnostics.Tests
                     // On OSX, thread id is a 64bit unsigned value. We truncate the ulong to int
                     // due to .NET API surface area. Hence, on overflow id can be negative while
                     // casting the ulong to int.
-                    Assert.True(thread.Id >= 0 || RuntimeInformation.IsOSPlatform(OSPlatform.OSX));
+                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                    {
+                        Assert.InRange(thread.Id, 0, int.MaxValue);
+                    }
                     Assert.Equal(_process.BasePriority, thread.BasePriority);
-                    Assert.True(thread.CurrentPriority >= 0);
-                    Assert.True(thread.PrivilegedProcessorTime.TotalSeconds >= 0);
-                    Assert.True(thread.UserProcessorTime.TotalSeconds >= 0);
-                    Assert.True(thread.TotalProcessorTime.TotalSeconds >= 0);
+                    Assert.InRange(thread.CurrentPriority, 0, int.MaxValue);
+                    Assert.InRange(thread.PrivilegedProcessorTime.TotalSeconds, 0, int.MaxValue);
+                    Assert.InRange(thread.UserProcessorTime.TotalSeconds, 0, int.MaxValue);
+                    Assert.InRange(thread.TotalProcessorTime.TotalSeconds, 0, int.MaxValue);
                 }
             }
             catch (Exception e) when (e is Win32Exception || e is InvalidOperationException)
@@ -69,7 +72,7 @@ namespace System.Diagnostics.Tests
         }
 
         [Fact]
-        [PlatformSpecific(TestPlatforms.OSX)] // OSX throws PNSE from StartTime
+        [PlatformSpecific(TestPlatforms.OSX|TestPlatforms.FreeBSD)] // OSX and FreeBSD throw PNSE from StartTime
         public void TestStartTimeProperty_OSX()
         {
             using (Process p = Process.GetCurrentProcess())
@@ -86,11 +89,11 @@ namespace System.Diagnostics.Tests
         }
 
         [Fact]
-        [PlatformSpecific(~TestPlatforms.OSX)] // OSX throws PNSE from StartTime
+        [PlatformSpecific(TestPlatforms.Linux|TestPlatforms.Windows)] // OSX and FreeBSD throw PNSE from StartTime
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Retrieving information about local processes is not supported on uap")]
         public async Task TestStartTimeProperty()
         {
-            TimeSpan allowedWindow = TimeSpan.FromSeconds(1);
+            TimeSpan allowedWindow = TimeSpan.FromSeconds(2);
 
             using (Process p = Process.GetCurrentProcess())
             {
@@ -120,7 +123,7 @@ namespace System.Diagnostics.Tests
                         // The thread may have gone away between our getting its info and attempting to access its StartTime
                     }
                 }
-                Assert.True(passed > 0, "Expected at least one thread to be valid for StartTime");
+                Assert.InRange(passed, 1, int.MaxValue);
 
                 // Now add a thread, and from that thread, while it's still alive, verify
                 // that there's at least one thread greater than the current time we previously grabbed.
@@ -129,7 +132,8 @@ namespace System.Diagnostics.Tests
                     p.Refresh();
                     try
                     {
-                        Assert.Contains(p.Threads.Cast<ProcessThread>(), t => t.StartTime.ToUniversalTime() >= curTime - allowedWindow);
+                        var newest = p.Threads.Cast<ProcessThread>().OrderBy(t => t.StartTime.ToUniversalTime()).Last();
+                        Assert.InRange(newest.StartTime.ToUniversalTime(), curTime - allowedWindow, DateTime.Now.ToUniversalTime() + allowedWindow);
                     }
                     catch (InvalidOperationException)
                     {
@@ -149,44 +153,10 @@ namespace System.Diagnostics.Tests
                 Assert.NotNull(threads);
                 Assert.NotEmpty(threads);
 
-                IntPtr startAddress = threads[0].StartAddress; 
+                IntPtr startAddress = threads[0].StartAddress;
 
                 // There's nothing we can really validate about StartAddress, other than that we can get its value
                 // without throwing.  All values (even zero) are valid on all platforms.
-            }
-        }
-
-        [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Retrieving information about local processes is not supported on uap")]
-        public void TestPriorityLevelProperty()
-        {
-            CreateDefaultProcess();
-            ProcessThread thread = _process.Threads[0];
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                Assert.Throws<PlatformNotSupportedException>(() => thread.PriorityLevel);
-                Assert.Throws<PlatformNotSupportedException>(() => thread.PriorityLevel = ThreadPriorityLevel.AboveNormal);
-                return;
-            }
-
-            ThreadPriorityLevel originalPriority = thread.PriorityLevel;
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                Assert.Throws<PlatformNotSupportedException>(() => thread.PriorityLevel = ThreadPriorityLevel.AboveNormal);
-                return;
-            }
-
-            try
-            {
-                thread.PriorityLevel = ThreadPriorityLevel.AboveNormal;
-                Assert.Equal(ThreadPriorityLevel.AboveNormal, thread.PriorityLevel);
-            }
-            finally
-            {
-                thread.PriorityLevel = originalPriority;
-                Assert.Equal(originalPriority, thread.PriorityLevel);
             }
         }
 

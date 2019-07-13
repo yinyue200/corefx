@@ -13,17 +13,13 @@ using System.Net;
 
 namespace System.DirectoryServices.AccountManagement
 {
-#pragma warning disable 618    // Have not migrated to v4 transparency yet
-    [System.Security.SecurityCritical(System.Security.SecurityCriticalScope.Everything)]
-#pragma warning restore 618
-
     internal class SidList
     {
-        internal SidList(List<Byte[]> sidListByteFormat) : this(sidListByteFormat, null, null)
+        internal SidList(List<byte[]> sidListByteFormat) : this(sidListByteFormat, null, null)
         {
         }
 
-        internal SidList(List<Byte[]> sidListByteFormat, string target, NetCred credentials)
+        internal SidList(List<byte[]> sidListByteFormat, string target, NetCred credentials)
         {
             GlobalDebug.WriteLineIf(GlobalDebug.Info, "SidList", "SidList: processing {0} ByteFormat SIDs", sidListByteFormat.Count);
             GlobalDebug.WriteLineIf(GlobalDebug.Info, "SidList", "SidList: Targetting {0} ", (target != null) ? target : "local store");
@@ -154,7 +150,7 @@ namespace System.DirectoryServices.AccountManagement
                 {
                     GlobalDebug.WriteLineIf(GlobalDebug.Warn, "AuthZSet", "SidList: couldn't get policy handle, err={0}", err);
 
-                    throw new PrincipalOperationException(String.Format(CultureInfo.CurrentCulture,
+                    throw new PrincipalOperationException(SR.Format(
                                                                SR.AuthZErrorEnumeratingGroups,
                                                                SafeNativeMethods.LsaNtStatusToWinError(err)));
                 }
@@ -180,7 +176,7 @@ namespace System.DirectoryServices.AccountManagement
                 {
                     GlobalDebug.WriteLineIf(GlobalDebug.Warn, "AuthZSet", "SidList: LsaLookupSids failed, err={0}", err);
 
-                    throw new PrincipalOperationException(String.Format(CultureInfo.CurrentCulture,
+                    throw new PrincipalOperationException(SR.Format(
                                                                SR.AuthZErrorEnumeratingGroups,
                                                                SafeNativeMethods.LsaNtStatusToWinError(err)));
                 }
@@ -318,7 +314,6 @@ namespace System.DirectoryServices.AccountManagement
         //
         // IDisposable
         //
-        [System.Security.SecurityCritical]
         public virtual void Dispose()
         {
             if (pSid != IntPtr.Zero)

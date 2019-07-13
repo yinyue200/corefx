@@ -1,3 +1,5 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// See the LICENSE file in the project root for more information
 //
 // XmlLicenseTransformTest.cs - Test Cases for XmlLicenseTransform
 //
@@ -166,8 +168,8 @@ namespace System.Security.Cryptography.Xml.Tests
                 string expected;
                 string encryptedLicenseWithGrants = GenerateLicenseXmlWithEncryptedGrants(key, out expected);
 
-                Assert.Contains("hello", expected);
-                Assert.DoesNotContain("hello", encryptedLicenseWithGrants);
+                Assert.Contains("hello!", expected);
+                Assert.DoesNotContain("hello!", encryptedLicenseWithGrants);
 
                 XmlNamespaceManager nsManager;
                 XmlDocument toDecrypt = LoadXmlWithLicenseNs(encryptedLicenseWithGrants, out nsManager);
@@ -222,7 +224,7 @@ namespace System.Security.Cryptography.Xml.Tests
             <r:principal varRef=""p0"" />
             <x:bar xmlns:x=""urn:foo"" />
             <r:digitalResource>
-                <testItem>hello</testItem>
+                <testItem>hello!</testItem>
             </r:digitalResource>
             <renderer xmlns=""urn:mpeg:mpeg21:2003:01-REL-MX-NS"">
                 <mx:wildcard xmlns:mx=""urn:mpeg:mpeg21:2003:01-REL-MX-NS"">

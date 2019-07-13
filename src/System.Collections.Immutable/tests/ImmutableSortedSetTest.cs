@@ -6,11 +6,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace System.Collections.Immutable.Tests
 {
-    public class ImmutableSortedSetTest : ImmutableSetTest
+    public partial class ImmutableSortedSetTest : ImmutableSetTest
     {
         private enum Operation
         {
@@ -75,14 +76,6 @@ namespace System.Collections.Immutable.Tests
 
                 Assert.Equal<int>(expected.ToList(), actual.ToList());
             }
-        }
-
-        [Fact]
-        [ActiveIssue("Sporadic failure, needs a port of https://github.com/dotnet/coreclr/pull/4340", TargetFrameworkMonikers.NetFramework)]
-        public void EmptyTest()
-        {
-            this.EmptyTestHelper(Empty<int>(), 5, null);
-            this.EmptyTestHelper(Empty<string>().ToImmutableSortedSet(StringComparer.OrdinalIgnoreCase), "a", StringComparer.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -340,12 +333,6 @@ namespace System.Collections.Immutable.Tests
         }
 
         [Fact]
-        public void TryGetValueTest()
-        {
-            this.TryGetValueTestHelper(ImmutableSortedSet<string>.Empty.WithComparer(StringComparer.OrdinalIgnoreCase));
-        }
-
-        [Fact]
         public void EnumeratorRecyclingMisuse()
         {
             var collection = ImmutableSortedSet.Create<int>();
@@ -371,7 +358,6 @@ namespace System.Collections.Immutable.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.UapAot, "Cannot do DebuggerAttribute testing on UapAot: requires internal Reflection on framework types.")]
         public void DebuggerAttributesValid()
         {
             DebuggerAttributes.ValidateDebuggerDisplayReferences(ImmutableSortedSet.Create<int>());
@@ -386,7 +372,6 @@ namespace System.Collections.Immutable.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.UapAot, "Cannot do DebuggerAttribute testing on UapAot: requires internal Reflection on framework types.")]
         public static void TestDebuggerAttributes_Null()
         {
             Type proxyType = DebuggerAttributes.GetProxyType(ImmutableSortedSet.Create("1", "2", "3"));
@@ -407,6 +392,29 @@ namespace System.Collections.Immutable.Tests
             CollectionAssertAreEquivalent(expectedSet.ToList(), actualSet.ToList());
         }
 
+        [Fact]
+        public void ItemRef()
+        {
+            var array = new[] { 1, 2, 3 }.ToImmutableSortedSet();
+
+            ref readonly var safeRef = ref array.ItemRef(1);
+            ref var unsafeRef = ref Unsafe.AsRef(safeRef);
+
+            Assert.Equal(2, array.ItemRef(1));
+
+            unsafeRef = 4;
+
+            Assert.Equal(4, array.ItemRef(1));
+        }
+
+        [Fact]
+        public void ItemRef_OutOfBounds()
+        {
+            var array = new[] { 1, 2, 3 }.ToImmutableSortedSet();
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => array.ItemRef(5));
+        }
+
         protected override IImmutableSet<T> Empty<T>()
         {
             return ImmutableSortedSet<T>.Empty;
@@ -420,30 +428,6 @@ namespace System.Collections.Immutable.Tests
         protected override ISet<T> EmptyMutable<T>()
         {
             return new SortedSet<T>();
-        }
-
-        internal override IBinaryTree GetRootNode<T>(IImmutableSet<T> set)
-        {
-            return ((ImmutableSortedSet<T>)set).Root;
-        }
-
-        /// <summary>
-        /// Tests various aspects of a sorted set.
-        /// </summary>
-        /// <typeparam name="T">The type of element stored in the set.</typeparam>
-        /// <param name="emptySet">The empty set.</param>
-        /// <param name="value">A value that could be placed in the set.</param>
-        /// <param name="comparer">The comparer used to obtain the empty set, if any.</param>
-        private void EmptyTestHelper<T>(IImmutableSet<T> emptySet, T value, IComparer<T> comparer)
-        {
-            Assert.NotNull(emptySet);
-
-            this.EmptyTestHelper(emptySet);
-            Assert.Same(emptySet, emptySet.ToImmutableSortedSet(comparer));
-            Assert.Same(comparer ?? Comparer<T>.Default, ((ISortKeyCollection<T>)emptySet).KeyComparer);
-
-            var reemptied = emptySet.Add(value).Clear();
-            Assert.Same(reemptied, reemptied.ToImmutableSortedSet(comparer)); //, "Getting the empty set from a non-empty instance did not preserve the comparer.");
         }
     }
 }

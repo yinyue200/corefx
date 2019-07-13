@@ -14,7 +14,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Security;
 
@@ -130,7 +129,6 @@ namespace System.Threading.Tasks.Dataflow.Internal
             // Validate arguments
             if (target == null) throw new ArgumentNullException(nameof(target));
             if (linkOptions == null) throw new ArgumentNullException(nameof(linkOptions));
-            Contract.EndContractBlock();
 
             // If the block is already completed, there is not much to do -
             // we have to propagate completion if that was requested, and
@@ -160,12 +158,11 @@ namespace System.Threading.Tasks.Dataflow.Internal
         }
 
         /// <include file='XmlDocs/CommonXmlDocComments.xml' path='CommonXmlDocComments/Sources/Member[@name="ConsumeMessage"]/*' />
-        internal TOutput ConsumeMessage(DataflowMessageHeader messageHeader, ITargetBlock<TOutput> target, out Boolean messageConsumed)
+        internal TOutput ConsumeMessage(DataflowMessageHeader messageHeader, ITargetBlock<TOutput> target, out bool messageConsumed)
         {
             // Validate arguments
             if (!messageHeader.IsValid) throw new ArgumentException(SR.Argument_InvalidMessageHeader, nameof(messageHeader));
             if (target == null) throw new ArgumentNullException(nameof(target));
-            Contract.EndContractBlock();
 
             TOutput consumedMessageValue = default(TOutput);
 
@@ -217,12 +214,11 @@ namespace System.Threading.Tasks.Dataflow.Internal
         }
 
         /// <include file='XmlDocs/CommonXmlDocComments.xml' path='CommonXmlDocComments/Sources/Member[@name="ReserveMessage"]/*' />
-        internal Boolean ReserveMessage(DataflowMessageHeader messageHeader, ITargetBlock<TOutput> target)
+        internal bool ReserveMessage(DataflowMessageHeader messageHeader, ITargetBlock<TOutput> target)
         {
             // Validate arguments
             if (!messageHeader.IsValid) throw new ArgumentException(SR.Argument_InvalidMessageHeader, nameof(messageHeader));
             if (target == null) throw new ArgumentNullException(nameof(target));
-            Contract.EndContractBlock();
 
             lock (OutgoingLock)
             {
@@ -250,7 +246,6 @@ namespace System.Threading.Tasks.Dataflow.Internal
             // Validate arguments
             if (!messageHeader.IsValid) throw new ArgumentException(SR.Argument_InvalidMessageHeader, nameof(messageHeader));
             if (target == null) throw new ArgumentNullException(nameof(target));
-            Contract.EndContractBlock();
 
             lock (OutgoingLock)
             {
@@ -281,7 +276,7 @@ namespace System.Threading.Tasks.Dataflow.Internal
         internal Task Completion { get { return _completionTask.Task; } }
 
         /// <include file='XmlDocs/CommonXmlDocComments.xml' path='CommonXmlDocComments/Sources/Member[@name="TryReceive"]/*' />
-        internal Boolean TryReceive(Predicate<TOutput> filter, out TOutput item)
+        internal bool TryReceive(Predicate<TOutput> filter, out TOutput item)
         {
             item = default(TOutput);
             bool itemReceived = false;
@@ -769,9 +764,7 @@ namespace System.Threading.Tasks.Dataflow.Internal
 #endif
 
                 // Start the task handling scheduling exceptions
-#pragma warning disable 0420
                 Exception exception = Common.StartTaskSafe(_taskForOutputProcessing, _dataflowBlockOptions.TaskScheduler);
-#pragma warning restore 0420
                 if (exception != null)
                 {
                     // First, log the exception while the processing state is dirty which is preventing the block from completing.

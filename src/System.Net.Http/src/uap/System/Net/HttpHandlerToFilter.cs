@@ -87,23 +87,15 @@ namespace System.Net.Http
                 RTHttpResponseMessage rtResponse;
                 try
                 {
-                    if (redirects > 0)
-                    {
-                        rtResponse = await FilterWithNoCredentials.SendRequestAsync(rtRequest).AsTask(cancel).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        rtResponse = await _filter.SendRequestAsync(rtRequest).AsTask(cancel).ConfigureAwait(false);
-                    }
+                    rtResponse = await (redirects > 0 ? FilterWithNoCredentials : _filter).SendRequestAsync(rtRequest).AsTask(cancel).ConfigureAwait(false);
                 }
                 catch (TaskCanceledException)
                 {
                     throw;
                 }
-                catch (Exception)
+                catch
                 {
-                    object info;
-                    if (rtRequest.Properties.TryGetValue(SavedExceptionDispatchInfoLookupKey, out info))
+                    if (rtRequest.Properties.TryGetValue(SavedExceptionDispatchInfoLookupKey, out object info))
                     {
                         ((ExceptionDispatchInfo)info).Throw();
                     }
@@ -124,7 +116,8 @@ namespace System.Net.Http
                     response.StatusCode != HttpStatusCode.MovedPermanently &&
                     response.StatusCode != HttpStatusCode.Redirect &&
                     response.StatusCode != HttpStatusCode.RedirectMethod &&
-                    response.StatusCode != HttpStatusCode.RedirectKeepVerb)
+                    response.StatusCode != HttpStatusCode.RedirectKeepVerb &&
+                    response.StatusCode != HttpStatusCode.PermanentRedirect)
                 {
                     break;
                 }
@@ -159,10 +152,11 @@ namespace System.Net.Http
                 }
 
                 // Follow HTTP RFC 7231 rules. In general, 3xx responses
-                // except for 307 will keep verb except POST becomes GET.
-                // 307 responses have all verbs stay the same.
+                // except for 307 and 308 will keep verb except POST becomes GET.
+                // 307 and 308 responses have all verbs stay the same.
                 // https://tools.ietf.org/html/rfc7231#section-6.4
                 if (response.StatusCode != HttpStatusCode.RedirectKeepVerb &&
+                    response.StatusCode != HttpStatusCode.PermanentRedirect &&
                     requestHttpMethod == HttpMethod.Post)
                 {
                     requestHttpMethod = HttpMethod.Get;
@@ -275,15 +269,15 @@ namespace System.Net.Http
             if (Interlocked.Exchange(ref _filterMaxVersionSet, 1) == 0)
             {
                 RTHttpVersion maxVersion;
-                if (request.Version == HttpVersionInternal.Version20)
+                if (request.Version == HttpVersion.Version20)
                 {
                     maxVersion = RTHttpVersion.Http20;
                 }
-                else if (request.Version == HttpVersionInternal.Version11)
+                else if (request.Version == HttpVersion.Version11)
                 {
                     maxVersion = RTHttpVersion.Http11;
                 }
-                else if (request.Version == HttpVersionInternal.Version10)
+                else if (request.Version == HttpVersion.Version10)
                 {
                     maxVersion = RTHttpVersion.Http10;
                 }
@@ -422,15 +416,15 @@ namespace System.Net.Http
             // Version
             if (rtResponse.Version == RTHttpVersion.Http11)
             {
-                response.Version = HttpVersionInternal.Version11;
+                response.Version = HttpVersion.Version11;
             }
             else if (rtResponse.Version == RTHttpVersion.Http10)
             {
-                response.Version = HttpVersionInternal.Version10;
+                response.Version = HttpVersion.Version10;
             }
             else if (rtResponse.Version == RTHttpVersion.Http20)
             {
-                response.Version = HttpVersionInternal.Version20;
+                response.Version = HttpVersion.Version20;
             }
             else
             {

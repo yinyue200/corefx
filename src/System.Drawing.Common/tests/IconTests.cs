@@ -30,15 +30,17 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
+using Microsoft.DotNet.RemoteExecutor;
 using Xunit;
 
 namespace System.Drawing.Tests
 {
-    public class IconTests : RemoteExecutorTestBase
+    public class IconTests
     {
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData("48x48_multiple_entries_4bit.ico")]
         [InlineData("256x256_seven_entries_multiple_bits.ico")]
+        [InlineData("pngwithheight_icon.ico")]
         public void Ctor_FilePath(string name)
         {
             using (var icon = new Icon(Helpers.GetTestBitmapPath(name)))
@@ -47,6 +49,13 @@ namespace System.Drawing.Tests
                 Assert.Equal(32, icon.Height);
                 Assert.Equal(new Size(32, 32), icon.Size);
             }
+        }
+
+        [Fact]
+        [PlatformSpecific(TestPlatforms.AnyUnix)]
+        public void Unix_OverflowException_CorruptIcon()
+        {
+            Assert.Throws<OverflowException>(() => new Icon(Helpers.GetTestBitmapPath("overflowicon.ico")));
         }
 
         public static IEnumerable<object[]> Size_TestData()
@@ -70,7 +79,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [MemberData(nameof(Size_TestData))]
         public void Ctor_FilePath_Width_Height(string fileName, Size size, Size expectedSize)
         {
@@ -83,7 +92,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [MemberData(nameof(Size_TestData))]
         public void Ctor_FilePath_Size(string fileName, Size size, Size expectedSize)
         {
@@ -95,7 +104,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Ctor_NullFilePath_ThrowsArgumentNullException()
         {
             AssertExtensions.Throws<ArgumentNullException>("path", () => new Icon((string)null));
@@ -103,7 +112,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentNullException>("path", () => new Icon((string)null, 32, 32));
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Ctor_Stream()
         {
             using (var stream = File.OpenRead(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico")))
@@ -116,7 +125,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [MemberData(nameof(Size_TestData))]
         public void Ctor_Stream_Width_Height(string fileName, Size size, Size expectedSize)
         {
@@ -130,7 +139,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [MemberData(nameof(Size_TestData))]
         public void Ctor_Stream_Size(string fileName, Size size, Size expectedSize)
         {
@@ -143,8 +152,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Ctor_NullStream_ThrowsArgumentNullException()
         {
             AssertExtensions.Throws<ArgumentNullException, ArgumentException>("stream", null, () => new Icon((Stream)null));
@@ -197,7 +205,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [MemberData(nameof(Ctor_InvalidBytesInStream_TestData))]
         public void Ctor_InvalidBytesInStream_ThrowsException(byte[] bytes, Type exceptionType)
         {
@@ -211,7 +219,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [MemberData(nameof(Size_TestData))]
         public void Ctor_Icon_Width_Height(string fileName, Size size, Size expectedSize)
         {
@@ -226,7 +234,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [MemberData(nameof(Size_TestData))]
         public void Ctor_Icon_Size(string fileName, Size size, Size expectedSize)
         {
@@ -240,23 +248,23 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Ctor_NullIcon_ThrowsArgumentNullException()
         {
             AssertExtensions.Throws<ArgumentNullException, ArgumentException>("original", null, () => new Icon((Icon)null, 32, 32));
             AssertExtensions.Throws<ArgumentNullException, ArgumentException>("original", null, () => new Icon((Icon)null, new Size(32, 32)));
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        // libgdiplus causes a segfault when given an invalid Icon handle.
+        [PlatformSpecific(TestPlatforms.Windows)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Ctor_InvalidHandle_Success()
         {
             using (Icon icon = Icon.FromHandle((IntPtr)1))
             using (var stream = new MemoryStream())
             {
                 Exception ex = Assert.ThrowsAny<Exception>(() => icon.Save(stream));
-                Assert.True(ex is COMException || ex is ObjectDisposedException, $"{ex.GetType().ToString()} was thrown.");
+                Assert.True(ex is COMException || ex is ObjectDisposedException || ex is FileNotFoundException, $"{ex.GetType().ToString()} was thrown.");
 
                 AssertExtensions.Throws<ArgumentException>(null, () => icon.ToBitmap());
                 Assert.Equal(Size.Empty, icon.Size);
@@ -268,7 +276,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Ctor_Type_Resource()
         {
             using (var icon = new Icon(typeof(IconTests), "48x48_multiple_entries_4bit.ico"))
@@ -278,14 +286,13 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Ctor_NullType_ThrowsNullReferenceException()
         {
             Assert.Throws<NullReferenceException>(() => new Icon(null, "48x48_multiple_entries_4bit.ico"));
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(typeof(Icon), null)]
         [InlineData(typeof(Icon), "")]
         [InlineData(typeof(Icon), "48x48_multiple_entries_4bit.ico")]
@@ -295,7 +302,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => new Icon(type, resource));
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Clone_ConstructedIcon_Success()
         {
             using (var icon = new Icon(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico")))
@@ -309,7 +316,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Clone_IconFromHandle_Success()
         {
             using (var icon = Icon.FromHandle(SystemIcons.Hand.Handle))
@@ -323,18 +330,16 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Dispose_IconData_DestroysHandle()
         {
             var icon = new Icon(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico"));
             icon.Dispose();
-
             Assert.Throws<ObjectDisposedException>(() => icon.Handle);
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Dispose_OwnsHandle_DestroysHandle()
         {
             Icon icon = Icon.ExtractAssociatedIcon(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico"));
@@ -343,7 +348,7 @@ namespace System.Drawing.Tests
             Assert.Throws<ObjectDisposedException>(() => icon.Handle);
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Dispose_DoesNotOwnHandle_DoesNotDestroyHandle()
         {
             using (var source = new Icon(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico")))
@@ -357,7 +362,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(16)]
         [InlineData(32)]
         [InlineData(48)]
@@ -378,10 +383,40 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void ExtractAssociatedIcon_FilePath_Success()
         {
-            using (Icon icon = Icon.ExtractAssociatedIcon(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico")))
+            ExtractAssociatedIcon_FilePath_Success(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico"));
+        }
+
+        [PlatformSpecific(TestPlatforms.Windows)] // UNC
+        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Fix for #34122")]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
+        public void ExtractAssociatedIcon_UNCFilePath_Success()
+        {
+            string bitmapPath = Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico");
+            string bitmapPathRoot = Path.GetPathRoot(bitmapPath);
+            string bitmapUncPath = $"\\\\{Environment.MachineName}\\{bitmapPath.Substring(0, bitmapPathRoot.IndexOf(":"))}$\\{bitmapPath.Replace(bitmapPathRoot, "")}";
+
+            // Some path could not be accessible
+            // if so we just pass the test
+            try
+            {
+                File.Open(bitmapUncPath, FileMode.Open, FileAccess.Read, FileShare.Read).Dispose();
+            }
+            catch(IOException)
+            {
+                return;
+            }
+
+            Assert.True(new Uri(bitmapUncPath).IsUnc);
+
+            ExtractAssociatedIcon_FilePath_Success(bitmapUncPath);
+        }
+
+        private void ExtractAssociatedIcon_FilePath_Success(string filePath)
+        {
+            using (Icon icon = Icon.ExtractAssociatedIcon(filePath))
             {
                 Assert.Equal(32, icon.Width);
                 Assert.Equal(32, icon.Height);
@@ -389,36 +424,32 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void ExtractAssociatedIcon_NonFilePath_ReturnsNull()
         {
             Assert.Null(Icon.ExtractAssociatedIcon("http://microsoft.com"));
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void ExtractAssociatedIcon_NullFilePath_ThrowsArgumentNullException()
         {
             AssertExtensions.Throws<ArgumentNullException, ArgumentException>("filePath", null, () => Icon.ExtractAssociatedIcon(null));
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
-        [InlineData("", "path")]
-        [InlineData("\\\\uncpath", null)]
-        public void ExtractAssociatedIcon_InvalidFilePath_ThrowsArgumentException(string filePath, string paramName)
+        [ConditionalFact(Helpers.IsDrawingSupported)]
+        public void ExtractAssociatedIcon_InvalidFilePath_ThrowsArgumentException()
         {
-            AssertExtensions.Throws<ArgumentException>(paramName, null, () => Icon.ExtractAssociatedIcon(filePath));
+            AssertExtensions.Throws<ArgumentException>("path", null, () => Icon.ExtractAssociatedIcon(""));
         }
 
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void ExtractAssociatedIcon_NoSuchPath_ThrowsFileNotFoundException()
         {
             Assert.Throws<FileNotFoundException>(() => Icon.ExtractAssociatedIcon("no-such-file.png"));
         }
 
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData("16x16_one_entry_4bit.ico")]
         [InlineData("32x32_one_entry_4bit.ico")]
         [InlineData("48x48_one_entry_1bit.ico")]
@@ -430,7 +461,7 @@ namespace System.Drawing.Tests
             SaveAndCompare(new Icon(Helpers.GetTestBitmapPath(fileName)), true);
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Save_OutputStream_ProducesIdenticalBytes()
         {
             string filePath = Helpers.GetTestBitmapPath("256x256_seven_entries_multiple_bits.ico");
@@ -442,7 +473,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Save_HasIconDataAndDisposed_ProducesIdenticalBytes()
         {
             string filePath = Helpers.GetTestBitmapPath("256x256_seven_entries_multiple_bits.ico");
@@ -455,7 +486,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Save_NullOutputStreamIconData_ThrowsNullReferenceException()
         {
             using (var icon = new Icon(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico")))
@@ -465,7 +496,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Save_NullOutputStreamNoIconData_ThrowsArgumentNullException()
         {
             using (var source = new Icon(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico")))
@@ -478,7 +509,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Save_ClosedOutputStreamIconData_ThrowsException()
         {
             using (var icon = new Icon(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico")))
@@ -491,7 +522,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Save_ClosedOutputStreamNoIconData_DoesNothing()
         {
             using (var source = new Icon(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico")))
@@ -505,7 +536,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Save_NoIconDataOwnsHandleAndDisposed_ThrowsObjectDisposedException()
         {
             Icon icon = Icon.ExtractAssociatedIcon(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico"));
@@ -526,7 +557,7 @@ namespace System.Drawing.Tests
             yield return new object[] { new Icon(Helpers.GetTestBitmapPath("256x256_two_entries_multiple_bits.ico"), 0, 0) };
         }
 
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [MemberData(nameof(ToBitmap_TestData))]
         public void ToBitmap_BitmapIcon_ReturnsExpected(Icon icon)
         {
@@ -550,8 +581,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void ToBitmap_BitmapIconFromHandle_ReturnsExpected()
         {
             // Handle refers to an icon without any colour. This is not in ToBitmap_TestData as there is
@@ -566,7 +596,7 @@ namespace System.Drawing.Tests
         private const string DontSupportPngFramesInIcons = "Switch.System.Drawing.DontSupportPngFramesInIcons";
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void ToBitmap_PngIconSupportedInSwitches_Success()
         {
             void VerifyPng()
@@ -590,11 +620,11 @@ namespace System.Drawing.Tests
 
             if (!AppContext.TryGetSwitch(DontSupportPngFramesInIcons, out bool isEnabled) || isEnabled)
             {
-                RemoteInvoke(() =>
+                RemoteExecutor.Invoke(() =>
                 {
                     AppContext.SetSwitch(DontSupportPngFramesInIcons, false);
                     VerifyPng();
-                    return SuccessExitCode;
+                    return RemoteExecutor.SuccessExitCode;
                 }).Dispose();
             }
             else
@@ -604,7 +634,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void ToBitmap_PngIconNotSupportedInSwitches_ThrowsArgumentOutOfRangeException()
         {
             void VerifyPngNotSupported()
@@ -617,11 +647,11 @@ namespace System.Drawing.Tests
 
             if (!AppContext.TryGetSwitch(DontSupportPngFramesInIcons, out bool isEnabled) || !isEnabled)
             {
-                RemoteInvoke(() =>
+                RemoteExecutor.Invoke(() =>
                 {
                     AppContext.SetSwitch(DontSupportPngFramesInIcons, true);
                     VerifyPngNotSupported();
-                    return SuccessExitCode;
+                    return RemoteExecutor.SuccessExitCode;
                 }).Dispose();
             }
             else
@@ -655,7 +685,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void FromHandle_IconHandleOneTime_Success()
         {
             using (var icon1 = new Icon(Helpers.GetTestBitmapPath("16x16_one_entry_4bit.ico")))
@@ -667,7 +697,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void FromHandle_IconHandleMultipleTime_Success()
         {
             using (var icon1 = new Icon(Helpers.GetTestBitmapPath("16x16_one_entry_4bit.ico")))
@@ -687,7 +717,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void FromHandle_BitmapHandleOneTime_Success()
         {
             IntPtr handle;
@@ -703,7 +733,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void FromHandle_BitmapHandleMultipleTime_Success()
         {
             IntPtr handle;
@@ -725,14 +755,13 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void FromHandle_Zero_ThrowsArgumentException()
         {
             AssertExtensions.Throws<ArgumentException>(null, () => Icon.FromHandle(IntPtr.Zero));
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Size_GetWhenDisposed_ThrowsObjectDisposedException()
         {
             var icon = new Icon(Helpers.GetTestBitmapPath("48x48_multiple_entries_4bit.ico"));

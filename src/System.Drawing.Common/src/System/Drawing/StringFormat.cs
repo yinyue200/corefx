@@ -1,86 +1,15 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
+using System.Diagnostics;
+using System.ComponentModel;
+using System.Drawing.Text;
+using System.Runtime.InteropServices;
+using System.Globalization;
+using Gdip = System.Drawing.SafeNativeMethods.Gdip;
 
 namespace System.Drawing
 {
-    using System.Diagnostics;
-    using System.ComponentModel;
-    using System.Drawing.Text;
-    using System.Runtime.InteropServices;
-    using System.Globalization;
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct CharacterRange
-    {
-        private int _first;
-        private int _length;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref='CharacterRange'/> class with the specifiedcoordinates.
-        /// </summary>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
-        public CharacterRange(int First, int Length)
-        {
-            _first = First;
-            _length = Length;
-        }
-
-        /// <summary>
-        /// Gets the First character position of this <see cref='CharacterRange'/>.
-        /// </summary>
-        public int First
-        {
-            get
-            {
-                return _first;
-            }
-            set
-            {
-                _first = value;
-            }
-        }
-
-        /// <summary>
-        /// Gets the Length of this <see cref='CharacterRange'/>.
-        /// </summary>
-        public int Length
-        {
-            get
-            {
-                return _length;
-            }
-            set
-            {
-                _length = value;
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (obj.GetType() != typeof(CharacterRange))
-                return false;
-
-            CharacterRange cr = (CharacterRange)obj;
-            return ((_first == cr.First) && (_length == cr.Length));
-        }
-
-        public static bool operator ==(CharacterRange cr1, CharacterRange cr2)
-        {
-            return ((cr1.First == cr2.First) && (cr1.Length == cr2.Length));
-        }
-
-        public static bool operator !=(CharacterRange cr1, CharacterRange cr2)
-        {
-            return !(cr1 == cr2);
-        }
-
-        public override int GetHashCode()
-        {
-            return unchecked(_first << 8 + _length);
-        }
-    }
-
     /// <summary>
     /// Encapsulates text layout information (such as alignment and linespacing), display manipulations (such as
     /// ellipsis insertion and national digit substitution) and OpenType features.
@@ -115,10 +44,10 @@ namespace System.Drawing
         /// </summary>
         public StringFormat(StringFormatFlags options, int language)
         {
-            int status = SafeNativeMethods.Gdip.GdipCreateStringFormat(options, language, out nativeFormat);
+            int status = Gdip.GdipCreateStringFormat(options, language, out nativeFormat);
 
-            if (status != SafeNativeMethods.Gdip.Ok)
-                throw SafeNativeMethods.Gdip.StatusException(status);
+            if (status != Gdip.Ok)
+                throw Gdip.StatusException(status);
         }
 
         /// <summary>
@@ -129,13 +58,13 @@ namespace System.Drawing
         {
             if (format == null)
             {
-                throw new ArgumentNullException("format");
+                throw new ArgumentNullException(nameof(format));
             }
 
-            int status = SafeNativeMethods.Gdip.GdipCloneStringFormat(new HandleRef(format, format.nativeFormat), out nativeFormat);
+            int status = Gdip.GdipCloneStringFormat(new HandleRef(format, format.nativeFormat), out nativeFormat);
 
-            if (status != SafeNativeMethods.Gdip.Ok)
-                throw SafeNativeMethods.Gdip.StatusException(status);
+            if (status != Gdip.Ok)
+                throw Gdip.StatusException(status);
         }
 
         /// <summary>
@@ -156,9 +85,9 @@ namespace System.Drawing
 #if DEBUG
                     int status =
 #endif
-                    SafeNativeMethods.Gdip.GdipDeleteStringFormat(new HandleRef(this, nativeFormat));
+                    Gdip.GdipDeleteStringFormat(new HandleRef(this, nativeFormat));
 #if DEBUG
-                    Debug.Assert(status == SafeNativeMethods.Gdip.Ok, "GDI+ returned an error status: " + status.ToString(CultureInfo.InvariantCulture));
+                    Debug.Assert(status == Gdip.Ok, "GDI+ returned an error status: " + status.ToString(CultureInfo.InvariantCulture));
 #endif        
                 }
                 catch (Exception ex)
@@ -184,10 +113,10 @@ namespace System.Drawing
         {
             IntPtr cloneFormat = IntPtr.Zero;
 
-            int status = SafeNativeMethods.Gdip.GdipCloneStringFormat(new HandleRef(this, nativeFormat), out cloneFormat);
+            int status = Gdip.GdipCloneStringFormat(new HandleRef(this, nativeFormat), out cloneFormat);
 
-            if (status != SafeNativeMethods.Gdip.Ok)
-                throw SafeNativeMethods.Gdip.StatusException(status);
+            if (status != Gdip.Ok)
+                throw Gdip.StatusException(status);
 
             StringFormat newCloneStringFormat = new StringFormat(cloneFormat);
 
@@ -204,19 +133,19 @@ namespace System.Drawing
             {
                 StringFormatFlags format;
 
-                int status = SafeNativeMethods.Gdip.GdipGetStringFormatFlags(new HandleRef(this, nativeFormat), out format);
+                int status = Gdip.GdipGetStringFormatFlags(new HandleRef(this, nativeFormat), out format);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
 
                 return format;
             }
             set
             {
-                int status = SafeNativeMethods.Gdip.GdipSetStringFormatFlags(new HandleRef(this, nativeFormat), value);
+                int status = Gdip.GdipSetStringFormatFlags(new HandleRef(this, nativeFormat), value);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
             }
         }
 
@@ -225,10 +154,10 @@ namespace System.Drawing
         /// </summary>
         public void SetMeasurableCharacterRanges(CharacterRange[] ranges)
         {
-            int status = SafeNativeMethods.Gdip.GdipSetStringFormatMeasurableCharacterRanges(new HandleRef(this, nativeFormat), ranges.Length, ranges);
+            int status = Gdip.GdipSetStringFormatMeasurableCharacterRanges(new HandleRef(this, nativeFormat), ranges.Length, ranges);
 
-            if (status != SafeNativeMethods.Gdip.Ok)
-                throw SafeNativeMethods.Gdip.StatusException(status);
+            if (status != Gdip.Ok)
+                throw Gdip.StatusException(status);
         }
 
         // For English, this is horizontal alignment
@@ -240,10 +169,10 @@ namespace System.Drawing
             get
             {
                 StringAlignment alignment = 0;
-                int status = SafeNativeMethods.Gdip.GdipGetStringFormatAlign(new HandleRef(this, nativeFormat), out alignment);
+                int status = Gdip.GdipGetStringFormatAlign(new HandleRef(this, nativeFormat), out alignment);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
 
                 return alignment;
             }
@@ -254,10 +183,10 @@ namespace System.Drawing
                     throw new InvalidEnumArgumentException(nameof(value), unchecked((int)value), typeof(StringAlignment));
                 }
 
-                int status = SafeNativeMethods.Gdip.GdipSetStringFormatAlign(new HandleRef(this, nativeFormat), value);
+                int status = Gdip.GdipSetStringFormatAlign(new HandleRef(this, nativeFormat), value);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
             }
         }
 
@@ -270,10 +199,10 @@ namespace System.Drawing
             get
             {
                 StringAlignment alignment = 0;
-                int status = SafeNativeMethods.Gdip.GdipGetStringFormatLineAlign(new HandleRef(this, nativeFormat), out alignment);
+                int status = Gdip.GdipGetStringFormatLineAlign(new HandleRef(this, nativeFormat), out alignment);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
 
                 return alignment;
             }
@@ -281,13 +210,13 @@ namespace System.Drawing
             {
                 if (value < 0 || value > StringAlignment.Far)
                 {
-                    throw new InvalidEnumArgumentException("value", unchecked((int)value), typeof(StringAlignment));
+                    throw new InvalidEnumArgumentException(nameof(value), unchecked((int)value), typeof(StringAlignment));
                 }
 
-                int status = SafeNativeMethods.Gdip.GdipSetStringFormatLineAlign(new HandleRef(this, nativeFormat), value);
+                int status = Gdip.GdipSetStringFormatLineAlign(new HandleRef(this, nativeFormat), value);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
             }
         }
 
@@ -299,10 +228,10 @@ namespace System.Drawing
             get
             {
                 HotkeyPrefix hotkeyPrefix;
-                int status = SafeNativeMethods.Gdip.GdipGetStringFormatHotkeyPrefix(new HandleRef(this, nativeFormat), out hotkeyPrefix);
+                int status = Gdip.GdipGetStringFormatHotkeyPrefix(new HandleRef(this, nativeFormat), out hotkeyPrefix);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
 
                 return hotkeyPrefix;
             }
@@ -313,10 +242,10 @@ namespace System.Drawing
                     throw new InvalidEnumArgumentException(nameof(value), unchecked((int)value), typeof(HotkeyPrefix));
                 }
 
-                int status = SafeNativeMethods.Gdip.GdipSetStringFormatHotkeyPrefix(new HandleRef(this, nativeFormat), value);
+                int status = Gdip.GdipSetStringFormatHotkeyPrefix(new HandleRef(this, nativeFormat), value);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
             }
         }
 
@@ -326,12 +255,24 @@ namespace System.Drawing
         public void SetTabStops(float firstTabOffset, float[] tabStops)
         {
             if (firstTabOffset < 0)
-                throw new ArgumentException(SR.Format(SR.InvalidArgument, "firstTabOffset", firstTabOffset));
+            {
+                throw new ArgumentException(SR.Format(SR.InvalidArgumentValue, nameof(firstTabOffset), firstTabOffset));
+            }
 
-            int status = SafeNativeMethods.Gdip.GdipSetStringFormatTabStops(new HandleRef(this, nativeFormat), firstTabOffset, tabStops.Length, tabStops);
+            foreach (float tabStop in tabStops) // Emulate Windows GDI+ behavior.
+            {
+                if (float.IsNegativeInfinity(tabStop))
+                {
+                    throw new NotImplementedException();
+                }
+            }
 
-            if (status != SafeNativeMethods.Gdip.Ok)
-                throw SafeNativeMethods.Gdip.StatusException(status);
+            int status = Gdip.GdipSetStringFormatTabStops(new HandleRef(this, nativeFormat), firstTabOffset, tabStops.Length, tabStops);
+
+            if (status != Gdip.Ok)
+            {
+                throw Gdip.StatusException(status);
+            }
         }
 
         /// <summary>
@@ -340,16 +281,16 @@ namespace System.Drawing
         public float[] GetTabStops(out float firstTabOffset)
         {
             int count = 0;
-            int status = SafeNativeMethods.Gdip.GdipGetStringFormatTabStopCount(new HandleRef(this, nativeFormat), out count);
+            int status = Gdip.GdipGetStringFormatTabStopCount(new HandleRef(this, nativeFormat), out count);
 
-            if (status != SafeNativeMethods.Gdip.Ok)
-                throw SafeNativeMethods.Gdip.StatusException(status);
+            if (status != Gdip.Ok)
+                throw Gdip.StatusException(status);
 
             float[] tabStops = new float[count];
-            status = SafeNativeMethods.Gdip.GdipGetStringFormatTabStops(new HandleRef(this, nativeFormat), count, out firstTabOffset, tabStops);
+            status = Gdip.GdipGetStringFormatTabStops(new HandleRef(this, nativeFormat), count, out firstTabOffset, tabStops);
 
-            if (status != SafeNativeMethods.Gdip.Ok)
-                throw SafeNativeMethods.Gdip.StatusException(status);
+            if (status != Gdip.Ok)
+                throw Gdip.StatusException(status);
 
             return tabStops;
         }
@@ -366,10 +307,10 @@ namespace System.Drawing
             get
             {
                 StringTrimming trimming;
-                int status = SafeNativeMethods.Gdip.GdipGetStringFormatTrimming(new HandleRef(this, nativeFormat), out trimming);
+                int status = Gdip.GdipGetStringFormatTrimming(new HandleRef(this, nativeFormat), out trimming);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
                 return trimming;
             }
 
@@ -380,10 +321,10 @@ namespace System.Drawing
                     throw new InvalidEnumArgumentException(nameof(value), unchecked((int)value), typeof(StringTrimming));
                 }
 
-                int status = SafeNativeMethods.Gdip.GdipSetStringFormatTrimming(new HandleRef(this, nativeFormat), value);
+                int status = Gdip.GdipSetStringFormatTrimming(new HandleRef(this, nativeFormat), value);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
             }
         }
 
@@ -403,10 +344,10 @@ namespace System.Drawing
             get
             {
                 IntPtr format;
-                int status = SafeNativeMethods.Gdip.GdipStringFormatGetGenericDefault(out format);
+                int status = Gdip.GdipStringFormatGetGenericDefault(out format);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
 
                 return new StringFormat(format);
             }
@@ -428,10 +369,10 @@ namespace System.Drawing
             get
             {
                 IntPtr format;
-                int status = SafeNativeMethods.Gdip.GdipStringFormatGetGenericTypographic(out format);
+                int status = Gdip.GdipStringFormatGetGenericTypographic(out format);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
 
                 return new StringFormat(format);
             }
@@ -439,10 +380,10 @@ namespace System.Drawing
 
         public void SetDigitSubstitution(int language, StringDigitSubstitute substitute)
         {
-            int status = SafeNativeMethods.Gdip.GdipSetStringFormatDigitSubstitution(new HandleRef(this, nativeFormat), language, substitute);
+            int status = Gdip.GdipSetStringFormatDigitSubstitution(new HandleRef(this, nativeFormat), language, substitute);
 
-            if (status != SafeNativeMethods.Gdip.Ok)
-                throw SafeNativeMethods.Gdip.StatusException(status);
+            if (status != Gdip.Ok)
+                throw Gdip.StatusException(status);
         }
 
         /// <summary>
@@ -455,10 +396,10 @@ namespace System.Drawing
                 StringDigitSubstitute digitSubstitute;
                 int lang = 0;
 
-                int status = SafeNativeMethods.Gdip.GdipGetStringFormatDigitSubstitution(new HandleRef(this, nativeFormat), out lang, out digitSubstitute);
+                int status = Gdip.GdipGetStringFormatDigitSubstitution(new HandleRef(this, nativeFormat), out lang, out digitSubstitute);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
 
                 return digitSubstitute;
             }
@@ -473,13 +414,22 @@ namespace System.Drawing
             {
                 StringDigitSubstitute digitSubstitute;
                 int language = 0;
-                int status = SafeNativeMethods.Gdip.GdipGetStringFormatDigitSubstitution(new HandleRef(this, nativeFormat), out language, out digitSubstitute);
+                int status = Gdip.GdipGetStringFormatDigitSubstitution(new HandleRef(this, nativeFormat), out language, out digitSubstitute);
 
-                if (status != SafeNativeMethods.Gdip.Ok)
-                    throw SafeNativeMethods.Gdip.StatusException(status);
+                if (status != Gdip.Ok)
+                    throw Gdip.StatusException(status);
 
                 return language;
             }
+        }
+
+        internal int GetMeasurableCharacterRangeCount()
+        {
+            int cnt;
+            int status = Gdip.GdipGetStringFormatMeasurableCharacterRangeCount(new HandleRef(this, nativeFormat), out cnt);
+
+            Gdip.CheckStatus(status);
+            return cnt;
         }
 
         /// <summary>

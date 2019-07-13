@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace System.Collections.Immutable.Tests
@@ -455,6 +456,29 @@ namespace System.Collections.Immutable.Tests
         }
 
         [Fact]
+        public void ToImmutableArray()
+        {
+            var builder = new ImmutableArray<int>.Builder();
+            builder.AddRange(0, 1, 2);
+
+            var array = builder.ToImmutableArray();
+            Assert.Equal(0, array[0]);
+            Assert.Equal(1, array[1]);
+            Assert.Equal(2, array[2]);
+            
+            builder[1] = 5;
+            Assert.Equal(5, builder[1]);
+            Assert.Equal(1, array[1]);
+
+            builder.Clear();
+            Assert.True(builder.ToImmutableArray().IsEmpty);
+            Assert.False(array.IsEmpty);
+
+            ImmutableArray<int>.Builder nullBuilder = null;
+            AssertExtensions.Throws<ArgumentNullException>("builder", () => nullBuilder.ToImmutableArray());
+        }
+
+        [Fact]
         public void CopyTo()
         {
             var builder = ImmutableArray.Create(1, 2, 3).ToBuilder();
@@ -705,7 +729,6 @@ namespace System.Collections.Immutable.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.UapAot, "Cannot do DebuggerAttribute testing on UapAot: requires internal Reflection on framework types.")]
         public void DebuggerAttributesValid()
         {
             DebuggerAttributes.ValidateDebuggerDisplayReferences(ImmutableArray.CreateBuilder<int>());
@@ -718,12 +741,40 @@ namespace System.Collections.Immutable.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.UapAot, "Cannot do DebuggerAttribute testing on UapAot: requires internal Reflection on framework types.")]
         public static void TestDebuggerAttributes_Null()
         {
             Type proxyType = DebuggerAttributes.GetProxyType(ImmutableArray.CreateBuilder<string>(4));
             TargetInvocationException tie = Assert.Throws<TargetInvocationException>(() => Activator.CreateInstance(proxyType, (object)null));
             Assert.IsType<ArgumentNullException>(tie.InnerException);
+        }
+
+        [Fact]
+        public void ItemRef()
+        {
+            var builder = new ImmutableArray<int>.Builder();
+            builder.Add(1);
+            builder.Add(2);
+            builder.Add(3);
+
+            ref readonly var safeRef = ref builder.ItemRef(1);
+            ref var unsafeRef = ref Unsafe.AsRef(safeRef);
+
+            Assert.Equal(2, builder.ItemRef(1));
+
+            unsafeRef = 4;
+
+            Assert.Equal(4, builder.ItemRef(1));
+        }
+
+        [Fact]
+        public void ItemRef_OutOfBounds()
+        {
+            var builder = new ImmutableArray<int>.Builder();
+            builder.Add(1);
+            builder.Add(2);
+            builder.Add(3);
+
+            Assert.Throws<IndexOutOfRangeException>(() => builder.ItemRef(5));
         }
 
         private static ImmutableArray<T>.Builder CreateBuilderWithCount<T>(int count)

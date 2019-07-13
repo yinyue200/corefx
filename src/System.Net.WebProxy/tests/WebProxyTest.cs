@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using Xunit;
 
 namespace System.Net.Tests
@@ -113,7 +114,7 @@ namespace System.Net.Tests
             AssertExtensions.Throws<ArgumentNullException>("destination", () => p.GetProxy(null));
             AssertExtensions.Throws<ArgumentNullException>("host", () => p.IsBypassed(null));
             AssertExtensions.Throws<ArgumentNullException>("c", () => p.BypassList = null);
-            AssertExtensions.Throws<ArgumentException>(null, () => p.BypassList = new string[] { "*.com" });
+            Assert.ThrowsAny<ArgumentException>(() => p.BypassList = new string[] { "*.com" });
         }
 
         [Fact]
@@ -175,17 +176,29 @@ namespace System.Net.Tests
             yield return new object[] { new Uri($"http://{IPAddress.None}"), false };
         }
 
+        [ActiveIssue(23766, TestPlatforms.AnyUnix)]
         [Theory]
         [MemberData(nameof(BypassOnLocal_MemberData))]
         public static void WebProxy_BypassOnLocal_MatchesExpected(Uri destination, bool isLocal)
         {
             Uri proxyUri = new Uri("http://microsoft.com");
 
-            Assert.Equal(isLocal, new WebProxy(proxyUri, true).IsBypassed(destination));
-            Assert.False(new WebProxy(proxyUri, false).IsBypassed(destination));
+            try
+            {
+                Assert.Equal(isLocal, new WebProxy(proxyUri, true).IsBypassed(destination));
+                Assert.False(new WebProxy(proxyUri, false).IsBypassed(destination));
 
-            Assert.Equal(isLocal ? destination : proxyUri, new WebProxy(proxyUri, true).GetProxy(destination));
-            Assert.Equal(proxyUri, new WebProxy(proxyUri, false).GetProxy(destination));
+                Assert.Equal(isLocal ? destination : proxyUri, new WebProxy(proxyUri, true).GetProxy(destination));
+                Assert.Equal(proxyUri, new WebProxy(proxyUri, false).GetProxy(destination));
+            }
+            catch (SocketException exception)
+            {
+                // On Unix, getaddrinfo returns host not found, if all the machine discovery settings on the local network
+                // is turned off. Hence dns lookup for it's own hostname fails.
+                Assert.Equal(SocketError.HostNotFound, exception.SocketErrorCode);
+                Assert.Throws<SocketException>(() => Dns.GetHostEntryAsync(Dns.GetHostName()).GetAwaiter().GetResult());
+                Assert.True(RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX));
+            }
         }
 
         [Fact]
@@ -194,12 +207,16 @@ namespace System.Net.Tests
             Assert.True(new WebProxy().IsBypassed(new Uri("http://anything.com")));
             Assert.True(new WebProxy((string)null).IsBypassed(new Uri("http://anything.com")));
             Assert.True(new WebProxy((Uri)null).IsBypassed(new Uri("http://anything.com")));
-            Assert.True(new WebProxy("microsoft", true).IsBypassed(new Uri($"http://{IPAddress.Loopback}")));
-            Assert.True(new WebProxy("microsoft", false).IsBypassed(new Uri($"http://{IPAddress.Loopback}")));
+            Assert.True(new WebProxy("microsoft", BypassOnLocal: true).IsBypassed(new Uri($"http://{IPAddress.Loopback}")));
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework)]
+        public static void WebProxy_BypassOnLocal_ConfiguredToNotBypassLocal()
+        {
+            Assert.False(new WebProxy("microsoft", BypassOnLocal: false).IsBypassed(new Uri($"http://{IPAddress.Loopback}")));
+        }
+
+        [Fact]
         public static void WebProxy_GetDefaultProxy_NotSupported()
         {
 #pragma warning disable 0618 // obsolete method

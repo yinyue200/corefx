@@ -5,6 +5,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using Microsoft.DotNet.XUnitExtensions;
+using Test.Cryptography;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -26,11 +28,16 @@ namespace System.Security.Cryptography.X509Certificates.Tests
         public static void X509CertTest()
         {
             string certSubject = @"CN=Microsoft Corporate Root Authority, OU=ITG, O=Microsoft, L=Redmond, S=WA, C=US, E=pkit@microsoft.com";
+            string certSubjectObsolete = @"E=pkit@microsoft.com, C=US, S=WA, L=Redmond, O=Microsoft, OU=ITG, CN=Microsoft Corporate Root Authority";
 
             using (X509Certificate cert = new X509Certificate(Path.Combine("TestData", "microsoft.cer")))
             {
                 Assert.Equal(certSubject, cert.Subject);
                 Assert.Equal(certSubject, cert.Issuer);
+#pragma warning disable CS0618 // Type or member is obsolete
+                Assert.Equal(certSubjectObsolete, cert.GetName());
+                Assert.Equal(certSubjectObsolete, cert.GetIssuerName());
+#pragma warning restore CS0618
 
                 int snlen = cert.GetSerialNumber().Length;
                 Assert.Equal(16, snlen);
@@ -91,7 +98,7 @@ namespace System.Security.Cryptography.X509Certificates.Tests
             }
         }
 
-        [Fact]
+        [ConditionalFact]
         [OuterLoop("May require using the network, to download CRLs and intermediates")]
         public void TestVerify()
         {
@@ -110,13 +117,19 @@ namespace System.Security.Cryptography.X509Certificates.Tests
                 if (!success)
                 {
                     LogVerifyErrors(microsoftDotComIssuer, "MicrosoftDotComIssuerBytes");
+                    if (PlatformDetection.IsMacOsMojaveOrHigher)
+                    {
+                        // ActiveIssue: 29779
+                        throw new SkipTestException("Certificate validation unstable on 10.14");
+                    }
                 }
+
                 Assert.True(success, "MicrosoftDotComIssuerBytes");
             }
 
             // High Sierra fails to build a chain for a self-signed certificate with revocation enabled.
             // https://github.com/dotnet/corefx/issues/21875
-            if (!PlatformDetection.IsMacOsHighSierra)
+            if (!PlatformDetection.IsMacOsHighSierraOrHigher)
             {
                 using (var microsoftDotComRoot = new X509Certificate2(TestData.MicrosoftDotComRootBytes))
                 {
@@ -289,6 +302,11 @@ namespace System.Security.Cryptography.X509Certificates.Tests
 
                 // State held on X509Certificate
                 Assert.ThrowsAny<CryptographicException>(() => c.GetCertHash());
+                Assert.ThrowsAny<CryptographicException>(() => c.GetCertHashString());
+#if HAVE_THUMBPRINT_OVERLOADS
+                Assert.ThrowsAny<CryptographicException>(() => c.GetCertHash(HashAlgorithmName.SHA256));
+                Assert.ThrowsAny<CryptographicException>(() => c.GetCertHashString(HashAlgorithmName.SHA256));
+#endif
                 Assert.ThrowsAny<CryptographicException>(() => c.GetKeyAlgorithm());
                 Assert.ThrowsAny<CryptographicException>(() => c.GetKeyAlgorithmParameters());
                 Assert.ThrowsAny<CryptographicException>(() => c.GetKeyAlgorithmParametersString());
@@ -298,6 +316,11 @@ namespace System.Security.Cryptography.X509Certificates.Tests
                 Assert.ThrowsAny<CryptographicException>(() => c.Subject);
                 Assert.ThrowsAny<CryptographicException>(() => c.NotBefore);
                 Assert.ThrowsAny<CryptographicException>(() => c.NotAfter);
+
+#if HAVE_THUMBPRINT_OVERLOADS
+                Assert.ThrowsAny<CryptographicException>(
+                    () => c.TryGetCertHash(HashAlgorithmName.SHA256, Array.Empty<byte>(), out _));
+#endif
 
                 // State held on X509Certificate2
                 Assert.ThrowsAny<CryptographicException>(() => c.RawData);
@@ -345,6 +368,26 @@ namespace System.Security.Cryptography.X509Certificates.Tests
                         throw;
                     }
                 }
+            }
+        }
+
+        [Fact]
+        public static void X509Certificate2WithT61String()
+        {
+            string certSubject = @"E=mabaul@microsoft.com, OU=Engineering, O=Xamarin, S=Massachusetts, C=US, CN=test-server.local";
+
+            using (var cert = new X509Certificate2(TestData.T61StringCertificate))
+            {
+                Assert.Equal(certSubject, cert.Subject);
+                Assert.Equal(certSubject, cert.Issuer);
+
+                Assert.Equal("9E7A5CCC9F951A8700", cert.GetSerialNumber().ByteArrayToHex());
+                Assert.Equal("1.2.840.113549.1.1.1", cert.GetKeyAlgorithm());
+
+                Assert.Equal(74, cert.GetPublicKey().Length);
+
+                Assert.Equal("test-server.local", cert.GetNameInfo(X509NameType.SimpleName, false));
+                Assert.Equal("mabaul@microsoft.com", cert.GetNameInfo(X509NameType.EmailName, false));
             }
         }
 

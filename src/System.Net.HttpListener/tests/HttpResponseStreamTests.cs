@@ -13,6 +13,7 @@ using Xunit;
 
 namespace System.Net.Tests
 {
+    [ConditionalClass(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer))] // httpsys component missing in Nano.
     public class HttpResponseStreamTests : IDisposable
     {
         private HttpListenerFactory _factory;
@@ -456,7 +457,7 @@ namespace System.Net.Tests
         }
 
         [ActiveIssue(19534, TestPlatforms.OSX)]
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsSubsystemForLinux))] // [ActiveIssue(11057)]
         [InlineData(true)]
         [InlineData(false)]
         [ActiveIssue(18188, platforms: TestPlatforms.Windows)] // Indeterminate failure - socket not always fully disconnected.
@@ -496,7 +497,7 @@ namespace System.Net.Tests
         }
 
         [ActiveIssue(19534, TestPlatforms.OSX)]
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsSubsystemForLinux))] // [ActiveIssue(11057)]
         [InlineData(true)]
         [InlineData(false)]
         [ActiveIssue(18188, platforms: TestPlatforms.Windows)] // Indeterminate failure - socket not always fully disconnected.

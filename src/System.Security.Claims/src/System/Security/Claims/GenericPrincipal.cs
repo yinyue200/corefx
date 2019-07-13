@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Security.Claims;
 
 namespace System.Security.Principal
@@ -17,7 +16,6 @@ namespace System.Security.Principal
         {
             if (identity == null)
                 throw new ArgumentNullException(nameof(identity));
-            Contract.EndContractBlock();
 
             m_identity = identity;
             if (roles != null)
@@ -86,5 +84,8 @@ namespace System.Security.Principal
             // it may be the case a ClaimsIdentity was passed in as the IIdentity which may have contained claims, they need to be checked.
             return base.IsInRole(role);
         }
+
+        // This is called by AppDomain.GetThreadPrincipal() via reflection.
+        private static IPrincipal GetDefaultInstance() => new GenericPrincipal(new GenericIdentity(string.Empty), new string[] { string.Empty });
     }
 }

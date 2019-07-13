@@ -12,9 +12,6 @@ internal static partial class Interop
 {
     internal static partial class Crypto
     {
-        [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_EcKeyGetCurveType")]
-        internal static extern ECCurve.ECCurveType EcKeyGetCurveType(SafeEcKeyHandle key);
-
         [DllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_EcKeyCreateByKeyParameters", CharSet = CharSet.Ansi)]
         private static extern int EcKeyCreateByKeyParameters(
             out SafeEcKeyHandle key,
@@ -33,9 +30,10 @@ internal static partial class Interop
             int rc = EcKeyCreateByKeyParameters(out key, oid, qx, qxLength, qy, qyLength, d, dLength);
             if (rc == -1)
             {
-                if (key != null)
-                    key.Dispose();
-                throw new PlatformNotSupportedException(string.Format(SR.Cryptography_CurveNotSupported, oid));
+                key?.Dispose();
+                Interop.Crypto.ErrClearError();
+                
+                throw new PlatformNotSupportedException(SR.Format(SR.Cryptography_CurveNotSupported, oid));
             }
             return key;
         }
@@ -68,7 +66,7 @@ internal static partial class Interop
             }
             else
             {
-                throw new PlatformNotSupportedException(string.Format(SR.Cryptography_CurveNotSupported, curve.CurveType.ToString()));
+                throw new PlatformNotSupportedException(SR.Format(SR.Cryptography_CurveNotSupported, curve.CurveType.ToString()));
             }
 
             SafeEcKeyHandle key = Interop.Crypto.EcKeyCreateByExplicitParameters(
@@ -92,12 +90,16 @@ internal static partial class Interop
                 throw Interop.Crypto.CreateOpenSslCryptographicException();
             }
 
+            // EcKeyCreateByExplicitParameters may have polluted the error queue, but key was good in the end.
+            // Clean up the error queue.
+            Interop.Crypto.ErrClearError();
+
             return key;
         }
 
 
         [DllImport(Libraries.CryptoNative)]
-        private static extern bool CryptoNative_GetECKeyParameters(
+        private static extern int CryptoNative_GetECKeyParameters(
             SafeEcKeyHandle key, 
             bool includePrivate,
             out SafeBignumHandle qx_bn, out int x_cb,
@@ -117,12 +119,18 @@ internal static partial class Interop
             try
             {
                 key.DangerousAddRef(ref refAdded); // Protect access to d_bn_not_owned
-                if (!CryptoNative_GetECKeyParameters(
+                int rc = CryptoNative_GetECKeyParameters(
                     key,
                     includePrivate,
                     out qx_bn, out qx_cb,
                     out qy_bn, out qy_cb,
-                    out d_bn_not_owned, out d_cb))
+                    out d_bn_not_owned, out d_cb);
+                    
+                if (rc == -1)
+                {
+                    throw new CryptographicException(SR.Cryptography_CSP_NoPrivateKey);
+                }
+                else if (rc != 1)
                 {
                     throw Interop.Crypto.CreateOpenSslCryptographicException();
                 }
@@ -160,7 +168,7 @@ internal static partial class Interop
         }
 
         [DllImport(Libraries.CryptoNative)]
-        private static extern bool CryptoNative_GetECCurveParameters(
+        private static extern int CryptoNative_GetECCurveParameters(
             SafeEcKeyHandle key,
             bool includePrivate,
             out ECCurve.ECCurveType curveType,
@@ -189,7 +197,7 @@ internal static partial class Interop
             try
             {
                 key.DangerousAddRef(ref refAdded); // Protect access to d_bn_not_owned
-                if (!CryptoNative_GetECCurveParameters(
+                int rc = CryptoNative_GetECCurveParameters(
                     key,
                     includePrivate,
                     out curveType,
@@ -203,7 +211,13 @@ internal static partial class Interop
                     out gy_bn, out gy_cb,
                     out order_bn, out order_cb,
                     out cofactor_bn, out cofactor_cb,
-                    out seed_bn, out seed_cb))
+                    out seed_bn, out seed_cb);
+                    
+                if (rc == -1)
+                {
+                    throw new CryptographicException(SR.Cryptography_CSP_NoPrivateKey);                    
+                }
+                else if (rc != 1)
                 {
                     throw Interop.Crypto.CreateOpenSslCryptographicException();
                 }

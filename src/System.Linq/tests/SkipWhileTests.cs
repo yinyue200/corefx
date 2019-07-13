@@ -72,7 +72,7 @@ namespace System.Linq.Tests
         public void SameResultsRepeatCallsIntQuery()
         {
             var q = from x in new[] { 9999, 0, 888, -1, 66, -777, 1, 2, -12345 }
-                    where x > Int32.MinValue
+                    where x > int.MinValue
                     select x;
 
             Assert.Equal(q.SkipWhile(x => true), q.SkipWhile(x => true));
@@ -81,8 +81,8 @@ namespace System.Linq.Tests
         [Fact]
         public void SameResultsRepeatCallsStringQuery()
         {
-            var q = from x in new[] { "!@#$%^", "C", "AAA", "", "Calling Twice", "SoS", String.Empty }
-                    where !String.IsNullOrEmpty(x)
+            var q = from x in new[] { "!@#$%^", "C", "AAA", "", "Calling Twice", "SoS", string.Empty }
+                    where !string.IsNullOrEmpty(x)
                     select x;
 
             Assert.Equal(q.SkipWhile(x => true), q.SkipWhile(x => true));
@@ -94,11 +94,11 @@ namespace System.Linq.Tests
             int[] source = { 8, 3, 12, 4, 6, 10 };
             int[] expected = { 3, 12, 4, 6, 10 };
 
-            Assert.Equal(expected, source.SkipWhile((e, i) => e % 2 == 0));
+            Assert.Equal(expected, source.SkipWhile(e => e % 2 == 0));
         }
 
         [Fact]
-        public void PredicateManyFalseOnSecondInex()
+        public void PredicateManyFalseOnSecondIndex()
         {
             int[] source = { 8, 3, 12, 4, 6, 10 };
             int[] expected = { 3, 12, 4, 6, 10 };
@@ -112,7 +112,7 @@ namespace System.Linq.Tests
             int[] source = { 3, 2, 4, 12, 6 };
             int[] expected = { 3, 2, 4, 12, 6 };
 
-            Assert.Equal(expected, source.SkipWhile((e, i) => e % 2 == 0));
+            Assert.Equal(expected, source.SkipWhile(e => e % 2 == 0));
         }
 
         [Fact]

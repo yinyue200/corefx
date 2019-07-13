@@ -27,7 +27,7 @@ namespace System.Data
 
         private string _sort = string.Empty;
 
-        /// <summary>Allow a user implemented comparision of two DataRow</summary>
+        /// <summary>Allow a user implemented comparison of two DataRow</summary>
         /// <remarks>User must use correct DataRowVersion in comparison or index corruption will happen</remarks>
         private System.Comparison<DataRow> _comparison;
 
@@ -70,7 +70,7 @@ namespace System.Data
         private Dictionary<DataRow, DataRowView> _rowViewCache = new Dictionary<DataRow, DataRowView>(DataRowReferenceComparer.s_default);
 
         /// <summary>
-        /// This collection allows expression maintaince to (add / remove) from the index when it really should be a (change / move).
+        /// This collection allows expression maintenance to (add / remove) from the index when it really should be a (change / move).
         /// </summary>
         private readonly Dictionary<DataRow, DataRowView> _rowViewBuffer = new Dictionary<DataRow, DataRowView>(DataRowReferenceComparer.s_default);
 
@@ -160,6 +160,36 @@ namespace System.Data
 
             DataExpression newFilter = new DataExpression(table, RowFilter);
             SetIndex(Sort, RowState, newFilter);
+        }
+
+        internal DataView(DataTable table, System.Predicate<DataRow> predicate, System.Comparison<DataRow> comparison, DataViewRowState RowState) 
+        {
+            GC.SuppressFinalize(this);
+            DataCommonEventSource.Log.Trace("<ds.DataView.DataView|API> %d#, table=%d, RowState=%d{ds.DataViewRowState}\n",
+                           ObjectID, (table != null) ? table.ObjectID : 0, (int)RowState);
+
+            if (table == null)
+            {
+                throw ExceptionBuilder.CanNotUse();
+            }
+
+            _dvListener = new DataViewListener(this);
+            _locked = false;
+            _table = table;
+            _dvListener.RegisterMetaDataEvents(table);
+
+            if ((((int)RowState) & ((int)~(DataViewRowState.CurrentRows | DataViewRowState.OriginalRows))) != 0)
+            {
+                throw ExceptionBuilder.RecordStateRange();
+            }
+            else if ((((int)RowState) & ((int)DataViewRowState.ModifiedOriginal)) != 0 &&
+                     (((int)RowState) & ((int)DataViewRowState.ModifiedCurrent)) != 0)
+            {
+                throw ExceptionBuilder.SetRowStateFilter();
+            }
+
+            _comparison = comparison;
+            SetIndex2("", RowState, ((null != predicate) ? new RowPredicateFilter(predicate) : null), true);
         }
 
         /// <summary>
@@ -419,7 +449,7 @@ namespace System.Data
             }
         }
 
-        /// <summary>Allow a user implemented comparision of two DataRow</summary>
+        /// <summary>Allow a user implemented comparison of two DataRow</summary>
         /// <remarks>User must use correct DataRowVersion in comparison or index corruption will happen</remarks>
         internal System.Comparison<DataRow> SortComparison
         {
@@ -724,6 +754,12 @@ namespace System.Data
             {
                 DataCommonEventSource.Log.ExitScope(logScopeId);
             }
+        }
+
+        /// <summary>This method exists for LinqDataView to keep a level of abstraction away from the RBTree</summary>
+        internal Range FindRecords<TKey,TRow>(Index.ComparisonBySelector<TKey,TRow> comparison, TKey key) where TRow:DataRow
+        {
+            return _index.FindRecords(comparison, key);
         }
 
         /// <summary>Convert a Range into a DataRowView[].</summary>
@@ -1282,7 +1318,7 @@ namespace System.Data
                     }
                     else
                     {
-                        Debug.Assert(false, "ItemAdded DataRow already in view");
+                        Debug.Fail("ItemAdded DataRow already in view");
                     }
                     break;
                 case ListChangedType.ItemDeleted:
@@ -1299,12 +1335,12 @@ namespace System.Data
                         }
                         else
                         {
-                            Debug.Assert(false, "ItemDeleted DataRow not in view tracking");
+                            Debug.Fail("ItemDeleted DataRow not in view tracking");
                         }
                     }
                     if (!_rowViewCache.Remove(row))
                     {
-                        Debug.Assert(false, "ItemDeleted DataRow not in view");
+                        Debug.Fail("ItemDeleted DataRow not in view");
                     }
                     break;
                 case ListChangedType.Reset:
@@ -1317,7 +1353,7 @@ namespace System.Data
                 case ListChangedType.PropertyDescriptorAdded:
                 case ListChangedType.PropertyDescriptorChanged:
                 case ListChangedType.PropertyDescriptorDeleted:
-                    Debug.Assert(false, "unexpected");
+                    Debug.Fail("unexpected");
                     break;
             }
         }

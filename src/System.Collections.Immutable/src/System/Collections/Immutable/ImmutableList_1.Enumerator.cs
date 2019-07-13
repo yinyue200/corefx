@@ -1,6 +1,9 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
+
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics.Contracts;
 
 namespace System.Collections.Immutable
 {
@@ -120,10 +123,7 @@ namespace System.Collections.Immutable
             }
 
             /// <inheritdoc/>
-            int ISecurePooledObjectUser.PoolUserId
-            {
-                get { return _poolUserId; }
-            }
+            int ISecurePooledObjectUser.PoolUserId => _poolUserId;
 
             /// <summary>
             /// The current element.
@@ -145,10 +145,7 @@ namespace System.Collections.Immutable
             /// <summary>
             /// The current element.
             /// </summary>
-            object System.Collections.IEnumerator.Current
-            {
-                get { return this.Current; }
-            }
+            object System.Collections.IEnumerator.Current => this.Current;
 
             /// <summary>
             /// Disposes of this enumerator and returns the stack reference to the resource pool.
@@ -239,27 +236,18 @@ namespace System.Collections.Immutable
             /// <summary>
             /// Obtains the right branch of the given node (or the left, if walking in reverse).
             /// </summary>
-            private Node NextBranch(Node node)
-            {
-                return _reversed ? node.Left : node.Right;
-            }
+            private Node NextBranch(Node node) => _reversed ? node.Left : node.Right;
 
             /// <summary>
             /// Obtains the left branch of the given node (or the right, if walking in reverse).
             /// </summary>
-            private Node PreviousBranch(Node node)
-            {
-                return _reversed ? node.Right : node.Left;
-            }
+            private Node PreviousBranch(Node node) => _reversed ? node.Right : node.Left;
 
             /// <summary>
             /// Throws an <see cref="ObjectDisposedException"/> if this enumerator has been disposed.
             /// </summary>
             private void ThrowIfDisposed()
             {
-                Contract.Ensures(_root != null);
-                Contract.EnsuresOnThrow<ObjectDisposedException>(_root == null);
-
                 // Since this is a struct, copies might not have been marked as disposed.
                 // But the stack we share across those copies would know.
                 // This trick only works when we have a non-null stack.

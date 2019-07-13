@@ -18,7 +18,7 @@ namespace System.Collections.Immutable
     /// <typeparam name="T">The type of element stored by the array.</typeparam>
     /// <devremarks>
     /// This type has a documented contract of being exactly one reference-type field in size.
-    /// Our own <see cref="ImmutableInterlocked"/> class depends on it, as well as others externally.
+    /// Our own <see cref="T:System.Collections.Immutable.ImmutableInterlocked"/> class depends on it, as well as others externally.
     /// IMPORTANT NOTICE FOR MAINTAINERS AND REVIEWERS:
     /// This type should be thread-safe. As a struct, it cannot protect its own fields
     /// from being changed from one thread while its members are executing on other threads
@@ -129,6 +129,23 @@ namespace System.Collections.Immutable
             }
         }
 
+#if !NETSTANDARD10
+        /// <summary>
+        /// Gets a read-only reference to the element at the specified index in the read-only list.
+        /// </summary>
+        /// <param name="index">The zero-based index of the element to get a reference to.</param>
+        /// <returns>A read-only reference to the element at the specified index in the read-only list.</returns>
+        public ref readonly T ItemRef(int index)
+        {
+            // We intentionally do not check this.array != null, and throw NullReferenceException
+            // if this is called while uninitialized.
+            // The reason for this is perf.
+            // Length and the indexer must be absolutely trivially implemented for the JIT optimization
+            // of removing array bounds checking to work.
+            return ref this.array[index];
+        }
+#endif
+
         /// <summary>
         /// Gets a value indicating whether this collection is empty.
         /// </summary>
@@ -197,7 +214,7 @@ namespace System.Collections.Immutable
             get
             {
                 var self = this;
-                return self.IsDefault ? "Uninitialized" : String.Format(CultureInfo.CurrentCulture, "Length = {0}", self.Length);
+                return self.IsDefault ? "Uninitialized" : string.Format(CultureInfo.CurrentCulture, "Length = {0}", self.Length);
             }
         }
 

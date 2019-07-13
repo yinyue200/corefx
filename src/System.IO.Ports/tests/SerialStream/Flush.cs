@@ -5,6 +5,7 @@
 using System.Diagnostics;
 using System.IO.PortsTests;
 using System.Threading;
+using System.Threading.Tasks;
 using Legacy.Support;
 using Xunit;
 
@@ -51,6 +52,7 @@ namespace System.IO.Ports.Tests
             }
         }
 
+        [KnownFailure]
         [ConditionalFact(nameof(HasNullModem))]
         public void InBufferFilled_Flush_Once()
         {
@@ -73,6 +75,7 @@ namespace System.IO.Ports.Tests
             }
         }
 
+        [KnownFailure]
         [ConditionalFact(nameof(HasNullModem))]
         public void InBufferFilled_Flush_Multiple()
         {
@@ -97,6 +100,7 @@ namespace System.IO.Ports.Tests
             }
         }
 
+        [KnownFailure]
         [ConditionalFact(nameof(HasNullModem))]
         public void InBufferFilled_Flush_Cycle()
         {
@@ -133,7 +137,7 @@ namespace System.IO.Ports.Tests
             using (SerialPort com1 = new SerialPort(TCSupport.LocalMachineSerialInfo.FirstAvailablePortName))
             {
                 AsyncWriteRndByteArray asyncWriteRndByteArray = new AsyncWriteRndByteArray(com1, DEFAULT_BUFFER_SIZE);
-                Thread t = new Thread(asyncWriteRndByteArray.WriteRndByteArray);
+                var t = new Task(asyncWriteRndByteArray.WriteRndByteArray);
 
                 Debug.WriteLine("Verifying Flush method after output buffer has been filled");
 
@@ -147,9 +151,7 @@ namespace System.IO.Ports.Tests
 
                 VerifyFlush(com1);
 
-                // Wait for write method to timeout
-                while (t.IsAlive)
-                    Thread.Sleep(100);
+                TCSupport.WaitForTaskCompletion(t);
             }
         }
 
@@ -159,7 +161,7 @@ namespace System.IO.Ports.Tests
             using (SerialPort com1 = new SerialPort(TCSupport.LocalMachineSerialInfo.FirstAvailablePortName))
             {
                 AsyncWriteRndByteArray asyncWriteRndByteArray = new AsyncWriteRndByteArray(com1, DEFAULT_BUFFER_SIZE);
-                Thread t = new Thread(asyncWriteRndByteArray.WriteRndByteArray);
+                var t = new Task(asyncWriteRndByteArray.WriteRndByteArray);
 
                 Debug.WriteLine("Verifying call Flush method several times after output buffer has been filled");
 
@@ -175,9 +177,7 @@ namespace System.IO.Ports.Tests
                 VerifyFlush(com1);
                 VerifyFlush(com1);
 
-                // Wait for write method to timeout
-                while (t.IsAlive)
-                    Thread.Sleep(100);
+                TCSupport.WaitForTaskCompletion(t);
             }
         }
 
@@ -187,8 +187,8 @@ namespace System.IO.Ports.Tests
             using (SerialPort com1 = new SerialPort(TCSupport.LocalMachineSerialInfo.FirstAvailablePortName))
             {
                 AsyncWriteRndByteArray asyncWriteRndByteArray = new AsyncWriteRndByteArray(com1, DEFAULT_BUFFER_SIZE);
-                Thread t1 = new Thread(asyncWriteRndByteArray.WriteRndByteArray);
-                Thread t2 = new Thread(asyncWriteRndByteArray.WriteRndByteArray);
+                var t1 = new Task(asyncWriteRndByteArray.WriteRndByteArray);
+                var t2 = new Task(asyncWriteRndByteArray.WriteRndByteArray);
 
                 int elapsedTime;
 
@@ -210,9 +210,7 @@ namespace System.IO.Ports.Tests
 
                 VerifyFlush(com1);
 
-                // Wait for write method to timeout
-                while (t1.IsAlive)
-                    Thread.Sleep(100);
+                TCSupport.WaitForTaskCompletion(t1);
 
                 t2.Start();
 
@@ -220,9 +218,7 @@ namespace System.IO.Ports.Tests
 
                 VerifyFlush(com1);
 
-                // Wait for write method to timeout
-                while (t2.IsAlive)
-                    Thread.Sleep(100);
+                TCSupport.WaitForTaskCompletion(t2);
             }
         }
 
@@ -233,7 +229,7 @@ namespace System.IO.Ports.Tests
             using (SerialPort com2 = new SerialPort(TCSupport.LocalMachineSerialInfo.SecondAvailablePortName))
             {
                 AsyncWriteRndByteArray asyncWriteRndByteArray = new AsyncWriteRndByteArray(com1, DEFAULT_BUFFER_SIZE);
-                Thread t = new Thread(asyncWriteRndByteArray.WriteRndByteArray);
+                var t = new Task(asyncWriteRndByteArray.WriteRndByteArray);
 
                 byte[] xmitBytes = new byte[DEFAULT_BUFFER_SIZE];
 
@@ -256,9 +252,7 @@ namespace System.IO.Ports.Tests
 
                 VerifyFlush(com1);
 
-                // Wait for write method to timeout
-                while (t.IsAlive)
-                    Thread.Sleep(100);
+                TCSupport.WaitForTaskCompletion(t);
             }
         }
 
@@ -269,7 +263,7 @@ namespace System.IO.Ports.Tests
             using (SerialPort com2 = new SerialPort(TCSupport.LocalMachineSerialInfo.SecondAvailablePortName))
             {
                 AsyncWriteRndByteArray asyncWriteRndByteArray = new AsyncWriteRndByteArray(com1, DEFAULT_BUFFER_SIZE);
-                Thread t = new Thread(asyncWriteRndByteArray.WriteRndByteArray);
+                var t = new Task(asyncWriteRndByteArray.WriteRndByteArray);
 
                 int elapsedTime = 0;
                 byte[] xmitBytes = new byte[DEFAULT_BUFFER_SIZE];
@@ -301,9 +295,7 @@ namespace System.IO.Ports.Tests
                 VerifyFlush(com1);
                 VerifyFlush(com1);
 
-                // Wait for write method to timeout
-                while (t.IsAlive)
-                    Thread.Sleep(100);
+                TCSupport.WaitForTaskCompletion(t);
             }
         }
 
@@ -314,8 +306,8 @@ namespace System.IO.Ports.Tests
             using (SerialPort com2 = new SerialPort(TCSupport.LocalMachineSerialInfo.SecondAvailablePortName))
             {
                 AsyncWriteRndByteArray asyncWriteRndByteArray = new AsyncWriteRndByteArray(com1, DEFAULT_BUFFER_SIZE);
-                Thread t1 = new Thread(asyncWriteRndByteArray.WriteRndByteArray);
-                Thread t2 = new Thread(asyncWriteRndByteArray.WriteRndByteArray);
+                var t1 = new Task(asyncWriteRndByteArray.WriteRndByteArray);
+                var t2 = new Task(asyncWriteRndByteArray.WriteRndByteArray);
 
                 byte[] xmitBytes = new byte[DEFAULT_BUFFER_SIZE];
 
@@ -339,9 +331,7 @@ namespace System.IO.Ports.Tests
 
                 VerifyFlush(com1);
 
-                // Wait for write method to timeout
-                while (t1.IsAlive)
-                    Thread.Sleep(100);
+                TCSupport.WaitForTaskCompletion(t1);
 
                 t2.Start();
 
@@ -353,9 +343,7 @@ namespace System.IO.Ports.Tests
 
                 VerifyFlush(com1);
 
-                // Wait for write method to timeout
-                while (t2.IsAlive)
-                    Thread.Sleep(100);
+                TCSupport.WaitForTaskCompletion(t2);
             }
         }
 

@@ -9,6 +9,7 @@ using Xunit;
 
 namespace System.Net.Tests
 {
+    [ConditionalClass(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer))] // httpsys component missing in Nano.
     public class HttpListenerResponseCookiesTests : HttpListenerResponseTestBase
     {
         [Fact]
@@ -54,6 +55,15 @@ namespace System.Net.Tests
                     new Cookie("name", "value")
                 },
                 144, "Set-Cookie: name=value", null
+            };
+
+            yield return new object[]
+            {
+                new CookieCollection()
+                {
+                    new Cookie("foo bar", "value")
+                },
+                147, "Set-Cookie: foo bar=value", null
             };
 
             yield return new object[]
@@ -128,9 +138,9 @@ namespace System.Net.Tests
 
             response.Close();
 
-            string clientResponse = GetClientResponse(173);
-            Assert.Contains($"\r\nSet-Cookie: name1=value1\r\n", clientResponse);
-            Assert.Contains($"\r\nSet-Cookie2: name2=value2\r\n", clientResponse);
+            string clientResponse = GetClientResponse(expectedLength:173);
+            Assert.Contains("\r\nSet-Cookie: name1=value1\r\n", clientResponse);
+            Assert.Contains("\r\nSet-Cookie2: name2=value2\r\n", clientResponse);
         }
 
         [Fact]
@@ -147,9 +157,9 @@ namespace System.Net.Tests
             Assert.Null(response.Headers["Set-Cookie"]);
             Assert.Equal("name3=value3; Port=\"200\"; Version=1", response.Headers["Set-Cookie2"]);
 
-            string clientResponse = GetClientResponse(170);
+            string clientResponse = GetClientResponse(expectedLength:170);
             Assert.DoesNotContain("Set-Cookie:", clientResponse);
-            Assert.Contains($"\r\nSet-Cookie2: name3=value3; Port=\"200\"; Version=1\r\n", clientResponse);
+            Assert.Contains("\r\nSet-Cookie2: name3=value3; Port=\"200\"; Version=1\r\n", clientResponse);
         }
 
         [Fact]
@@ -166,9 +176,27 @@ namespace System.Net.Tests
             Assert.Equal("name3=value3", response.Headers["Set-Cookie"]);
             Assert.Null(response.Headers["Set-Cookie2"]);
 
-            string clientResponse = GetClientResponse(146);
-            Assert.Contains($"\r\nSet-Cookie: name3=value3\r\n", clientResponse);
+            string clientResponse = GetClientResponse(expectedLength:146);
+            Assert.Contains("\r\nSet-Cookie: name3=value3\r\n", clientResponse);
             Assert.DoesNotContain("Set-Cookie2", clientResponse);
+        }
+  
+        [Fact]
+        public async Task Cookies_AddMultipleInHeader_ClientReceivesExpectedHeaders()
+        {
+            HttpListenerResponse response = await GetResponse();
+            response.Headers.Add("Set-Cookie", "name1=value1");
+            response.Headers.Add("Set-Cookie", "name2=value2");
+            response.Headers.Add("Set-Cookie", "name3=value3");
+            response.Headers.Add("Set-Cookie", "name4=value4");
+
+            response.Close();
+
+            string clientResponse = GetClientResponse(expectedLength:224);
+            Assert.Contains("\r\nSet-Cookie: name1=value1\r\n", clientResponse);
+            Assert.Contains("\r\nSet-Cookie: name2=value2\r\n", clientResponse);
+            Assert.Contains("\r\nSet-Cookie: name3=value3\r\n", clientResponse);
+            Assert.Contains("\r\nSet-Cookie: name4=value4\r\n", clientResponse);
         }
 
         [Fact]

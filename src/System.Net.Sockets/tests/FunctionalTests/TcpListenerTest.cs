@@ -23,7 +23,7 @@ namespace System.Net.Sockets.Tests
             AssertExtensions.Throws<ArgumentOutOfRangeException>("port", () => TcpListener.Create(66000));
         }
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsSubsystemForLinux))] // [ActiveIssue(11057)]
         [InlineData(0)]
         [InlineData(1)]
         [InlineData(2)]
@@ -122,6 +122,24 @@ namespace System.Net.Sockets.Tests
             }
 
             listener.Stop();
+        }
+
+        [Fact]
+        // This verify that basic constructs do work when IPv6 is NOT available.
+        public void IPv6_Only_Works()
+        {
+            if (Socket.OSSupportsIPv6 || !Socket.OSSupportsIPv4)
+            {
+                // TBD we should figure out better way how to execute this in IPv4 only environment.
+                return; 
+            }
+
+            // This should not throw e.g. default to IPv6.
+            TcpListener  l = TcpListener.Create(0);
+            l.Stop();
+
+            Socket s = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            s.Close();
         }
 
         private sealed class DerivedTcpListener : TcpListener

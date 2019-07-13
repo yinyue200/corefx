@@ -8,7 +8,9 @@ namespace System.IO.Tests
 {
     public abstract class StaticGetSetTimes : BaseGetSetTimes<string>
     {
-        public override string GetMissingItem() => GetTestFilePath();
+        protected override string GetMissingItem() => GetTestFilePath();
+
+        protected override string GetItemPath(string item) => item;
 
         [Fact]
         public void NullPath_ThrowsArgumentNullException()

@@ -12,9 +12,6 @@ using System.Text.RegularExpressions;
 
 namespace System.DirectoryServices.AccountManagement
 {
-#pragma warning disable 618    // Have not migrated to v4 transparency yet
-    [System.Security.SecurityCritical(System.Security.SecurityCriticalScope.Everything)]
-#pragma warning restore 618
     internal class SAMQuerySet : ResultSet
     {
         // We will iterate over all principals under ctxBase, returning only those which are in the list of types and which
@@ -206,9 +203,6 @@ namespace System.DirectoryServices.AccountManagement
     // The matcher routines for query-by-example support
     //
 
-#pragma warning disable 618    // Have not migrated to v4 transparency yet
-    [System.Security.SecurityCritical(System.Security.SecurityCriticalScope.Everything)]
-#pragma warning restore 618
     internal class QbeMatcher : SAMMatcher
     {
         private QbeFilterDescription _propertiesToMatch;
@@ -270,8 +264,7 @@ namespace System.DirectoryServices.AccountManagement
                 {
                     // Must be a property we don't support
                     throw new NotSupportedException(
-                                String.Format(
-                                        CultureInfo.CurrentCulture,
+                                SR.Format(
                                         SR.StoreCtxUnsupportedPropertyForQuery,
                                         PropertyNamesExternal.GetExternalForm(filter.PropertyName)));
                 }
@@ -378,7 +371,7 @@ namespace System.DirectoryServices.AccountManagement
                         if (values.Count != 0)
                         {
                             Debug.Assert(values.Count == 1);
-                            Debug.Assert(values[0] is Int32);
+                            Debug.Assert(values[0] is int);
 
                             int secondsLapsed = (int)values[0];
 
@@ -702,9 +695,6 @@ namespace System.DirectoryServices.AccountManagement
     // The matcher routines for FindBy* support
     //
 
-#pragma warning disable 618    // Have not migrated to v4 transparency yet
-    [System.Security.SecurityCritical(System.Security.SecurityCriticalScope.Everything)]
-#pragma warning restore 618
     internal class FindByDateMatcher : SAMMatcher
     {
         internal enum DateProperty
@@ -794,7 +784,7 @@ namespace System.DirectoryServices.AccountManagement
             if (values.Count != 0)
             {
                 Debug.Assert(values.Count == 1);
-                Debug.Assert(values[0] is Int32);
+                Debug.Assert(values[0] is int);
 
                 int secondsLapsed = (int)values[0];
 
@@ -843,9 +833,6 @@ namespace System.DirectoryServices.AccountManagement
         }
     }
 
-#pragma warning disable 618    // Have not migrated to v4 transparency yet
-    [System.Security.SecurityCritical(System.Security.SecurityCriticalScope.Everything)]
-#pragma warning restore 618
     internal class GroupMemberMatcher : SAMMatcher
     {
         private byte[] _memberSidToMatch;

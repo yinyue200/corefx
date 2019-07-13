@@ -1,3 +1,5 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// See the LICENSE file in the project root for more information
 //
 // XmlDsigXsltTransformTest.cs - Test Cases for XmlDsigXsltTransform
 //
@@ -294,7 +296,7 @@ namespace System.Security.Cryptography.Xml.Tests
         public void UnsupportedInput()
         {
             byte[] bad = { 0xBA, 0xD };
-            // LAMESPEC: input MUST be one of InputType - but no exception is thrown (not documented)
+            // input MUST be one of InputType - but no exception is thrown (not documented)
             transform.LoadInput(bad);
         }
 

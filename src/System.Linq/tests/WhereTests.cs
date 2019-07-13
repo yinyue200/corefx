@@ -821,14 +821,7 @@ namespace System.Linq.Tests
 
             // The full .NET Framework throws a NotImplementedException.
             // See https://github.com/dotnet/corefx/pull/2959.
-            if (PlatformDetection.IsFullFramework)
-            {
-                Assert.Throws<NotImplementedException>(() => enumerator.Reset());
-            }
-            else
-            {
-                Assert.Throws<NotSupportedException>(() => enumerator.Reset());
-            }
+            Assert.Throws<NotSupportedException>(() => enumerator.Reset());
         }
 
         [Fact]
@@ -867,7 +860,7 @@ namespace System.Linq.Tests
         public void SameResultsRepeatCallsIntQuery()
         {
             var q = from x in new[] { 9999, 0, 888, -1, 66, -777, 1, 2, -12345 }
-                    where x > Int32.MinValue
+                    where x > int.MinValue
                     select x;
 
             Assert.Equal(q.Where(IsEven), q.Where(IsEven));
@@ -877,7 +870,7 @@ namespace System.Linq.Tests
         [Fact]
         public void SameResultsRepeatCallsStringQuery()
         {
-            var q = from x in new[] { "!@#$%^", "C", "AAA", "", "Calling Twice", null, "SoS", String.Empty }
+            var q = from x in new[] { "!@#$%^", "C", "AAA", "", "Calling Twice", null, "SoS", string.Empty }
                     select x;
 
             Assert.Equal(q.Where(string.IsNullOrEmpty), q.Where(string.IsNullOrEmpty));

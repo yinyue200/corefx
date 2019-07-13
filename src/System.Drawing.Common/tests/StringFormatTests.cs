@@ -14,7 +14,7 @@ namespace System.Drawing.Tests
         private const int RandomLanguageCode = 10;
         private const int EnglishLanguageCode = 2057;
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Ctor_Default()
         {
             using (var format = new StringFormat())
@@ -29,7 +29,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(StringFormatFlags.DirectionRightToLeft | StringFormatFlags.DirectionVertical)]
         [InlineData((StringFormatFlags)(-1))]
         public void Ctor_Options(StringFormatFlags options)
@@ -46,7 +46,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(StringFormatFlags.DirectionRightToLeft | StringFormatFlags.DirectionVertical, RandomLanguageCode)]
         [InlineData(StringFormatFlags.NoClip, EnglishLanguageCode)]
         [InlineData((StringFormatFlags)(-1), -1)]
@@ -64,7 +64,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Ctor_Format()
         {
             using (var original = new StringFormat(StringFormatFlags.NoClip, EnglishLanguageCode))
@@ -90,7 +90,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentNullException>("format", () => new StringFormat(null));
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Ctor_DisposedFormat_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -99,7 +99,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => new StringFormat(format));
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Dispose_MultipleTimes_Success()
         {
             var format = new StringFormat();
@@ -107,7 +107,7 @@ namespace System.Drawing.Tests
             format.Dispose();
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Clone_Valid_Success()
         {
             using (var original = new StringFormat(StringFormatFlags.NoClip, EnglishLanguageCode))
@@ -127,7 +127,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Clone_Disposed_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -137,7 +137,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(0, StringDigitSubstitute.None, 0)]
         [InlineData(EnglishLanguageCode, StringDigitSubstitute.Traditional, EnglishLanguageCode)]
         [InlineData(int.MaxValue, StringDigitSubstitute.Traditional + 1, 65535)]
@@ -152,7 +152,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void SetDigitSubstitution_Disposed_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -161,7 +161,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => format.SetDigitSubstitution(0, StringDigitSubstitute.None));
         }
 
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(0, new float[0])]
         [InlineData(10, new float[] { 1, 2.3f, 4, float.PositiveInfinity, float.NaN })]
         public void SetTabStops_GetTabStops_ReturnsExpected(float firstTabOffset, float[] tabStops)
@@ -175,7 +175,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void SetTabStops_NullTabStops_ThrowsNullReferenceException()
         {
             using (var format = new StringFormat())
@@ -184,8 +184,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void SetTabStops_NegativeFirstTabOffset_ThrowsArgumentException()
         {
             using (var format = new StringFormat())
@@ -194,8 +193,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void SetTabStops_NegativeInfinityInTabStops_ThrowsNotImplementedException()
         {
             using (var format = new StringFormat())
@@ -204,7 +202,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void SetTabStops_Disposed_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -213,7 +211,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => format.SetTabStops(0, new float[0]));
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GetTabStops_Disposed_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -230,7 +228,7 @@ namespace System.Drawing.Tests
             yield return new object[] { new CharacterRange[32] };
         }
 
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [MemberData(nameof(SetMeasurableCharacterRanges_TestData))]
         public void SetMeasurableCharacterRanges_Valid_Success(CharacterRange[] ranges)
         {
@@ -240,7 +238,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void SetMeasurableCharacterRanges_NullRanges_ThrowsNullReferenceException()
         {
             using (var format = new StringFormat())
@@ -249,7 +247,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void SetMeasurableCharacterRanges_RangesTooLarge_ThrowsOverflowException()
         {
             using (var format = new StringFormat())
@@ -258,7 +256,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void SetMeasurableCharacterRanges_Disposed_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -267,7 +265,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => format.SetMeasurableCharacterRanges(new CharacterRange[0]));
         }
 
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(StringAlignment.Center)]
         [InlineData(StringAlignment.Far)]
         [InlineData(StringAlignment.Near)]
@@ -279,8 +277,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(StringAlignment.Near - 1)]
         [InlineData(StringAlignment.Far + 1)]
         public void Alignment_SetInvalid_ThrowsInvalidEnumArgumentException(StringAlignment alignment)
@@ -291,7 +288,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Alignment_GetSetWhenDisposed_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -301,8 +298,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => format.Alignment = StringAlignment.Center);
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void DigitSubstitutionMethod_GetSetWhenDisposed_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -311,8 +307,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => format.DigitSubstitutionMethod);
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void DigitSubstitutionLanguage_GetSetWhenDisposed_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -321,7 +316,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => format.DigitSubstitutionLanguage);
         }
 
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(StringFormatFlags.DirectionRightToLeft)]
         [InlineData((StringFormatFlags)int.MinValue)]
         [InlineData((StringFormatFlags)int.MaxValue)]
@@ -333,7 +328,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void FormatFlags_GetSetWhenDisposed_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -343,7 +338,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => format.FormatFlags = StringFormatFlags.NoClip);
         }
 
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(StringAlignment.Center)]
         [InlineData(StringAlignment.Far)]
         [InlineData(StringAlignment.Near)]
@@ -355,8 +350,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(StringAlignment.Near - 1)]
         [InlineData(StringAlignment.Far + 1)]
         public void LineAlignment_SetInvalid_ThrowsInvalidEnumArgumentException(StringAlignment alignment)
@@ -367,7 +361,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void LineAlignment_GetSetWhenDisposed_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -377,7 +371,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => format.LineAlignment = StringAlignment.Center);
         }
 
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(HotkeyPrefix.Hide)]
         [InlineData(HotkeyPrefix.None)]
         [InlineData(HotkeyPrefix.Show)]
@@ -389,8 +383,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(HotkeyPrefix.None - 1)]
         [InlineData(HotkeyPrefix.Hide + 1)]
         public void HotKeyPrefix_SetInvalid_ThrowsInvalidEnumArgumentException(HotkeyPrefix prefix)
@@ -401,7 +394,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void HotkeyPrefix_GetSetWhenDisposed_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -411,7 +404,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => format.HotkeyPrefix = HotkeyPrefix.Hide);
         }
 
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(StringTrimming.Word)]
         public void Trimming_SetValid_GetReturnsExpected(StringTrimming trimming)
         {
@@ -421,8 +414,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(StringTrimming.None - 1)]
         [InlineData(StringTrimming.EllipsisPath + 1)]
         public void Trimming_SetInvalid_ThrowsInvalidEnumArgumentException(StringTrimming trimming)
@@ -433,7 +425,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Trimming_GetSetWhenDisposed_ThrowsArgumentException()
         {
             var format = new StringFormat();
@@ -444,7 +436,7 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => format.Trimming = StringTrimming.Word);
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GenericDefault_Get_ReturnsExpected()
         {
             StringFormat format = StringFormat.GenericDefault;
@@ -459,7 +451,7 @@ namespace System.Drawing.Tests
             Assert.Equal(StringTrimming.Character, format.Trimming);
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GenericTypographic_Get_ReturnsExpected()
         {
             StringFormat format = StringFormat.GenericTypographic;
@@ -474,7 +466,7 @@ namespace System.Drawing.Tests
             Assert.Equal(StringTrimming.None, format.Trimming);
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void ToString_Flags_ReturnsExpected()
         {
             using (var format = new StringFormat(StringFormatFlags.DirectionVertical))
@@ -483,7 +475,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void ToString_Disposed_ThrowsArgumentException()
         {
             var format = new StringFormat(StringFormatFlags.DirectionVertical);

@@ -10,7 +10,7 @@ using Xunit;
 
 namespace System.Net.Sockets.Tests
 {
-    public class SocketAsyncEventArgsTest
+    public partial class SocketAsyncEventArgsTest
     {
         [Fact]
         public void Usertoken_Roundtrips()
@@ -154,6 +154,12 @@ namespace System.Net.Sockets.Tests
                 AssertExtensions.Throws<ArgumentOutOfRangeException>("count", () => saea.SetBuffer(new byte[1], 0, -1));
                 AssertExtensions.Throws<ArgumentOutOfRangeException>("count", () => saea.SetBuffer(new byte[1], 0, 2));
                 AssertExtensions.Throws<ArgumentOutOfRangeException>("count", () => saea.SetBuffer(new byte[1], 1, 2));
+
+                saea.SetBuffer(new byte[2], 0, 2);
+                AssertExtensions.Throws<ArgumentOutOfRangeException>("offset", () => saea.SetBuffer(-1, 2));
+                AssertExtensions.Throws<ArgumentOutOfRangeException>("offset", () => saea.SetBuffer(3, 2));
+                AssertExtensions.Throws<ArgumentOutOfRangeException>("count", () => saea.SetBuffer(0, -1));
+                AssertExtensions.Throws<ArgumentOutOfRangeException>("count", () => saea.SetBuffer(0, 3));
             }
         }
 
@@ -327,7 +333,8 @@ namespace System.Net.Sockets.Tests
                     connectSaea.Completed += (s, e) => tcs.SetResult(e.SocketError);
                     connectSaea.RemoteEndPoint = new IPEndPoint(IPAddress.Loopback, ((IPEndPoint)listen.LocalEndPoint).Port);
 
-                    Assert.True(client.ConnectAsync(connectSaea), $"ConnectAsync completed synchronously with SocketError == {connectSaea.SocketError}");
+                    bool pending = client.ConnectAsync(connectSaea);
+                    if (!pending) tcs.SetResult(connectSaea.SocketError);
                     if (tcs.Task.IsCompleted)
                     {
                         Assert.NotEqual(SocketError.Success, tcs.Task.Result);
@@ -474,7 +481,7 @@ namespace System.Net.Sockets.Tests
             }
         }
 
-        public void OnAcceptCompleted(object sender, SocketAsyncEventArgs args)
+        private static void OnAcceptCompleted(object sender, SocketAsyncEventArgs args)
         {
             EventWaitHandle handle = (EventWaitHandle)args.UserToken;
             handle.Set();
@@ -516,7 +523,7 @@ namespace System.Net.Sockets.Tests
                 }
 
                 Assert.True(
-                    accepted.WaitOne(TestSettings.PassingTestTimeout), "Test completed in alotted time");
+                    accepted.WaitOne(TestSettings.PassingTestTimeout), "Test completed in allotted time");
 
                 Assert.Equal(
                     SocketError.Success, acceptArgs.SocketError);
@@ -571,6 +578,42 @@ namespace System.Net.Sockets.Tests
                 acceptArgs.SetBuffer(buffer, 0, buffer.Length);
 
                 Assert.Throws<PlatformNotSupportedException>(() => server.AcceptAsync(acceptArgs));
+            }
+        }
+
+        [Fact]
+        public async Task SocketConnectAsync_IPAddressAny_SocketAsyncEventArgsReusableAfterFailure()
+        {
+            var e = new SocketAsyncEventArgs();
+
+            foreach (DnsEndPoint dns in new[] { new DnsEndPoint("::0", 80), new DnsEndPoint("0.0.0.0", 80) })
+            {
+                e.RemoteEndPoint = dns;
+
+                AssertExtensions.Throws<ArgumentException>("hostName", () => Socket.ConnectAsync(SocketType.Stream, ProtocolType.Tcp, e));
+                using (var client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                {
+                    AssertExtensions.Throws<ArgumentException>("hostName", () => client.ConnectAsync(e));
+                }
+            }
+
+            using (var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            {
+                listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+                listener.Listen(1);
+                e.RemoteEndPoint = listener.LocalEndPoint;
+
+                var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                e.Completed += delegate { tcs.SetResult(true); };
+
+                Task<Socket> acceptTask = listener.AcceptAsync();
+                if (Socket.ConnectAsync(SocketType.Stream, ProtocolType.Tcp, e))
+                {
+                    await new Task[] { tcs.Task, acceptTask }.WhenAllOrAnyFailed();
+                }
+
+                e.ConnectSocket.Dispose();
+                (await acceptTask).Dispose();
             }
         }
     }

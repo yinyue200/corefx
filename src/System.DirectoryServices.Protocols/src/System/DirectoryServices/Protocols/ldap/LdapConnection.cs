@@ -12,7 +12,6 @@ using System.Runtime.InteropServices;
 using System.Xml;
 using System.Threading;
 using System.Security.Cryptography.X509Certificates;
-using System.Security.Permissions;
 
 namespace System.DirectoryServices.Protocols
 {
@@ -127,7 +126,7 @@ namespace System.DirectoryServices.Protocols
             {
                 if (value < TimeSpan.Zero)
                 {
-                    throw new ArgumentException(SR.NoNegativeTime, nameof(value));
+                    throw new ArgumentException(SR.NoNegativeTimeLimit, nameof(value));
                 }
 
                 // Prevent integer overflow.
@@ -1055,8 +1054,6 @@ namespace System.DirectoryServices.Protocols
 
         public void Bind(NetworkCredential newCredential) => BindHelper(newCredential, needSetCredential: true);
 
-        [EnvironmentPermission(SecurityAction.Assert, Unrestricted = true)]
-        [SecurityPermission(SecurityAction.Assert, Flags = SecurityPermissionFlag.UnmanagedCode)]
         private void BindHelper(NetworkCredential newCredential, bool needSetCredential)
         {            
             if (_disposed)

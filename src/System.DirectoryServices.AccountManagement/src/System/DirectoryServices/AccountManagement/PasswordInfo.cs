@@ -24,7 +24,6 @@ namespace System.DirectoryServices.AccountManagement
 
         public Nullable<DateTime> LastPasswordSet
         {
-            [System.Security.SecurityCritical]
             get
             {
                 return _owningPrincipal.HandleGet<Nullable<DateTime>>(ref _lastPasswordSet, PropertyNames.PwdInfoLastPasswordSet, ref _lastPasswordSetLoaded);
@@ -37,7 +36,6 @@ namespace System.DirectoryServices.AccountManagement
 
         public Nullable<DateTime> LastBadPasswordAttempt
         {
-            [System.Security.SecurityCritical]
             get
             {
                 return _owningPrincipal.HandleGet<Nullable<DateTime>>(ref _lastBadPasswordAttempt, PropertyNames.PwdInfoLastBadPasswordAttempt, ref _lastBadPasswordAttemptLoaded);
@@ -50,13 +48,11 @@ namespace System.DirectoryServices.AccountManagement
 
         public bool PasswordNotRequired
         {
-            [System.Security.SecurityCritical]
             get
             {
                 return _owningPrincipal.HandleGet<bool>(ref _passwordNotRequired, PropertyNames.PwdInfoPasswordNotRequired, ref _passwordNotRequiredChanged);
             }
 
-            [System.Security.SecurityCritical]
             set
             {
                 _owningPrincipal.HandleSet<bool>(ref _passwordNotRequired, value, ref _passwordNotRequiredChanged,
@@ -70,13 +66,11 @@ namespace System.DirectoryServices.AccountManagement
 
         public bool PasswordNeverExpires
         {
-            [System.Security.SecurityCritical]
             get
             {
                 return _owningPrincipal.HandleGet<bool>(ref _passwordNeverExpires, PropertyNames.PwdInfoPasswordNeverExpires, ref _passwordNeverExpiresChanged);
             }
 
-            [System.Security.SecurityCritical]
             set
             {
                 _owningPrincipal.HandleSet<bool>(ref _passwordNeverExpires, value, ref _passwordNeverExpiresChanged,
@@ -94,7 +88,6 @@ namespace System.DirectoryServices.AccountManagement
         // needed.  We read the status directly from the store and then cache it for use later.
         public bool UserCannotChangePassword
         {
-            [System.Security.SecurityCritical]
             get
             {
                 _owningPrincipal.HandleGet<bool>(ref _cannotChangePassword, PropertyNames.PwdInfoCannotChangePassword, ref _cannotChangePasswordChanged);
@@ -108,7 +101,6 @@ namespace System.DirectoryServices.AccountManagement
                 return _cannotChangePassword;
             }
 
-            [System.Security.SecurityCritical]
             set
             {
                 _owningPrincipal.HandleSet<bool>(ref _cannotChangePassword, value, ref _cannotChangePasswordChanged,
@@ -122,13 +114,11 @@ namespace System.DirectoryServices.AccountManagement
 
         public bool AllowReversiblePasswordEncryption
         {
-            [System.Security.SecurityCritical]
             get
             {
                 return _owningPrincipal.HandleGet<bool>(ref _allowReversiblePasswordEncryption, PropertyNames.PwdInfoAllowReversiblePasswordEncryption, ref _allowReversiblePasswordEncryptionChanged);
             }
 
-            [System.Security.SecurityCritical]
             set
             {
                 _owningPrincipal.HandleSet<bool>(ref _allowReversiblePasswordEncryption, value, ref _allowReversiblePasswordEncryptionChanged,
@@ -142,11 +132,10 @@ namespace System.DirectoryServices.AccountManagement
 
         private string _storedNewPassword = null;
 
-        [System.Security.SecurityCritical]
         public void SetPassword(string newPassword)
         {
             if (newPassword == null)
-                throw new ArgumentNullException("newPassword");
+                throw new ArgumentNullException(nameof(newPassword));
 
             // If we're not persisted, we just save up the change until we're Saved
             if (_owningPrincipal.unpersisted)
@@ -161,14 +150,13 @@ namespace System.DirectoryServices.AccountManagement
             }
         }
 
-        [System.Security.SecurityCritical]
         public void ChangePassword(string oldPassword, string newPassword)
         {
             if (oldPassword == null)
-                throw new ArgumentNullException("oldPassword");
+                throw new ArgumentNullException(nameof(oldPassword));
 
             if (newPassword == null)
-                throw new ArgumentNullException("newPassword");
+                throw new ArgumentNullException(nameof(newPassword));
 
             // While you can reset the password on an unpersisted principal (and it will be used as the initial password
             // for the pricipal), changing the password on a principal that doesn't exist yet doesn't make sense
@@ -181,7 +169,6 @@ namespace System.DirectoryServices.AccountManagement
 
         private bool _expirePasswordImmediately = false;
 
-        [System.Security.SecurityCritical]
         public void ExpirePasswordNow()
         {
             // If we're not persisted, we just save up the change until we're Saved        
@@ -197,7 +184,6 @@ namespace System.DirectoryServices.AccountManagement
             }
         }
 
-        [System.Security.SecurityCritical]
         public void RefreshExpiredPassword()
         {
             // If we're not persisted, we undo the expiration we saved up when ExpirePasswordNow was called (if it was).
@@ -216,7 +202,6 @@ namespace System.DirectoryServices.AccountManagement
         //
         // Internal constructor
         //
-        [System.Security.SecurityCritical]
         internal PasswordInfo(AuthenticablePrincipal principal)
         {
             _owningPrincipal = principal;
@@ -294,7 +279,7 @@ namespace System.DirectoryServices.AccountManagement
                     break;
 
                 default:
-                    Debug.Fail(String.Format(CultureInfo.CurrentCulture, "PasswordInfo.LoadValueIntoProperty: fell off end looking for {0}", propertyName));
+                    Debug.Fail($"PasswordInfo.LoadValueIntoProperty: fell off end looking for {propertyName}");
                     break;
             }
         }
@@ -329,7 +314,7 @@ namespace System.DirectoryServices.AccountManagement
                     return (_expirePasswordImmediately != false);
 
                 default:
-                    Debug.Fail(String.Format(CultureInfo.CurrentCulture, "PasswordInfo.GetChangeStatusForProperty: fell off end looking for {0}", propertyName));
+                    Debug.Fail($"PasswordInfo.GetChangeStatusForProperty: fell off end looking for {propertyName}");
                     return false;
             }
         }
@@ -360,7 +345,7 @@ namespace System.DirectoryServices.AccountManagement
                     return _expirePasswordImmediately;
 
                 default:
-                    Debug.Fail(String.Format(CultureInfo.CurrentCulture, "PasswordInfo.GetValueForProperty: fell off end looking for {0}", propertyName));
+                    Debug.Fail($"PasswordInfo.GetValueForProperty: fell off end looking for {propertyName}");
                     return null;
             }
         }

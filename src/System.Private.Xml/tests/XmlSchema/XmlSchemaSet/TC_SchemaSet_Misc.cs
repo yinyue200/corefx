@@ -28,7 +28,7 @@ namespace System.Xml.Tests
         public bool WarningInnerExceptionSet = false;
         public bool ErrorInnerExceptionSet = false;
 
-        public void Initialize()
+        private void Initialize()
         {
             bWarningCallback = bErrorCallback = false;
             errorCount = warningCount = 0;
@@ -36,7 +36,7 @@ namespace System.Xml.Tests
         }
 
         //hook up validaton callback
-        public void ValidationCallback(object sender, ValidationEventArgs args)
+        private void ValidationCallback(object sender, ValidationEventArgs args)
         {
             if (args.Severity == XmlSeverityType.Warning)
             {
@@ -72,7 +72,7 @@ namespace System.Xml.Tests
             }
         }
 
-        //[Variation(Desc = "v2 - Bug115049 - XSD: content model validation for an invalid root element should be adandoned", Priority = 2)]
+        //[Variation(Desc = "v2 - Bug115049 - XSD: content model validation for an invalid root element should be abandoned", Priority = 2)]
         [InlineData()]
         [Theory]
         public void v2()
@@ -397,7 +397,7 @@ namespace System.Xml.Tests
         }
 
         //Regressions - Bug Fixes
-        public void Callback1(object sender, ValidationEventArgs args)
+        private void Callback1(object sender, ValidationEventArgs args)
         {
             if (args.Severity == XmlSeverityType.Warning)
             {
@@ -683,7 +683,7 @@ namespace System.Xml.Tests
             return;
         }
 
-        //[Variation(Desc = "v109 - 386243, Adding a chameleon schema agsinst to no namaespace throws unexpected warnings", Priority = 1)]
+        //[Variation(Desc = "v109 - 386243, Adding a chameleon schema against to no namespace throws unexpected warnings", Priority = 1)]
         [InlineData()]
         [Theory]
         public void v109()
@@ -835,11 +835,11 @@ namespace System.Xml.Tests
         {
 #pragma warning disable 0618
             XmlSchemaAttribute attribute = new XmlSchemaAttribute();
-            Object attributeType = attribute.AttributeType;
+            object attributeType = attribute.AttributeType;
             XmlSchemaElement element = new XmlSchemaElement();
-            Object elementType = element.ElementType;
+            object elementType = element.ElementType;
             XmlSchemaType schemaType = new XmlSchemaType();
-            Object BaseSchemaType = schemaType.BaseSchemaType;
+            object BaseSchemaType = schemaType.BaseSchemaType;
 #pragma warning restore 0618
         }
 
@@ -928,7 +928,7 @@ namespace System.Xml.Tests
                     }
                     catch (XmlSchemaValidationException ex)
                     {
-                        if (ex.LineNumber == 1 && ex.LinePosition == 2 && !String.IsNullOrEmpty(ex.SourceUri))
+                        if (ex.LineNumber == 1 && ex.LinePosition == 2 && !string.IsNullOrEmpty(ex.SourceUri))
                         {
                             return;
                         }
@@ -1023,7 +1023,7 @@ namespace System.Xml.Tests
             Assert.True(false);
         }
 
-        //[Variation(Desc = "615444 XmlSchema.Write ((XmlWriter)null) throws InvalidOperationException instead of ArgumenNullException")]
+        //[Variation(Desc = "615444 XmlSchema.Write ((XmlWriter)null) throws InvalidOperationException instead of ArgumentNullException")]
         [Fact]
         public void v125()
         {
@@ -1259,10 +1259,7 @@ namespace System.Xml.Tests
                 CError.Compare(exception.SourceObject != null, "SourceObject == null");
                 return;
             }
-            if (!PlatformDetection.IsNetNative) // Cannot get names of internal framework types
-            {
-                CError.Compare(exception.SourceObject.GetType().ToString(), "MS.Internal.Xml.Cache.XPathDocumentNavigator", "SourceObject.GetType");
-            }
+            CError.Compare(exception.SourceObject.GetType().ToString(), "MS.Internal.Xml.Cache.XPathDocumentNavigator", "SourceObject.GetType");
             _output.WriteLine("Exc: " + exception);
         }
 

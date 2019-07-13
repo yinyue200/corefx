@@ -3,7 +3,6 @@
 
 using System.Collections.Generic;
 using System.Drawing.Text;
-using System.Globalization;
 using Xunit;
 
 namespace System.Drawing.Tests
@@ -11,7 +10,7 @@ namespace System.Drawing.Tests
     public class FontFamilyTests
     {
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(GenericFontFamilies.Serif - 1, "Courier New")] // Value is outside the enum range.
         [InlineData(GenericFontFamilies.Monospace + 1, "Courier New")] // Value is outside the enum range.
         [InlineData(GenericFontFamilies.Monospace, "Courier New")]
@@ -26,7 +25,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData("Courier New", "Courier New")]
         [InlineData("Microsoft Sans Serif", "Microsoft Sans Serif")]
         [InlineData("Times New Roman", "Times New Roman")]
@@ -40,7 +39,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Ctor_Name_FontCollection()
         {
             using (var fontCollection = new PrivateFontCollection())
@@ -55,9 +54,8 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(null)]
-        [InlineData("")]
         [InlineData("NoSuchFont")]
         [InlineData("Serif")]
         public void Ctor_NoSuchFontName_ThrowsArgumentException(string name)
@@ -66,11 +64,13 @@ namespace System.Drawing.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => new FontFamily(name, null));
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Ctor_NoSuchFontNameInCollection_ThrowsArgumentException()
         {
-            var fontCollection = new PrivateFontCollection();
-            Assert.Throws<ArgumentException>(null, () => new FontFamily("Times New Roman", fontCollection));
+            using (var fontCollection = new PrivateFontCollection())
+            {
+                Assert.Throws<ArgumentException>(null, () => new FontFamily("Times New Roman", fontCollection));
+            }
         }
 
         public static IEnumerable<object[]> Equals_TestData()
@@ -85,7 +85,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [MemberData(nameof(Equals_TestData))]
         public void Equals_Object_ReturnsExpected(FontFamily fontFamily, object other, bool expected)
         {
@@ -100,7 +100,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Families_Get_ReturnsExpected()
         {
 #pragma warning disable 0618 // FontFamily.GetFamilies is deprecated.
@@ -110,7 +110,15 @@ namespace System.Drawing.Tests
                 FontFamily[] families = FontFamily.Families;
                 FontFamily[] familiesWithGraphics = FontFamily.GetFamilies(graphics);
 
-                Assert.Equal(families, familiesWithGraphics);
+                // FontFamily.Equals uses the native handle to determine equality. However, GDI+ does not always
+                // cache handles, so we cannot just Assert.Equal(families, familiesWithGraphics); 
+                Assert.Equal(families.Length, familiesWithGraphics.Length);
+
+                for (int i = 0; i < families.Length; i++)
+                {
+                    Assert.Equal(families[i].Name, familiesWithGraphics[i].Name);
+                }
+
                 foreach (FontFamily fontFamily in families)
                 {
                     using (FontFamily copy = new FontFamily(fontFamily.Name))
@@ -123,7 +131,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GenericMonospace_Get_ReturnsExpected()
         {
             using (FontFamily fontFamily1 = FontFamily.GenericMonospace)
@@ -137,7 +145,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GenericSansSerif_Get_ReturnsExpected()
         {
             using (FontFamily fontFamily1 = FontFamily.GenericSansSerif)
@@ -151,7 +159,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GenericSerif_Get_ReturnsExpected()
         {
             using (FontFamily fontFamily1 = FontFamily.GenericSerif)
@@ -164,7 +172,7 @@ namespace System.Drawing.Tests
             }
         }
 
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GetFamilies_NullGraphics_ThrowsArgumentNullException()
         {
 #pragma warning disable 0618 // FontFamily.GetFamilies is deprecated.
@@ -173,7 +181,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GetHashCode_Invoke_ReturnsNameHashCode()
         {
             using (FontFamily fontFamily = FontFamily.GenericSansSerif)
@@ -194,7 +202,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [MemberData(nameof(FontStyle_TestData))]
         public void FontFamilyProperties_CustomFont_ReturnsExpected(FontStyle style)
         {
@@ -214,7 +222,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void IsStyleAvailable_Disposed_ThrowsArgumentException()
         {
             FontFamily fontFamily = FontFamily.GenericMonospace;
@@ -224,7 +232,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GetEmHeight_Disposed_ThrowsArgumentException()
         {
             FontFamily fontFamily = FontFamily.GenericMonospace;
@@ -236,7 +244,7 @@ namespace System.Drawing.Tests
         private const int FrenchLCID = 1036;
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalTheory(Helpers.GdiplusIsAvailable)]
+        [ConditionalTheory(Helpers.IsDrawingSupported)]
         [InlineData(-1, "Code New Roman")]
         [InlineData(0, "Code New Roman")]
         [InlineData(int.MaxValue, "Code New Roman")]
@@ -256,7 +264,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GetName_Disposed_ThrowsArgumentException()
         {
             FontFamily fontFamily = FontFamily.GenericMonospace;
@@ -266,7 +274,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GetCellAscent_Disposed_ThrowsArgumentException()
         {
             FontFamily fontFamily = FontFamily.GenericMonospace;
@@ -276,7 +284,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GetCellDescent_Disposed_ThrowsArgumentException()
         {
             FontFamily fontFamily = FontFamily.GenericMonospace;
@@ -286,7 +294,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void GetLineSpacing_Disposed_ThrowsArgumentException()
         {
             FontFamily fontFamily = FontFamily.GenericMonospace;
@@ -296,7 +304,7 @@ namespace System.Drawing.Tests
         }
 
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
-        [ConditionalFact(Helpers.GdiplusIsAvailable)]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
         public void Dispose_MultipleTimes_Nop()
         {
             FontFamily fontFamily = FontFamily.GenericMonospace;

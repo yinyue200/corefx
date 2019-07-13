@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -384,7 +384,7 @@ namespace System.Configuration
 
             if (!string.IsNullOrEmpty(key))
             {
-                sectionName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", sectionName, key);
+                sectionName = sectionName + "." + key;
             }
 
             return XmlConvert.EncodeLocalName(sectionName);
@@ -446,11 +446,11 @@ namespace System.Configuration
 
             if (isUser && isApp)
             {
-                throw new ConfigurationErrorsException(string.Format(SR.BothScopeAttributes, setting.Name));
+                throw new ConfigurationErrorsException(SR.Format(SR.BothScopeAttributes, setting.Name));
             }
             else if (!(isUser || isApp))
             {
-                throw new ConfigurationErrorsException(string.Format(SR.NoScopeAttributes, setting.Name));
+                throw new ConfigurationErrorsException(SR.Format(SR.NoScopeAttributes, setting.Name));
             }
 
             return isUser;
@@ -459,7 +459,7 @@ namespace System.Configuration
         private XmlNode SerializeToXmlElement(SettingsProperty setting, SettingsPropertyValue value)
         {
             XmlDocument doc = new XmlDocument();
-            XmlElement valueXml = doc.CreateElement("value");
+            XmlElement valueXml = doc.CreateElement(nameof(value));
 
             string serializedValue = value.SerializedValue as string;
 

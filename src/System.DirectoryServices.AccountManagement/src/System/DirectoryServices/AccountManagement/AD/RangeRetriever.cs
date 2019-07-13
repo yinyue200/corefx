@@ -16,9 +16,6 @@ namespace System.DirectoryServices.AccountManagement
     /// if disposeDirEntry parameter is set to true in its constructor.
     /// </summary>
     /// 
-#pragma warning disable 618    // Have not migrated to v4 transparency yet
-    [System.Security.SecurityCritical(System.Security.SecurityCriticalScope.Everything)]
-#pragma warning restore 618
     internal class RangeRetriever : CollectionBase, IEnumerable, IEnumerator, IDisposable
     {
         /// 
@@ -28,7 +25,7 @@ namespace System.DirectoryServices.AccountManagement
         /// <param name="de">DirectoryEntry object whose attribute needs to be range retrieved</param>
         /// <param name="propertyName">name of the attribute that needs to be range retrieved, ex: "memberOf"</param>
         /// <param name="disposeDirEntry">
-        /// If set to true, the supplied DirectoryEntry will be diposed, 
+        /// If set to true, the supplied DirectoryEntry will be disposed, 
         /// by this object's Dispose() method
         /// </param>
         /// 
@@ -159,7 +156,7 @@ namespace System.DirectoryServices.AccountManagement
         // returns null if no more results
         private IEnumerator GetNextChunk()
         {
-            string rangedAttribute = String.Format(
+            string rangedAttribute = string.Format(
                                         CultureInfo.InvariantCulture,
                                         "{0};range={1}-*",
                                         _propertyName,

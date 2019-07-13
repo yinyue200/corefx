@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Diagnostics;
 using System.Threading;
 using System.Runtime;
+using Microsoft.DotNet.RemoteExecutor;
 using Xunit;
 
 namespace System.Tests
@@ -69,11 +70,11 @@ namespace System.Tests
         [InlineData(GCCollectionMode.Optimized + 1)]
         public static void Collection_InvalidCollectionMode_ThrowsArgumentOutOfRangeException(GCCollectionMode mode)
         {
-            AssertExtensions.Throws<ArgumentOutOfRangeException>("mode", "Enum value was out of legal range.", () => GC.Collect(2, mode));
-            AssertExtensions.Throws<ArgumentOutOfRangeException>("mode", "Enum value was out of legal range.", () => GC.Collect(2, mode, false)); 
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("mode", null, () => GC.Collect(2, mode));
+            AssertExtensions.Throws<ArgumentOutOfRangeException>("mode", null, () => GC.Collect(2, mode, false)); 
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsPreciseGcSupported))]
         public static void Collect_CallsFinalizer()
         {
             FinalizerTest.Run();
@@ -110,7 +111,7 @@ namespace System.Tests
             }
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsPreciseGcSupported))]
         public static void KeepAlive()
         {
             KeepAliveTest.Run();
@@ -160,7 +161,7 @@ namespace System.Tests
             }
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsPreciseGcSupported))]
         public static void KeepAlive_Null()
         {
             KeepAliveNullTest.Run();
@@ -272,7 +273,7 @@ namespace System.Tests
             AssertExtensions.Throws<ArgumentNullException>("obj", () => GC.SuppressFinalize(null)); // Obj is null
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsPreciseGcSupported))]
         public static void ReRegisterForFinalize()
         {
             ReRegisterForFinalizeTest.Run();
@@ -338,7 +339,7 @@ namespace System.Tests
             }
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsPreciseGcSupported))]
         public static void GetTotalMemoryTest_ForceCollection()
         {
             // We don't test GetTotalMemory(false) at all because a collection
@@ -377,7 +378,7 @@ namespace System.Tests
             }
         }
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsPreciseGcSupported))]
         [InlineData(GCLargeObjectHeapCompactionMode.CompactOnce)]
         [InlineData(GCLargeObjectHeapCompactionMode.Default)]
         public static void LargeObjectHeapCompactionModeRoundTrips(GCLargeObjectHeapCompactionMode value)
@@ -420,8 +421,7 @@ namespace System.Tests
         public static void LatencyRoundtrips_LowLatency(GCLatencyMode value) => LatencyRoundtrips(value);
     }
 
-    public class GCExtendedTests : RemoteExecutorTestBase
-    {
+    public class GCExtendedTests    {
         private const int TimeoutMilliseconds = 10 * 30 * 1000; //if full GC is triggered it may take a while
 
         /// <summary>
@@ -442,7 +442,7 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke(() =>
+            RemoteExecutor.Invoke(() =>
                 {
 
                     Func<WeakReference> getweakref = delegate ()
@@ -465,7 +465,7 @@ namespace System.Tests
                     GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
                     Assert.Throws<ArgumentNullException>(() => GC.GetGeneration(weakref));
 #endif
-                    return SuccessExitCode;
+                    return RemoteExecutor.SuccessExitCode;
                 }, options).Dispose();
 
         }
@@ -487,6 +487,7 @@ namespace System.Tests
             Assert.Throws<ArgumentOutOfRangeException>(() => GC.WaitForFullGCComplete(-2));
         }
 
+        [ActiveIssue(39374)]
         [Theory]
         [InlineData(true, -1)]
         [InlineData(false, -1)]
@@ -501,10 +502,10 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke((approachString, timeoutString) =>
+            RemoteExecutor.Invoke((approachString, timeoutString) =>
                 {
                     TestWait(bool.Parse(approachString), int.Parse(timeoutString));
-                    return SuccessExitCode;
+                    return RemoteExecutor.SuccessExitCode;
                 }, approach.ToString(), timeout.ToString(), options).Dispose();
         }
 
@@ -514,10 +515,10 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke(() =>
+            RemoteExecutor.Invoke(() =>
                 {
                     Assert.Throws<InvalidOperationException>(() => GC.EndNoGCRegion());
-                    return SuccessExitCode;
+                    return RemoteExecutor.SuccessExitCode;
                 }, options).Dispose();
         }
 
@@ -537,7 +538,7 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke(() =>
+            RemoteExecutor.Invoke(() =>
                 {
                     Assert.True(GC.TryStartNoGCRegion(1024));
 
@@ -546,7 +547,7 @@ namespace System.Tests
                     // at this point, the GC should have booted us out of the no GC region
                     // since we allocated too much.
                     Assert.Throws<InvalidOperationException>(() => GC.EndNoGCRegion());
-                    return SuccessExitCode;
+                    return RemoteExecutor.SuccessExitCode;
                 }, options).Dispose();
         }
 
@@ -556,14 +557,14 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke(() =>
+            RemoteExecutor.Invoke(() =>
             {
                 Assert.True(GC.TryStartNoGCRegion(NoGCRequestedBudget));
                 Assert.Throws<InvalidOperationException>(() => GC.TryStartNoGCRegion(NoGCRequestedBudget));
 
                 Assert.Throws<InvalidOperationException>(() => GC.EndNoGCRegion());
 
-                return SuccessExitCode;
+                return RemoteExecutor.SuccessExitCode;
             }, options).Dispose();
         }
 
@@ -573,14 +574,14 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke(() =>
+            RemoteExecutor.Invoke(() =>
             {
                 Assert.True(GC.TryStartNoGCRegion(NoGCRequestedBudget, true));
                 Assert.Throws<InvalidOperationException>(() => GC.TryStartNoGCRegion(NoGCRequestedBudget, true));
 
                 Assert.Throws<InvalidOperationException>(() => GC.EndNoGCRegion());
 
-                return SuccessExitCode;
+                return RemoteExecutor.SuccessExitCode;
             }, options).Dispose();
         }
 
@@ -590,14 +591,14 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke(() =>
+            RemoteExecutor.Invoke(() =>
             {
                 Assert.True(GC.TryStartNoGCRegion(NoGCRequestedBudget, NoGCRequestedBudget));
                 Assert.Throws<InvalidOperationException>(() => GC.TryStartNoGCRegion(NoGCRequestedBudget, NoGCRequestedBudget));
 
                 Assert.Throws<InvalidOperationException>(() => GC.EndNoGCRegion());
 
-                return SuccessExitCode;
+                return RemoteExecutor.SuccessExitCode;
             }, options).Dispose();
         }
 
@@ -607,14 +608,14 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke(() =>
+            RemoteExecutor.Invoke(() =>
             {
                 Assert.True(GC.TryStartNoGCRegion(NoGCRequestedBudget, NoGCRequestedBudget, true));
                 Assert.Throws<InvalidOperationException>(() => GC.TryStartNoGCRegion(NoGCRequestedBudget, NoGCRequestedBudget, true));
 
                 Assert.Throws<InvalidOperationException>(() => GC.EndNoGCRegion());
 
-                return SuccessExitCode;
+                return RemoteExecutor.SuccessExitCode;
             }, options).Dispose();
         }
 
@@ -624,7 +625,7 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke(() =>
+            RemoteExecutor.Invoke(() =>
             {
                 // The budget for this test is 4mb, because the act of throwing an exception with a message
                 // contained in a resource file has to potential to allocate a lot on CoreRT. In particular, when compiling
@@ -637,7 +638,7 @@ namespace System.Tests
 
                 GC.EndNoGCRegion();
 
-                return SuccessExitCode;
+                return RemoteExecutor.SuccessExitCode;
             }, options).Dispose();
         }
 
@@ -647,14 +648,14 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke(() =>
+            RemoteExecutor.Invoke(() =>
                 {
 
                     Assert.True(GC.TryStartNoGCRegion(NoGCRequestedBudget));
                     Assert.Equal(GCSettings.LatencyMode, GCLatencyMode.NoGCRegion);
                     GC.EndNoGCRegion();
 
-                    return SuccessExitCode;
+                    return RemoteExecutor.SuccessExitCode;
 
                 }, options).Dispose();
         }
@@ -665,13 +666,13 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke(() =>
+            RemoteExecutor.Invoke(() =>
             {
                 Assert.True(GC.TryStartNoGCRegion(NoGCRequestedBudget, true));
                 Assert.Equal(GCSettings.LatencyMode, GCLatencyMode.NoGCRegion);
                 GC.EndNoGCRegion();
 
-                return SuccessExitCode;
+                return RemoteExecutor.SuccessExitCode;
 
             }, options).Dispose();
         }
@@ -682,13 +683,13 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke(() =>
+            RemoteExecutor.Invoke(() =>
             {
                 Assert.True(GC.TryStartNoGCRegion(NoGCRequestedBudget, NoGCRequestedBudget));
                 Assert.Equal(GCSettings.LatencyMode, GCLatencyMode.NoGCRegion);
                 GC.EndNoGCRegion();
 
-                return SuccessExitCode;
+                return RemoteExecutor.SuccessExitCode;
 
             }, options).Dispose();
         }
@@ -699,18 +700,49 @@ namespace System.Tests
         {
             RemoteInvokeOptions options = new RemoteInvokeOptions();
             options.TimeOut = TimeoutMilliseconds;
-            RemoteInvoke(() =>
+            RemoteExecutor.Invoke(() =>
             {
                 Assert.True(GC.TryStartNoGCRegion(NoGCRequestedBudget, NoGCRequestedBudget, true));
                 Assert.Equal(GCSettings.LatencyMode, GCLatencyMode.NoGCRegion);
                 GC.EndNoGCRegion();
 
-                return SuccessExitCode;
+                return RemoteExecutor.SuccessExitCode;
 
             }, options).Dispose();
         }
 
-        public static void TestWait(bool approach, int timeout)
+        [Theory]
+        [OuterLoop]
+        [InlineData(0)]
+        [InlineData(-1)]
+        public static void TryStartNoGCRegion_TotalSizeOutOfRange(long size)
+        {
+            RemoteInvokeOptions options = new RemoteInvokeOptions();
+            options.TimeOut = TimeoutMilliseconds;
+            RemoteExecutor.Invoke(sizeString =>
+            {
+                AssertExtensions.Throws<ArgumentOutOfRangeException>("totalSize", () => GC.TryStartNoGCRegion(long.Parse(sizeString)));
+                return RemoteExecutor.SuccessExitCode;
+            }, size.ToString(), options).Dispose();
+        }
+
+        [Theory]
+        [OuterLoop]
+        [InlineData(0)]                   // invalid because lohSize ==
+        [InlineData(-1)]                  // invalid because lohSize < 0
+        [InlineData(1152921504606846976)] // invalid because lohSize > totalSize
+        public static void TryStartNoGCRegion_LOHSizeInvalid(long size)
+        {
+            RemoteInvokeOptions options = new RemoteInvokeOptions();
+            options.TimeOut = TimeoutMilliseconds;
+            RemoteExecutor.Invoke(sizeString =>
+            {
+                AssertExtensions.Throws<ArgumentOutOfRangeException>("lohSize", () => GC.TryStartNoGCRegion(1024, long.Parse(sizeString)));
+                return RemoteExecutor.SuccessExitCode;
+            }, size.ToString(), options).Dispose();
+        }
+
+        private static void TestWait(bool approach, int timeout)
         {
             GCNotificationStatus result = GCNotificationStatus.Failed;
             Thread cancelProc = null;
@@ -755,7 +787,7 @@ namespace System.Tests
             }
         }
 
-        public static void CancelProc()
+        private static void CancelProc()
         {
             Thread.Sleep(500);
             GC.CancelFullGCNotification();

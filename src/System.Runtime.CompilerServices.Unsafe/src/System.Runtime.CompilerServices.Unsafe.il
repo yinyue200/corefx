@@ -37,7 +37,7 @@
     01 00 00 00 00
   ) // false
   .hash algorithm 0x00008004
-  .ver 4:0:4:0
+  .ver 4:0:5:0
 }
 .module System.Runtime.CompilerServices.Unsafe.dll
 // MVID: {1E97D84A-565B-49C5-B60A-F31A1A4ACE13}
@@ -262,12 +262,36 @@
   .method public hidebysig static !!T& AsRef<T>(void* source) cil managed aggressiveinlining
   {
         .custom instance void System.Runtime.Versioning.NonVersionableAttribute::.ctor() = ( 01 00 00 00 )
+// For .NET Core the roundtrip via a local is no longer needed see:
+// https://github.com/dotnet/coreclr/issues/13341
+// and
+// https://github.com/dotnet/coreclr/pull/11218
+#ifdef netcoreapp
+        .maxstack 1
+        ldarg.0
+        ret
+#else
         .locals (int32&)
         .maxstack 1
         ldarg.0
         // Roundtrip via a local to avoid type mismatch on return that the JIT inliner chokes on.
         stloc.0
         ldloc.0
+        ret
+#endif
+  } // end of method Unsafe::AsRef
+
+  .method public hidebysig static !!T& AsRef<T>(!!T& source) cil managed aggressiveinlining
+  {
+        .custom instance void System.Runtime.Versioning.NonVersionableAttribute::.ctor() = ( 01 00 00 00 )
+        .param [1]
+#ifdef netcoreapp
+        .custom instance void [CORE_ASSEMBLY]System.Runtime.CompilerServices.IsReadOnlyAttribute::.ctor() = ( 01 00 00 00 )
+#else
+        .custom instance void System.Runtime.CompilerServices.IsReadOnlyAttribute::.ctor() = ( 01 00 00 00 )
+#endif
+        .maxstack 1
+        ldarg.0
         ret
   } // end of method Unsafe::AsRef
 
@@ -278,6 +302,15 @@
         ldarg.0
         ret
   } // end of method Unsafe::As
+
+  .method public hidebysig static !!T& Unbox<valuetype .ctor ([CORE_ASSEMBLY]System.ValueType) T> (object 'box') cil managed aggressiveinlining
+  {
+        .custom instance void System.Runtime.Versioning.NonVersionableAttribute::.ctor() = ( 01 00 00 00 )
+        .maxstack 1
+        ldarg.0
+        unbox !!T
+        ret
+  } // end of method Unsafe::Unbox
 
   .method public hidebysig static !!T& Add<T>(!!T& source, int32 elementOffset) cil managed aggressiveinlining
   {
@@ -395,6 +428,26 @@
         ret 
   } // end of method Unsafe::AreSame
 
+  .method public hidebysig static bool IsAddressGreaterThan<T>(!!T& left, !!T& right) cil managed aggressiveinlining
+  {
+        .custom instance void System.Runtime.Versioning.NonVersionableAttribute::.ctor() = ( 01 00 00 00 )
+        .maxstack 2
+        ldarg.0
+        ldarg.1
+        cgt.un
+        ret 
+  } // end of method Unsafe::IsAddressGreaterThan
+
+  .method public hidebysig static bool IsAddressLessThan<T>(!!T& left, !!T& right) cil managed aggressiveinlining
+  {
+        .custom instance void System.Runtime.Versioning.NonVersionableAttribute::.ctor() = ( 01 00 00 00 )
+        .maxstack 2
+        ldarg.0
+        ldarg.1
+        clt.un
+        ret 
+  } // end of method Unsafe::IsAddressLessThan
+
 } // end of class System.Runtime.CompilerServices.Unsafe
 
 .class private auto ansi sealed beforefieldinit System.Runtime.Versioning.NonVersionableAttribute
@@ -413,3 +466,20 @@
   } // end of method NonVersionableAttribute::.ctor
 
 } // end of class System.Runtime.Versioning.NonVersionableAttribute
+
+#ifdef netcoreapp
+#else
+.class private auto ansi sealed beforefieldinit System.Runtime.CompilerServices.IsReadOnlyAttribute
+       extends [CORE_ASSEMBLY]System.Attribute
+{
+  .method public hidebysig specialname rtspecialname 
+          instance void .ctor () cil managed 
+  {
+        .maxstack 1
+        ldarg.0
+        call instance void [CORE_ASSEMBLY]System.Attribute::.ctor()
+        ret
+  } // end of method IsReadOnlyAttribute::.ctor
+
+} // end of class System.Runtime.CompilerServices.IsReadOnlyAttribute
+#endif

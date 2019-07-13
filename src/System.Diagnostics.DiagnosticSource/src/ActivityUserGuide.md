@@ -61,7 +61,7 @@ When that activity is started, it gets an [Id](id) and [Parent](parent).
            activity.SetParentId(context.Request.headers["Request-id"])
            foreach (var pair in context.Request.Headers["Correlation-Context"])
            {
-               var baggageItem = NameValueHEaderValue.Parse(pair);
+               var baggageItem = NameValueHeaderValue.Parse(pair);
                activity.AddBaggage(baggageItem.Key, baggageItem.Value);
            }     
            httpListener.StartActivity(activity, new  {context});
@@ -114,7 +114,7 @@ An application may also add tags and baggage to the current activity when proces
 Note that in the [Incoming Request Sample](#starting-and-stopping-activity), we pass `HttpContext` to DiagnosticSource, so that the application has access to the request properties in order to enrich the current activity.
 
 ### Subscribe to DiagnosticSource
-```
+```C#
     DiagnosticListener.AllListeners.Subscribe(delegate (DiagnosticListener listener)
     {
         if (listener.Name == "MyActivitySource")
@@ -132,7 +132,7 @@ Note that in the [Incoming Request Sample](#starting-and-stopping-activity), we 
 
 ### Log Events
 
-```
+```C#
     public void LogActivityStart()
     {
         var document = new Dictionary<string,object>
@@ -144,7 +144,7 @@ Note that in the [Incoming Request Sample](#starting-and-stopping-activity), we 
             ["StartTime"] = activity.StartTimeUtc,
         }
         //log tags and baggage if needed
-        ...// send document to log storage       
+        //...send document to log storage       
     }
 
     public void LogActivityStop()
@@ -163,7 +163,7 @@ Note that in the [Incoming Request Sample](#starting-and-stopping-activity), we 
             document[kv.Key] = kv.Value;
         foreach (var kv in activity.Baggage)
             document[kv.Key] = kv.Value;
-        ...// send document to log storage
+        //...send document to log storage
     }
 
     public void Log(LogLevel level, string message)
@@ -179,7 +179,7 @@ Note that in the [Incoming Request Sample](#starting-and-stopping-activity), we 
             document["Id"] = activity.Id;
             //add tags, baggage and ParentId if needed
         }
-        ...// send document to log storage
+        //...send document to log storage
     }
 ```
 

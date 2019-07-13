@@ -227,7 +227,7 @@ internal class SqlDependencyProcessDispatcher : MarshalByRefObject
         private void AsynchronouslyQueryServiceBrokerQueue()
         {
             AsyncCallback callback = new AsyncCallback(AsyncResultCallback);
-            _com.BeginExecuteReader(CommandBehavior.Default, callback, null); // NO LOCK NEEDED
+            _com.BeginExecuteReader(callback, null, CommandBehavior.Default); // NO LOCK NEEDED
         }
 
         private void AsyncResultCallback(IAsyncResult asyncResult)
@@ -442,7 +442,7 @@ internal class SqlDependencyProcessDispatcher : MarshalByRefObject
                         handle = reader.GetGuid(1);
 
                         // Only process QueryNotification messages.
-                        if (0 == string.Compare(msgType, "http://schemas.microsoft.com/SQL/Notifications/QueryNotification", StringComparison.OrdinalIgnoreCase))
+                        if (string.Equals(msgType, "http://schemas.microsoft.com/SQL/Notifications/QueryNotification", StringComparison.OrdinalIgnoreCase))
                         {
                             SqlXml payload = reader.GetSqlXml(2);
                             if (null != payload)
@@ -529,10 +529,6 @@ internal class SqlDependencyProcessDispatcher : MarshalByRefObject
             }
         }
 
-        // SxS: this method uses WindowsIdentity.Impersonate to impersonate the current thread with the
-        // credentials used to create this SqlConnectionContainer.
-        [ResourceExposure(ResourceScope.None)]
-        [ResourceConsumption(ResourceScope.Process, ResourceScope.Process)]
         private void Restart(object unused)
         { // Unused arg required by TimerCallback.
             try
@@ -612,7 +608,12 @@ internal class SqlDependencyProcessDispatcher : MarshalByRefObject
                         _timeoutParam.Value = _defaultWaitforTimeout; // If success, reset to default for re-queue.
                         AsynchronouslyQueryServiceBrokerQueue();
                         _errorState = false;
-                        _retryTimer = null;
+                        Timer retryTimer = _retryTimer;
+                        if (retryTimer != null)
+                        {
+                            _retryTimer = null;
+                            retryTimer.Dispose();
+                        }
                     }
                 }
 

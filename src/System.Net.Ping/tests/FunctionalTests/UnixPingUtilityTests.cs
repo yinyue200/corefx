@@ -2,8 +2,10 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 using Xunit;
@@ -22,24 +24,69 @@ namespace System.Net.NetworkInformation.Tests
         [InlineData(1)]
         [InlineData(50)]
         [InlineData(1000)]
-        [PlatformSpecific(TestPlatforms.AnyUnix)]  // Tests un-priviledged Ping support on Unix
+        [PlatformSpecific(TestPlatforms.AnyUnix)] // Tests un-priviledged Ping support on Unix
         public static async Task PacketSizeIsRespected(int payloadSize)
         {
-            IPAddress localAddress = await TestSettings.GetLocalIPAddress();
+            IPAddress localAddress = await TestSettings.GetLocalIPAddressAsync();
             bool ipv4 = localAddress.AddressFamily == AddressFamily.InterNetwork;
             string arguments = UnixCommandLinePing.ConstructCommandLine(payloadSize, localAddress.ToString(), ipv4);
             string utilityPath = (localAddress.AddressFamily == AddressFamily.InterNetwork)
                 ? UnixCommandLinePing.Ping4UtilityPath
                 : UnixCommandLinePing.Ping6UtilityPath;
 
-            ProcessStartInfo psi = new ProcessStartInfo(utilityPath, arguments);
-            psi.RedirectStandardError = true;
-            psi.RedirectStandardOutput = true;
-            Process p = Process.Start(psi);
+            var p = new Process();
+            p.StartInfo.FileName = utilityPath;
+            p.StartInfo.Arguments = arguments;
+            p.StartInfo.UseShellExecute = false;
+            
+            p.StartInfo.RedirectStandardOutput = true;
+            var stdOutLines = new List<string>();
+            p.OutputDataReceived += new DataReceivedEventHandler(
+                delegate (object sendingProcess, DataReceivedEventArgs outputLine) { stdOutLines.Add(outputLine.Data); }); 
 
-            string pingOutput = p.StandardOutput.ReadToEnd();
-            Assert.True(p.WaitForExit(TestSettings.PingTimeout), "Ping process did not exit in " + TestSettings.PingTimeout + " ms.");
+            p.StartInfo.RedirectStandardError = true;
+            var stdErrLines = new List<string>();
+            p.ErrorDataReceived += new DataReceivedEventHandler(
+                delegate (object sendingProcess, DataReceivedEventArgs errorLine) { stdErrLines.Add(errorLine.Data); }); 
 
+            p.Start();
+            p.BeginOutputReadLine();
+            p.BeginErrorReadLine();
+
+            // There are multiple issues with ping6 in macOS 10.12 (Sierra), see https://github.com/dotnet/corefx/issues/26358.
+            bool isPing6OnMacSierra = utilityPath.Equals(UnixCommandLinePing.Ping6UtilityPath) &&
+                    RuntimeInformation.IsOSPlatform(OSPlatform.OSX) &&
+                    !PlatformDetection.IsMacOsHighSierraOrHigher;
+
+            string pingOutput;
+            if (!p.WaitForExit(TestSettings.PingTimeout))
+            {
+                // Workaround known issues with ping6 in macOS 10.12
+                if (isPing6OnMacSierra)
+                    return;
+
+                pingOutput = string.Join("\n", stdOutLines);
+                string stdErr = string.Join("\n", stdErrLines);
+                throw new Exception(
+                    $"[{utilityPath} {arguments}] process did not exit in {TestSettings.PingTimeout} ms.\nStdOut:[{pingOutput}]\nStdErr:[{stdErr}]");
+            }
+
+            // Ensure standard output and error are flushed
+            p.WaitForExit();
+
+            pingOutput = string.Join("\n", stdOutLines);
+            var exitCode = p.ExitCode;
+            if (exitCode != 0)
+            {
+                // Workaround known issues with ping6 in macOS 10.12
+                if (isPing6OnMacSierra)
+                    return;
+
+                string stdErr = string.Join("\n", stdErrLines);
+                throw new Exception(
+                    $"[{utilityPath} {arguments}] process exit code is {exitCode}.\nStdOut:[{pingOutput}]\nStdErr:[{stdErr}]");
+            }
+            
             try
             {
                 // Validate that the returned data size is correct.
@@ -57,7 +104,9 @@ namespace System.Net.NetworkInformation.Tests
             }
             catch (Exception e)
             {
-                throw new Exception($"Ping output was <{pingOutput}>", e);
+                string stdErr = string.Join("\n", stdErrLines);
+                throw new Exception(
+                    $"Parse error for [{utilityPath} {arguments}] process exit code is {exitCode}.\nStdOut:[{pingOutput}]\nStdErr:[{stdErr}]", e);
             }
         }
 

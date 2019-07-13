@@ -144,7 +144,6 @@ namespace System.Linq.Parallel.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, ".NET Core bug fix https://github.com/dotnet/corefx/pull/1970 not available in desktop")]
         public static void Cast_ArgumentNullException()
         {
             AssertExtensions.Throws<ArgumentNullException>("source", () => ((ParallelQuery<object>)null).Cast<int>());
@@ -161,7 +160,7 @@ namespace System.Linq.Parallel.Tests
 
             public int Value { get { return _value; } }
 
-            public static explicit operator Castable(Int32 value)
+            public static explicit operator Castable(int value)
             {
                 return new Castable(value);
             }

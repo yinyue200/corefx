@@ -141,7 +141,7 @@ namespace System.Xml.Xsl.IlGen
 
         private static ConstructorInfo GetConstructor(Type className)
         {
-            ConstructorInfo constrInfo = className.GetConstructor(new Type[] { });
+            ConstructorInfo constrInfo = className.GetConstructor(Array.Empty<Type>());
             Debug.Assert(constrInfo != null, "Constructor " + className + " cannot be null.");
             return constrInfo;
         }
@@ -627,7 +627,7 @@ namespace System.Xml.Xsl.IlGen
                     case 6: opcode = OpCodes.Ldc_I4_6; break;
                     case 7: opcode = OpCodes.Ldc_I4_7; break;
                     case 8: opcode = OpCodes.Ldc_I4_8; break;
-                    default: Debug.Assert(false); return;
+                    default: Debug.Fail($"Unexpected int val {intVal}"); return;
                 }
                 Emit(opcode);
             }
@@ -866,38 +866,6 @@ namespace System.Xml.Xsl.IlGen
             }
         }
 
-        // BUGBUG: This method is only necessary to work around VS Bug 478350
-        public void CallToken(MethodInfo meth)
-        {
-            Debug.Assert(!(_methInfo is ConstructorBuilder));
-            MethodBuilder methBldr = _methInfo as MethodBuilder;
-
-            if (methBldr != null)
-            {
-                // Using regular reflection emit, so get a token for the specified method.
-                // The token is only valid within scope of this method's body.
-                OpCode opcode = meth.IsVirtual || meth.IsAbstract ? OpCodes.Callvirt : OpCodes.Call;
-
-                TraceCall(opcode, meth);
-
-                _ilgen.Emit(opcode, ((ModuleBuilder)methBldr.Module).MetadataToken);
-
-                if (_lastSourceInfo != null)
-                {
-                    // Emit a "no source" sequence point, otherwise the debugger would return to the wrong line
-                    // once the call has finished.  We are guaranteed not to emit adjacent sequence points because
-                    // the Call instruction precedes this sequence point, and a nop instruction precedes other
-                    // sequence points.
-                    MarkSequencePoint(SourceLineInfo.NoSource);
-                }
-            }
-            else
-            {
-                // Using LCG, so no need to workaround
-                Call(meth);
-            }
-        }
-
         public void Construct(ConstructorInfo constr)
         {
             Emit(OpCodes.Newobj, constr);
@@ -922,7 +890,7 @@ namespace System.Xml.Xsl.IlGen
                     Call(XmlILMethods.StrCat4);
                     break;
                 default:
-                    Debug.Assert(false, "Shouldn't be called");
+                    Debug.Fail("Shouldn't be called");
                     break;
             }
         }
@@ -974,7 +942,7 @@ namespace System.Xml.Xsl.IlGen
             }
             else
             {
-                int[] bits = Decimal.GetBits(dec);
+                int[] bits = decimal.GetBits(dec);
 
                 LoadInteger(bits[0]);
                 LoadInteger(bits[1]);
@@ -1010,7 +978,7 @@ namespace System.Xml.Xsl.IlGen
                         case QilNodeType.Divide: Emit(OpCodes.Div); break;
                         case QilNodeType.Modulo: Emit(OpCodes.Rem); break;
                         case QilNodeType.Negate: Emit(OpCodes.Neg); break;
-                        default: Debug.Assert(false, opType + " must be an arithmetic operation."); break;
+                        default: Debug.Fail($"{opType} must be an arithmetic operation."); break;
                     }
                     break;
 
@@ -1023,14 +991,14 @@ namespace System.Xml.Xsl.IlGen
                         case QilNodeType.Divide: meth = XmlILMethods.DecDiv; break;
                         case QilNodeType.Modulo: meth = XmlILMethods.DecRem; break;
                         case QilNodeType.Negate: meth = XmlILMethods.DecNeg; break;
-                        default: Debug.Assert(false, opType + " must be an arithmetic operation."); break;
+                        default: Debug.Fail($"{opType} must be an arithmetic operation."); break;
                     }
 
                     Call(meth);
                     break;
 
                 default:
-                    Debug.Assert(false, "The " + opType + " arithmetic operation cannot be performed on values of type " + code + ".");
+                    Debug.Fail($"The {opType} arithmetic operation cannot be performed on values of type {code}.");
                     break;
             }
         }
@@ -1045,7 +1013,7 @@ namespace System.Xml.Xsl.IlGen
                 case XmlTypeCode.QName: meth = XmlILMethods.QNameEq; break;
                 case XmlTypeCode.Decimal: meth = XmlILMethods.DecEq; break;
                 default:
-                    Debug.Assert(false, "Type " + code + " does not support the equals operation.");
+                    Debug.Fail($"Type {code} does not support the equals operation.");
                     break;
             }
 
@@ -1061,7 +1029,7 @@ namespace System.Xml.Xsl.IlGen
                 case XmlTypeCode.String: meth = XmlILMethods.StrCmp; break;
                 case XmlTypeCode.Decimal: meth = XmlILMethods.DecCmp; break;
                 default:
-                    Debug.Assert(false, "Type " + code + " does not support the equals operation.");
+                    Debug.Fail($"Type {code} does not support the equals operation.");
                     break;
             }
 
@@ -1237,7 +1205,7 @@ namespace System.Xml.Xsl.IlGen
                     case GenerateNameType.TagNameAndMappings: meth = XmlILMethods.StartElemMapName; break;
                     case GenerateNameType.TagNameAndNamespace: meth = XmlILMethods.StartElemNmspName; break;
                     case GenerateNameType.QName: meth = XmlILMethods.StartElemQName; break;
-                    default: Debug.Assert(false, nameType + " is invalid here."); break;
+                    default: Debug.Fail($"{nameType} is invalid here."); break;
                 }
             }
             else
@@ -1247,7 +1215,7 @@ namespace System.Xml.Xsl.IlGen
                 {
                     case GenerateNameType.LiteralLocalName: meth = XmlILMethods.StartElemLocNameUn; break;
                     case GenerateNameType.LiteralName: meth = XmlILMethods.StartElemLitNameUn; break;
-                    default: Debug.Assert(false, nameType + " is invalid here."); break;
+                    default: Debug.Fail($"{nameType} is invalid here."); break;
                 }
             }
 
@@ -1271,7 +1239,7 @@ namespace System.Xml.Xsl.IlGen
                 {
                     case GenerateNameType.LiteralLocalName: meth = XmlILMethods.EndElemLocNameUn; break;
                     case GenerateNameType.LiteralName: meth = XmlILMethods.EndElemLitNameUn; break;
-                    default: Debug.Assert(false, nameType + " is invalid here."); break;
+                    default: Debug.Fail($"{nameType} is invalid here."); break;
                 }
             }
 
@@ -1300,7 +1268,7 @@ namespace System.Xml.Xsl.IlGen
                     case GenerateNameType.TagNameAndMappings: meth = XmlILMethods.StartAttrMapName; break;
                     case GenerateNameType.TagNameAndNamespace: meth = XmlILMethods.StartAttrNmspName; break;
                     case GenerateNameType.QName: meth = XmlILMethods.StartAttrQName; break;
-                    default: Debug.Assert(false, nameType + " is invalid here."); break;
+                    default: Debug.Fail($"{nameType} is invalid here."); break;
                 }
             }
             else
@@ -1310,7 +1278,7 @@ namespace System.Xml.Xsl.IlGen
                 {
                     case GenerateNameType.LiteralLocalName: meth = XmlILMethods.StartAttrLocNameUn; break;
                     case GenerateNameType.LiteralName: meth = XmlILMethods.StartAttrLitNameUn; break;
-                    default: Debug.Assert(false, nameType + " is invalid here."); break;
+                    default: Debug.Fail($"{nameType} is invalid here."); break;
                 }
             }
 
@@ -1470,11 +1438,11 @@ namespace System.Xml.Xsl.IlGen
                         break;
 
                     case XmlTypeCode.AnyAtomicType:
-                        Debug.Assert(false, "Heterogenous sort key is not allowed.");
+                        Debug.Fail("Heterogenous sort key is not allowed.");
                         return;
 
                     default:
-                        Debug.Assert(false, "Sorting over datatype " + keyType.TypeCode + " is not allowed.");
+                        Debug.Fail($"Sorting over datatype {keyType.TypeCode} is not allowed.");
                         break;
                 }
             }

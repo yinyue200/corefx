@@ -128,7 +128,7 @@ namespace System.Reflection.Metadata.Ecma335.Tests
             builder.AddManifestResource(default(ManifestResourceAttributes), default(StringHandle), MetadataTokens.AssemblyFileHandle(1), default(uint));
             Assert.Equal(1, builder.GetRowCount(TableIndex.ManifestResource));
 
-            builder.AddAssemblyFile(default(StringHandle), default(BlobHandle), default(Boolean));
+            builder.AddAssemblyFile(default(StringHandle), default(BlobHandle), default(bool));
             Assert.Equal(1, builder.GetRowCount(TableIndex.File));
 
             builder.AddExportedType(default(TypeAttributes), default(StringHandle), default(StringHandle), MetadataTokens.AssemblyFileHandle(1), default(int));
@@ -203,7 +203,7 @@ namespace System.Reflection.Metadata.Ecma335.Tests
         }
 
         /// <summary>
-        /// Add methods do miminal validation to avoid overhead.
+        /// Add methods do minimal validation to avoid overhead.
         /// </summary>
         [Fact]
         public void Add_ArgumentErrors()
@@ -492,7 +492,16 @@ namespace System.Reflection.Metadata.Ecma335.Tests
                 Assert.Equal(@"a/", mdReader.GetString(MetadataTokens.DocumentNameBlobHandle(MetadataTokens.GetHeapOffset(n6))));
                 Assert.Equal(@"/", mdReader.GetString(MetadataTokens.DocumentNameBlobHandle(MetadataTokens.GetHeapOffset(n7))));
                 Assert.Equal(@"\\", mdReader.GetString(MetadataTokens.DocumentNameBlobHandle(MetadataTokens.GetHeapOffset(n8))));
-                Assert.Equal("\uFFFd\uFFFd", mdReader.GetString(MetadataTokens.DocumentNameBlobHandle(MetadataTokens.GetHeapOffset(n9))));
+                if (PlatformDetection.IsNetCore)
+                {
+                    Assert.Equal("\uFFFD\uFFFD\uFFFD", mdReader.GetString(MetadataTokens.DocumentNameBlobHandle(MetadataTokens.GetHeapOffset(n9))));
+                }
+                else
+                {
+                    // Versions of .NET prior to Core 3.0 didn't follow Unicode recommendations for U+FFFD substitution,
+                    // so they sometimes emitted too few replacement chars.
+                    Assert.Equal("\uFFFD\uFFFD", mdReader.GetString(MetadataTokens.DocumentNameBlobHandle(MetadataTokens.GetHeapOffset(n9))));
+                }
                 Assert.Equal("\0", mdReader.GetString(MetadataTokens.DocumentNameBlobHandle(MetadataTokens.GetHeapOffset(n10))));
             }
         }

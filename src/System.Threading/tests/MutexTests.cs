@@ -7,47 +7,47 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Microsoft.DotNet.RemoteExecutor;
 using Xunit;
 
 namespace System.Threading.Tests
 {
-    public class MutexTests : RemoteExecutorTestBase
+    public class MutexTests : FileCleanupTestBase
     {
-        private const int FailedWaitTimeout = 30000;
-
         [Fact]
         public void Ctor_ConstructWaitRelease()
         {
             using (Mutex m = new Mutex())
             {
-                Assert.True(m.WaitOne(FailedWaitTimeout));
+                m.CheckedWait();
                 m.ReleaseMutex();
             }
 
             using (Mutex m = new Mutex(false))
             {
-                Assert.True(m.WaitOne(FailedWaitTimeout));
+                m.CheckedWait();
                 m.ReleaseMutex();
             }
 
             using (Mutex m = new Mutex(true))
             {
-                Assert.True(m.WaitOne(FailedWaitTimeout));
+                m.CheckedWait();
                 m.ReleaseMutex();
                 m.ReleaseMutex();
             }
         }
 
         [Fact]
-        public void Ctor_InvalidName()
+        [PlatformSpecific(TestPlatforms.AnyUnix)]
+        public void Ctor_InvalidNames_Unix()
         {
-            AssertExtensions.Throws<ArgumentException>("name", null, () => new Mutex(false, new string('a', 1000)));
+            AssertExtensions.Throws<ArgumentException>("name", null, () => new Mutex(false, new string('a', 1000), out bool createdNew));
         }
 
-        [Fact]
-        public void Ctor_ValidName()
+        [Theory]
+        [MemberData(nameof(GetValidNames))]
+        public void Ctor_ValidName(string name)
         {
-            string name = Guid.NewGuid().ToString("N");
             bool createdNew;
             using (Mutex m1 = new Mutex(false, name, out createdNew))
             {
@@ -71,10 +71,7 @@ namespace System.Threading.Tests
         }
 
         [PlatformSpecific(TestPlatforms.Windows)]
-        [ConditionalFact(nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsNotWinRT))] // Can't create global objects in appcontainer
-        [SkipOnTargetFramework(
-            TargetFrameworkMonikers.NetFramework,
-            "The fix necessary for this test (PR https://github.com/dotnet/coreclr/pull/12381) is not in the .NET Framework.")]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotInAppContainer))] // Can't create global objects in appcontainer
         public void Ctor_ImpersonateAnonymousAndTryCreateGlobalMutexTest()
         {
             ThreadTestHelpers.RunTestInBackgroundThread(() =>
@@ -90,7 +87,7 @@ namespace System.Threading.Tests
             });
         }
 
-        [ConditionalFact(nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsWinRT))] // Can't create global objects in appcontainer
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsInAppContainer))] // Can't create global objects in appcontainer
         [PlatformSpecific(TestPlatforms.Windows)]
         public void Ctor_TryCreateGlobalMutexTest_Uwp()
         {
@@ -98,11 +95,10 @@ namespace System.Threading.Tests
                 Assert.Throws<UnauthorizedAccessException>(() => new Mutex(false, "Global\\" + Guid.NewGuid().ToString("N"))));
         }
 
-        [Fact]
-        public void OpenExisting()
+        [Theory]
+        [MemberData(nameof(GetValidNames))]
+        public void OpenExisting(string name)
         {
-            string name = Guid.NewGuid().ToString("N");
-
             Mutex resultHandle;
             Assert.False(Mutex.TryOpenExisting(name, out resultHandle));
 
@@ -110,11 +106,11 @@ namespace System.Threading.Tests
             {
                 using (Mutex m2 = Mutex.OpenExisting(name))
                 {
-                    Assert.True(m1.WaitOne(FailedWaitTimeout));
+                    m1.CheckedWait();
                     Assert.False(Task.Factory.StartNew(() => m2.WaitOne(0), CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default).Result);
                     m1.ReleaseMutex();
 
-                    Assert.True(m2.WaitOne(FailedWaitTimeout));
+                    m2.CheckedWait();
                     Assert.False(Task.Factory.StartNew(() => m1.WaitOne(0), CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default).Result);
                     m2.ReleaseMutex();
                 }
@@ -130,7 +126,6 @@ namespace System.Threading.Tests
         {
             AssertExtensions.Throws<ArgumentNullException>("name", () => Mutex.OpenExisting(null));
             AssertExtensions.Throws<ArgumentException>("name", null, () => Mutex.OpenExisting(string.Empty));
-            AssertExtensions.Throws<ArgumentException>("name", null, () => Mutex.OpenExisting(new string('a', 10000)));
         }
 
         [Fact]
@@ -190,19 +185,21 @@ namespace System.Threading.Tests
                 {
                     Task t = Task.Factory.StartNew(() =>
                     {
-                        Assert.True(m.WaitOne(FailedWaitTimeout));
+                        m.CheckedWait();
                         // don't release the mutex; abandon it on this thread
                     }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-                    Assert.True(t.Wait(FailedWaitTimeout));
+                    t.CheckedWait();
 
                     switch (waitType)
                     {
                         case 0: // WaitOne
-                            Assert.Throws<AbandonedMutexException>(() => m.WaitOne(FailedWaitTimeout));
+                            Assert.Throws<AbandonedMutexException>(() => m.CheckedWait());
                             break;
 
                         case 1: // WaitAny
-                            AbandonedMutexException ame = Assert.Throws<AbandonedMutexException>(() => WaitHandle.WaitAny(new[] { m }, FailedWaitTimeout));
+                            AbandonedMutexException ame =
+                                Assert.Throws<AbandonedMutexException>(
+                                    () => WaitHandle.WaitAny(new[] { m }, ThreadTestHelpers.UnexpectedTimeoutMilliseconds));
                             Assert.Equal(0, ame.MutexIndex);
                             Assert.Equal(m, ame.Mutex);
                             break;
@@ -233,20 +230,20 @@ namespace System.Threading.Tests
                 {
                     using (var mutex = Mutex.OpenExisting(m))
                     {
-                        mutex.WaitOne();
+                        mutex.CheckedWait();
                         try
                         { File.WriteAllText(f, "0"); }
                         finally { mutex.ReleaseMutex(); }
 
                         IncrementValueInFileNTimes(mutex, f, 10);
                     }
-                    return SuccessExitCode;
+                    return RemoteExecutor.SuccessExitCode;
                 };
 
                 using (var mutex = new Mutex(false, mutexName))
-                using (var remote = RemoteInvoke(otherProcess, mutexName, fileName))
+                using (var remote = RemoteExecutor.Invoke(otherProcess, mutexName, fileName))
                 {
-                    SpinWait.SpinUntil(() => File.Exists(fileName));
+                    SpinWait.SpinUntil(() => File.Exists(fileName), ThreadTestHelpers.UnexpectedTimeoutMilliseconds);
 
                     IncrementValueInFileNTimes(mutex, fileName, 10);
                 }
@@ -259,7 +256,7 @@ namespace System.Threading.Tests
         {
             for (int i = 0; i < n; i++)
             {
-                mutex.WaitOne();
+                mutex.CheckedWait();
                 try
                 {
                     int current = int.Parse(File.ReadAllText(fileName));
@@ -268,6 +265,16 @@ namespace System.Threading.Tests
                 }
                 finally { mutex.ReleaseMutex(); }
             }
+        }
+
+        public static TheoryData<string> GetValidNames()
+        {
+            var names  =  new TheoryData<string>() { Guid.NewGuid().ToString("N") };
+
+            if (PlatformDetection.IsWindows)
+                names.Add(Guid.NewGuid().ToString("N") + new string('a', 1000));
+
+            return names;
         }
 
         [DllImport("kernel32.dll")]

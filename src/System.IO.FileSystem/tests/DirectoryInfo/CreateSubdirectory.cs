@@ -89,14 +89,37 @@ namespace System.IO.Tests
             Assert.Throws<ArgumentException>(() => new DirectoryInfo(TestDirectory + "/path").CreateSubdirectory("../../path2"));
         }
 
+        [Fact]
+        public void SubdirectoryOverlappingName_ThrowsArgumentException()
+        {
+            // What we're looking for here is trying to create C:\FooBar under C:\Foo by passing "..\FooBar"
+            DirectoryInfo info = Directory.CreateDirectory(GetTestFilePath());
+
+            string overlappingName = ".." + Path.DirectorySeparatorChar + info.Name + "overlap";
+
+            Assert.Throws<ArgumentException>(() => info.CreateSubdirectory(overlappingName));
+
+            // Now try with an info with a trailing separator
+            info = new DirectoryInfo(info.FullName + Path.DirectorySeparatorChar);
+            Assert.Throws<ArgumentException>(() => info.CreateSubdirectory(overlappingName));
+        }
+
         [Theory,
             MemberData(nameof(ValidPathComponentNames))]
         public void ValidPathWithTrailingSlash(string component)
         {
             DirectoryInfo testDir = Directory.CreateDirectory(GetTestFilePath());
 
-            string path = IOServices.AddTrailingSlashIfNeeded(component);
+            string path = component + Path.DirectorySeparatorChar;
             DirectoryInfo result = new DirectoryInfo(testDir.FullName).CreateSubdirectory(path);
+
+            Assert.Equal(Path.Combine(testDir.FullName, path), result.FullName);
+            Assert.True(Directory.Exists(result.FullName));
+
+            // Now try creating subdirectories when the directory info itself has a slash
+            testDir = Directory.CreateDirectory(GetTestFilePath() + Path.DirectorySeparatorChar);
+
+            result = new DirectoryInfo(testDir.FullName).CreateSubdirectory(path);
 
             Assert.Equal(Path.Combine(testDir.FullName, path), result.FullName);
             Assert.True(Directory.Exists(result.FullName));
@@ -114,6 +137,13 @@ namespace System.IO.Tests
             Assert.Equal(Path.Combine(testDir.FullName, path), result.FullName);
             Assert.True(Directory.Exists(result.FullName));
 
+            // Now try creating subdirectories when the directory info itself has a slash
+            testDir = Directory.CreateDirectory(GetTestFilePath() + Path.DirectorySeparatorChar);
+
+            result = new DirectoryInfo(testDir.FullName).CreateSubdirectory(path);
+
+            Assert.Equal(Path.Combine(testDir.FullName, path), result.FullName);
+            Assert.True(Directory.Exists(result.FullName));
         }
 
         [Fact]
@@ -140,27 +170,18 @@ namespace System.IO.Tests
 
         [Theory,
             MemberData(nameof(ControlWhiteSpace))]
-        [PlatformSpecific(TestPlatforms.Windows)]  // Control whitespace in path throws ArgumentException
-        public void WindowsControlWhiteSpace(string component)
+        [PlatformSpecific(TestPlatforms.Windows)]
+        public void WindowsControlWhiteSpace_Core(string component)
         {
-            // CreateSubdirectory will throw when passed a path with control whitespace e.g. "\t"
-            string path = IOServices.RemoveTrailingSlash(GetTestFileName());
-            Assert.Throws<ArgumentException>(() => new DirectoryInfo(TestDirectory).CreateSubdirectory(component));
+            Assert.Throws<IOException>(() => new DirectoryInfo(TestDirectory).CreateSubdirectory(component));
         }
 
         [Theory,
             MemberData(nameof(SimpleWhiteSpace))]
-        [PlatformSpecific(TestPlatforms.Windows)]  // Simple whitespace is trimmed in path
-        public void WindowsSimpleWhiteSpace(string component)
+        [PlatformSpecific(TestPlatforms.Windows)]
+        public void WindowsSimpleWhiteSpaceThrowsException(string component)
         {
-            // CreateSubdirectory trims all simple whitespace, returning us the parent directory
-            // that called CreateSubdirectory
-            string path = IOServices.RemoveTrailingSlash(GetTestFileName());
-            DirectoryInfo result = new DirectoryInfo(TestDirectory).CreateSubdirectory(component);
-
-            Assert.True(Directory.Exists(result.FullName));
-            Assert.Equal(TestDirectory, IOServices.RemoveTrailingSlash(result.FullName));
-
+            Assert.Throws<ArgumentException>(() => new DirectoryInfo(TestDirectory).CreateSubdirectory(component));
         }
 
         [Theory,
@@ -170,7 +191,6 @@ namespace System.IO.Tests
         {
             new DirectoryInfo(TestDirectory).CreateSubdirectory(path);
             Assert.True(Directory.Exists(Path.Combine(TestDirectory, path)));
-
         }
 
         [Theory,
@@ -205,6 +225,15 @@ namespace System.IO.Tests
         {
             DirectoryInfo testDir = Directory.CreateDirectory(GetTestFilePath());
             Assert.Throws<ArgumentException>(() => testDir.CreateSubdirectory("//"));
+        }
+
+        [Fact]
+        public void ParentDirectoryNameAsPrefixShouldThrow()
+        {
+            string randomName = GetTestFileName();
+            DirectoryInfo di = Directory.CreateDirectory(Path.Combine(TestDirectory, randomName));
+
+            Assert.Throws<ArgumentException>(() => di.CreateSubdirectory(Path.Combine("..", randomName + "abc", GetTestFileName())));
         }
 
         #endregion

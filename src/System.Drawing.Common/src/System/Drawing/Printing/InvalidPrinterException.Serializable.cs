@@ -2,12 +2,12 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+// This file isn't built into the .csproj in corefx but is consumed by Mono.
+
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 
 namespace System.Drawing.Printing
 {
-    [Serializable]
     partial class InvalidPrinterException
     {
         protected InvalidPrinterException(SerializationInfo info, StreamingContext context) : base(info, context)
@@ -15,15 +15,10 @@ namespace System.Drawing.Printing
             _settings = (PrinterSettings)info.GetValue("settings", typeof(PrinterSettings));
         }
 
-        [SecurityPermissionAttribute(SecurityAction.Demand, SerializationFormatter = true)]
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            if (info == null)
-            {
-                throw new ArgumentNullException("info");
-            }
-            info.AddValue("settings", _settings);
             base.GetObjectData(info, context);
+            info.AddValue("settings", _settings);
         }
     }
 }

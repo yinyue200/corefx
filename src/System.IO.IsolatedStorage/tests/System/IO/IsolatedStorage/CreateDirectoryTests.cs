@@ -6,7 +6,6 @@ using Xunit;
 
 namespace System.IO.IsolatedStorage
 {
-    [ActiveIssue(18940, TargetFrameworkMonikers.UapAot)]
     public class CreateDirectoryTests : IsoStorageTest
     {
         [Fact]
@@ -50,16 +49,15 @@ namespace System.IO.IsolatedStorage
         }
 
         [Fact]
-        public void CreateDirectory_RaisesArgumentException()
+        public void CreateDirectory_IsolatedStorageException()
         {
             using (IsolatedStorageFile isf = IsolatedStorageFile.GetUserStoreForAssembly())
             {
-                AssertExtensions.Throws<ArgumentException>("path", null, () => isf.CreateDirectory("\0bad"));
+                Assert.Throws<IsolatedStorageException>(() => isf.CreateDirectory("\0bad"));
             }
         }
 
-        [Theory MemberData(nameof(ValidStores))]
-        [ActiveIssue("dotnet/corefx #18268", TargetFrameworkMonikers.NetFramework)]
+        [Theory, MemberData(nameof(ValidStores))]
         public void CreateDirectory_Existance(PresetScopes scope)
         {
             using (var isf = GetPresetScope(scope))

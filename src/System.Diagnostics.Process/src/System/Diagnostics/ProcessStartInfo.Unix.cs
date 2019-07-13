@@ -14,28 +14,22 @@ namespace System.Diagnostics
     {
         private const bool CaseSensitiveEnvironmentVariables = true;
 
-        public string UserName
-        {
-            get { throw new PlatformNotSupportedException(SR.ProcessStartIdentityNotSupported); }
-            set { throw new PlatformNotSupportedException(SR.ProcessStartIdentityNotSupported); }
-        }
-
         public string PasswordInClearText
         {
-            get { throw new PlatformNotSupportedException(SR.ProcessStartIdentityNotSupported); }
-            set { throw new PlatformNotSupportedException(SR.ProcessStartIdentityNotSupported); }
+            get { throw new PlatformNotSupportedException(SR.Format(SR.ProcessStartSingleFeatureNotSupported, nameof(PasswordInClearText))); }
+            set { throw new PlatformNotSupportedException(SR.Format(SR.ProcessStartSingleFeatureNotSupported, nameof(PasswordInClearText))); }
         }
 
         public string Domain
         {
-            get { throw new PlatformNotSupportedException(SR.ProcessStartIdentityNotSupported); }
-            set { throw new PlatformNotSupportedException(SR.ProcessStartIdentityNotSupported); }
+            get { throw new PlatformNotSupportedException(SR.Format(SR.ProcessStartSingleFeatureNotSupported, nameof(Domain))); }
+            set { throw new PlatformNotSupportedException(SR.Format(SR.ProcessStartSingleFeatureNotSupported, nameof(Domain))); }
         }
 
         public bool LoadUserProfile
         {
-            get { throw new PlatformNotSupportedException(SR.ProcessStartIdentityNotSupported); }
-            set { throw new PlatformNotSupportedException(SR.ProcessStartIdentityNotSupported); }
+            get { throw new PlatformNotSupportedException(SR.Format(SR.ProcessStartSingleFeatureNotSupported, nameof(LoadUserProfile))); }
+            set { throw new PlatformNotSupportedException(SR.Format(SR.ProcessStartSingleFeatureNotSupported, nameof(LoadUserProfile))); }
         }
 
         public bool UseShellExecute { get; set; }
@@ -45,8 +39,8 @@ namespace System.Diagnostics
         [CLSCompliant(false)]
         public SecureString Password
         {
-            get { throw new PlatformNotSupportedException(SR.ProcessStartIdentityNotSupported); }
-            set { throw new PlatformNotSupportedException(SR.ProcessStartIdentityNotSupported); }
+            get { throw new PlatformNotSupportedException(SR.Format(SR.ProcessStartSingleFeatureNotSupported, nameof(Password))); }
+            set { throw new PlatformNotSupportedException(SR.Format(SR.ProcessStartSingleFeatureNotSupported, nameof(Password))); }
         }
     }
 }

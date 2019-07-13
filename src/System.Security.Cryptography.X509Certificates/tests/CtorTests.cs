@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
 using System.Runtime.InteropServices;
 using Xunit;
 
@@ -25,6 +24,9 @@ namespace System.Security.Cryptography.X509Certificates.Tests
             object ignored;
             Assert.Equal(IntPtr.Zero, h);
             Assert.ThrowsAny<CryptographicException>(() => c.GetCertHash());
+#if HAVE_THUMBPRINT_OVERLOADS
+            Assert.ThrowsAny<CryptographicException>(() => c.GetCertHash(HashAlgorithmName.SHA256));
+#endif
             Assert.ThrowsAny<CryptographicException>(() => c.GetKeyAlgorithm());
             Assert.ThrowsAny<CryptographicException>(() => c.GetKeyAlgorithmParameters());
             Assert.ThrowsAny<CryptographicException>(() => c.GetKeyAlgorithmParametersString());
@@ -43,6 +45,9 @@ namespace System.Security.Cryptography.X509Certificates.Tests
             Assert.ThrowsAny<CryptographicException>(() => ignored = c.SubjectName);
             Assert.ThrowsAny<CryptographicException>(() => ignored = c.IssuerName);
             Assert.ThrowsAny<CryptographicException>(() => c.GetCertHashString());
+#if HAVE_THUMBPRINT_OVERLOADS
+            Assert.ThrowsAny<CryptographicException>(() => c.GetCertHashString(HashAlgorithmName.SHA256));
+#endif
             Assert.ThrowsAny<CryptographicException>(() => c.GetEffectiveDateString());
             Assert.ThrowsAny<CryptographicException>(() => c.GetExpirationDateString());
             Assert.ThrowsAny<CryptographicException>(() => c.GetPublicKeyString());
@@ -53,12 +58,17 @@ namespace System.Security.Cryptography.X509Certificates.Tests
             Assert.ThrowsAny<CryptographicException>(() => c.GetIssuerName());
             Assert.ThrowsAny<CryptographicException>(() => c.GetName());
 #pragma warning restore 0618
+
+#if HAVE_THUMBPRINT_OVERLOADS
+            Assert.ThrowsAny<CryptographicException>(
+                () => c.TryGetCertHash(HashAlgorithmName.SHA256, Array.Empty<byte>(), out _));
+#endif
         }
 
         [Fact]
         public static void TestConstructor_DER()
         {
-            byte[] expectedThumbPrint = new byte[]
+            byte[] expectedThumbPrintSha1 =
             {
                 0x10, 0x8e, 0x2b, 0xa2, 0x36, 0x32, 0x62, 0x0c,
                 0x42, 0x7c, 0x57, 0x0b, 0x6d, 0x9d, 0xb5, 0x1a,
@@ -70,7 +80,12 @@ namespace System.Security.Cryptography.X509Certificates.Tests
                 IntPtr h = c.Handle;
                 Assert.NotEqual(IntPtr.Zero, h);
                 byte[] actualThumbprint = c.GetCertHash();
-                Assert.Equal(expectedThumbPrint, actualThumbprint);
+                Assert.Equal(expectedThumbPrintSha1, actualThumbprint);
+
+#if HAVE_THUMBPRINT_OVERLOADS
+                byte[] specifiedAlgThumbprint = c.GetCertHash(HashAlgorithmName.SHA1);
+                Assert.Equal(expectedThumbPrintSha1, specifiedAlgThumbprint);
+#endif
             };
 
             using (X509Certificate2 c = new X509Certificate2(TestData.MsCertificate))
@@ -86,7 +101,7 @@ namespace System.Security.Cryptography.X509Certificates.Tests
         [Fact]
         public static void TestConstructor_PEM()
         {
-            byte[] expectedThumbPrint =
+            byte[] expectedThumbPrintSha1 =
             {
                 0x10, 0x8e, 0x2b, 0xa2, 0x36, 0x32, 0x62, 0x0c,
                 0x42, 0x7c, 0x57, 0x0b, 0x6d, 0x9d, 0xb5, 0x1a,
@@ -98,7 +113,12 @@ namespace System.Security.Cryptography.X509Certificates.Tests
                 IntPtr h = cert.Handle;
                 Assert.NotEqual(IntPtr.Zero, h);
                 byte[] actualThumbprint = cert.GetCertHash();
-                Assert.Equal(expectedThumbPrint, actualThumbprint);
+                Assert.Equal(expectedThumbPrintSha1, actualThumbprint);
+
+#if HAVE_THUMBPRINT_OVERLOADS
+                byte[] specifiedAlgThumbprint = cert.GetCertHash(HashAlgorithmName.SHA1);
+                Assert.Equal(expectedThumbPrintSha1, specifiedAlgThumbprint);
+#endif
             };
 
             using (X509Certificate2 c = new X509Certificate2(TestData.MsCertificatePemBytes))
@@ -129,6 +149,9 @@ namespace System.Security.Cryptography.X509Certificates.Tests
             using (var c2 = new X509Certificate2(c1))
             {
                 Assert.Equal(c1.GetCertHash(), c2.GetCertHash());
+#if HAVE_THUMBPRINT_OVERLOADS
+                Assert.Equal(c1.GetCertHash(HashAlgorithmName.SHA256), c2.GetCertHash(HashAlgorithmName.SHA256));
+#endif
                 Assert.Equal(c1.GetKeyAlgorithm(), c2.GetKeyAlgorithm());
                 Assert.Equal(c1.GetKeyAlgorithmParameters(), c2.GetKeyAlgorithmParameters());
                 Assert.Equal(c1.GetKeyAlgorithmParametersString(), c2.GetKeyAlgorithmParametersString());
@@ -145,6 +168,9 @@ namespace System.Security.Cryptography.X509Certificates.Tests
                 Assert.Equal(c1.SubjectName.Name, c2.SubjectName.Name);
                 Assert.Equal(c1.IssuerName.Name, c2.IssuerName.Name);
                 Assert.Equal(c1.GetCertHashString(), c2.GetCertHashString());
+#if HAVE_THUMBPRINT_OVERLOADS
+                Assert.Equal(c1.GetCertHashString(HashAlgorithmName.SHA256), c2.GetCertHashString(HashAlgorithmName.SHA256));
+#endif
                 Assert.Equal(c1.GetEffectiveDateString(), c2.GetEffectiveDateString());
                 Assert.Equal(c1.GetExpirationDateString(), c2.GetExpirationDateString());
                 Assert.Equal(c1.GetPublicKeyString(), c2.GetPublicKeyString());
@@ -341,11 +367,15 @@ namespace System.Security.Cryptography.X509Certificates.Tests
             }
             else // Any Unix
             {
-                Assert.Equal(0x0D07803A, ex.HResult);
-                Assert.Equal("error:0D07803A:asn1 encoding routines:ASN1_ITEM_EX_D2I:nested asn1 error", ex.Message);
+                // OpenSSL encodes the function name into the error code. However, the function name differs
+                // between versions (OpenSSL 1.0, OpenSSL 1.1 and BoringSSL) and it's subject to change in
+                // the future, so don't test for the exact match and mask out the function code away. The 
+                // component number (high 8 bits) and error code  (low 12 bits) should remain the same.
+                Assert.Equal(0x0D00003A, ex.HResult & 0xFF000FFF);
             }
         }
 
+#if !NO_EPHEMERALKEYSET_AVAILABLE
         [Fact]
         public static void InvalidStorageFlags()
         {
@@ -370,7 +400,7 @@ namespace System.Security.Cryptography.X509Certificates.Tests
             // No test is performed here for the ephemeral flag failing downlevel, because the live
             // binary is always used by default, meaning it doesn't know EphemeralKeySet doesn't exist.
         }
-        
+
         [Fact]
         public static void InvalidStorageFlags_PersistedEphemeral()
         {
@@ -395,5 +425,6 @@ namespace System.Security.Cryptography.X509Certificates.Tests
                 "keyStorageFlags",
                 () => new X509Certificate2(string.Empty, string.Empty, PersistedEphemeral));
         }
+#endif
     }
 }

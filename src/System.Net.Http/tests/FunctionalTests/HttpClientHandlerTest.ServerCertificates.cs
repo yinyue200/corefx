@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Net.Security;
 using System.Net.Test.Common;
@@ -11,25 +10,27 @@ using System.Runtime.InteropServices;
 using System.Security.Authentication.ExtendedProtection;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using Microsoft.DotNet.RemoteExecutor;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace System.Net.Http.Functional.Tests
 {
     using Configuration = System.Net.Test.Common.Configuration;
 
-    [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, ".NET Framework throws PNSE for ServerCertificateCustomValidationCallback")]
-    public partial class HttpClientHandler_ServerCertificates_Test : RemoteExecutorTestBase
+    public abstract partial class HttpClientHandler_ServerCertificates_Test : HttpClientHandlerTestBase
     {
-        // TODO: https://github.com/dotnet/corefx/issues/7812
         private static bool ClientSupportsDHECipherSuites => (!PlatformDetection.IsWindows || PlatformDetection.IsWindows10Version1607OrGreater);
-        private static bool BackendSupportsCustomCertificateHandlingAndClientSupportsDHECipherSuites =>
+        private bool BackendSupportsCustomCertificateHandlingAndClientSupportsDHECipherSuites =>
             (BackendSupportsCustomCertificateHandling && ClientSupportsDHECipherSuites);
+
+        public HttpClientHandler_ServerCertificates_Test(ITestOutputHelper output) : base(output) { }
 
         [Fact]
         [SkipOnTargetFramework(~TargetFrameworkMonikers.Uap)]
         public void Ctor_ExpectedDefaultPropertyValues_UapPlatform()
         {
-            using (var handler = new HttpClientHandler())
+            using (HttpClientHandler handler = CreateHttpClientHandler())
             {
                 Assert.Null(handler.ServerCertificateCustomValidationCallback);
                 Assert.True(handler.CheckCertificateRevocationList);
@@ -40,19 +41,40 @@ namespace System.Net.Http.Functional.Tests
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap)]
         public void Ctor_ExpectedDefaultValues_NotUapPlatform()
         {
-            using (var handler = new HttpClientHandler())
+            using (HttpClientHandler handler = CreateHttpClientHandler())
             {
                 Assert.Null(handler.ServerCertificateCustomValidationCallback);
                 Assert.False(handler.CheckCertificateRevocationList);
             }
         }
 
-        [OuterLoop] // TODO: Issue #11345
+        [Fact]
+        public void ServerCertificateCustomValidationCallback_SetGet_Roundtrips()
+        {
+            using (HttpClientHandler handler = CreateHttpClientHandler())
+            {
+                Assert.Null(handler.ServerCertificateCustomValidationCallback);
+
+                Func<HttpRequestMessage, X509Certificate2, X509Chain, SslPolicyErrors, bool> callback1 = (req, cert, chain, policy) => throw new NotImplementedException("callback1");
+                Func<HttpRequestMessage, X509Certificate2, X509Chain, SslPolicyErrors, bool> callback2 = (req, cert, chain, policy) => throw new NotImplementedException("callback2");
+
+                handler.ServerCertificateCustomValidationCallback = callback1;
+                Assert.Same(callback1, handler.ServerCertificateCustomValidationCallback);
+
+                handler.ServerCertificateCustomValidationCallback = callback2;
+                Assert.Same(callback2, handler.ServerCertificateCustomValidationCallback);
+
+                handler.ServerCertificateCustomValidationCallback = null;
+                Assert.Null(handler.ServerCertificateCustomValidationCallback);
+            }
+        }
+
+        [OuterLoop("Uses external server")]
         [Fact]
         public async Task NoCallback_ValidCertificate_SuccessAndExpectedPropertyBehavior()
         {
-            var handler = new HttpClientHandler();
-            using (var client = new HttpClient(handler))
+            HttpClientHandler handler = CreateHttpClientHandler();
+            using (HttpClient client = CreateHttpClient(handler))
             {
                 using (HttpResponseMessage response = await client.GetAsync(Configuration.Http.SecureRemoteEchoServer))
                 {
@@ -65,50 +87,94 @@ namespace System.Net.Http.Functional.Tests
         }
 
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "UAP won't send requests through a custom proxy")]
-        [OuterLoop] // TODO: Issue #11345
-        [ConditionalFact(nameof(BackendSupportsCustomCertificateHandling))]
-        public async Task UseCallback_HaveNoCredsAndUseAuthenticatedCustomProxyAndPostToSecureServer_ProxyAuthenticationRequiredStatusCode()
+        [OuterLoop("Uses external server")]
+        [Fact]
+        public async Task UseCallback_HaveCredsAndUseAuthenticatedCustomProxyAndPostToSecureServer_Success()
         {
-            if (ManagedHandlerTestHelpers.IsEnabled)
+            if (!BackendSupportsCustomCertificateHandling)
             {
-                return; // TODO #21452: SSL proxy tunneling not yet implemented in ManagedHandler
+                return;
             }
 
-            int port;
-            Task<LoopbackGetRequestHttpProxy.ProxyResult> proxyTask = LoopbackGetRequestHttpProxy.StartAsync(
-                out port,
-                requireAuth: true,
-                expectCreds: false);
-            Uri proxyUrl = new Uri($"http://localhost:{port}");
-
-            var handler = new HttpClientHandler();
-            handler.Proxy = new UseSpecifiedUriWebProxy(proxyUrl, null);
-            handler.ServerCertificateCustomValidationCallback = delegate { return true; };
-            using (var client = new HttpClient(handler))
+            if (IsWinHttpHandler && PlatformDetection.IsWindows7)
             {
-                Task<HttpResponseMessage> responseTask = client.PostAsync(
-                    Configuration.Http.SecureRemoteEchoServer,
-                    new StringContent("This is a test"));
-                await TestHelper.WhenAllCompletedOrAnyFailed(proxyTask, responseTask);
-                using (responseTask.Result)
+                // Issue #27612
+                return;
+            }
+
+            var options = new LoopbackProxyServer.Options
+                { AuthenticationSchemes = AuthenticationSchemes.Basic,
+                  ConnectionCloseAfter407 = true
+                };
+            using (LoopbackProxyServer proxyServer = LoopbackProxyServer.Create(options))
+            {
+                HttpClientHandler handler = CreateHttpClientHandler();
+                handler.ServerCertificateCustomValidationCallback = TestHelper.AllowAllCertificates;
+                handler.Proxy = new WebProxy(proxyServer.Uri)
                 {
-                    Assert.Equal(HttpStatusCode.ProxyAuthenticationRequired, responseTask.Result.StatusCode);
+                    Credentials = new NetworkCredential("rightusername", "rightpassword")
+                };
+
+                const string content = "This is a test";
+
+                using (HttpClient client = CreateHttpClient(handler))
+                using (HttpResponseMessage response = await client.PostAsync(
+                        Configuration.Http.SecureRemoteEchoServer,
+                        new StringContent(content)))
+                {
+                    string responseContent = await response.Content.ReadAsStringAsync();
+
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    TestHelper.VerifyResponseBody(
+                        responseContent,
+                        response.Content.Headers.ContentMD5,
+                        false,
+                        content);
                 }
             }
         }
-        
-        [OuterLoop] // TODO: Issue #11345
+
+        [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "UAP won't send requests through a custom proxy")]
+        [OuterLoop("Uses external server")]
+        [Fact]
+        public async Task UseCallback_HaveNoCredsAndUseAuthenticatedCustomProxyAndPostToSecureServer_ProxyAuthenticationRequiredStatusCode()
+        {
+            if (!BackendSupportsCustomCertificateHandling)
+            {
+                return;
+            }
+
+            var options = new LoopbackProxyServer.Options
+                { AuthenticationSchemes = AuthenticationSchemes.Basic,
+                  ConnectionCloseAfter407 = true
+                };
+            using (LoopbackProxyServer proxyServer = LoopbackProxyServer.Create(options))
+            {
+                HttpClientHandler handler = CreateHttpClientHandler();
+                handler.Proxy = new WebProxy(proxyServer.Uri);
+                handler.ServerCertificateCustomValidationCallback = TestHelper.AllowAllCertificates;
+                using (HttpClient client = CreateHttpClient(handler))
+                using (HttpResponseMessage response = await client.PostAsync(
+                    Configuration.Http.SecureRemoteEchoServer,
+                    new StringContent("This is a test")))
+                {
+                    Assert.Equal(HttpStatusCode.ProxyAuthenticationRequired, response.StatusCode);
+                }
+            }
+        }
+
+        [OuterLoop("Uses external server")]
         [Fact]
         public async Task UseCallback_NotSecureConnection_CallbackNotCalled()
         {
-            if (BackendDoesNotSupportCustomCertificateHandling) // can't use [Conditional*] right now as it's evaluated at the wrong time for the managed handler
+            if (!BackendSupportsCustomCertificateHandling)
             {
                 Console.WriteLine($"Skipping {nameof(UseCallback_NotSecureConnection_CallbackNotCalled)}()");
                 return;
             }
 
-            var handler = new HttpClientHandler();
-            using (var client = new HttpClient(handler))
+            HttpClientHandler handler = CreateHttpClientHandler();
+            using (HttpClient client = CreateHttpClient(handler))
             {
                 bool callbackCalled = false;
                 handler.ServerCertificateCustomValidationCallback = delegate { callbackCalled = true; return true; };
@@ -137,19 +203,19 @@ namespace System.Net.Http.Functional.Tests
             }
         }
 
-        [OuterLoop] // TODO: Issue #11345
+        [OuterLoop("Uses external server")]
         [Theory]
         [MemberData(nameof(UseCallback_ValidCertificate_ExpectedValuesDuringCallback_Urls))]
         public async Task UseCallback_ValidCertificate_ExpectedValuesDuringCallback(Uri url, bool checkRevocation)
         {
-            if (BackendDoesNotSupportCustomCertificateHandling) // can't use [Conditional*] right now as it's evaluated at the wrong time for the managed handler
+            if (!BackendSupportsCustomCertificateHandling)
             {
                 Console.WriteLine($"Skipping {nameof(UseCallback_ValidCertificate_ExpectedValuesDuringCallback)}({url}, {checkRevocation})");
                 return;
             }
 
-            var handler = new HttpClientHandler();
-            using (var client = new HttpClient(handler))
+            HttpClientHandler handler = CreateHttpClientHandler();
+            using (HttpClient client = CreateHttpClient(handler))
             {
                 bool callbackCalled = false;
                 handler.CheckCertificateRevocationList = checkRevocation;
@@ -186,43 +252,42 @@ namespace System.Net.Http.Functional.Tests
             }
         }
 
-        [OuterLoop] // TODO: Issue #11345
+        [OuterLoop("Uses external server")]
         [Fact]
         public async Task UseCallback_CallbackReturnsFailure_ThrowsException()
         {
-            if (BackendDoesNotSupportCustomCertificateHandling) // can't use [Conditional*] right now as it's evaluated at the wrong time for the managed handler
+            if (!BackendSupportsCustomCertificateHandling)
             {
                 Console.WriteLine($"Skipping {nameof(UseCallback_CallbackReturnsFailure_ThrowsException)}()");
                 return;
             }
 
-            var handler = new HttpClientHandler();
-            using (var client = new HttpClient(handler))
+            HttpClientHandler handler = CreateHttpClientHandler();
+            using (HttpClient client = CreateHttpClient(handler))
             {
                 handler.ServerCertificateCustomValidationCallback = delegate { return false; };
                 await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync(Configuration.Http.SecureRemoteEchoServer));
             }
         }
 
-        [ActiveIssue(21904, ~TargetFrameworkMonikers.Uap)]
-        [OuterLoop] // TODO: Issue #11345
-        [ConditionalFact(nameof(BackendSupportsCustomCertificateHandling))]
-        public async Task UseCallback_CallbackThrowsException_ExceptionPropagatesAsInnerException()
+        [OuterLoop("Uses external server")]
+        [Fact]
+        public async Task UseCallback_CallbackThrowsException_ExceptionPropagatesAsBaseException()
         {
-            if (BackendDoesNotSupportCustomCertificateHandling) // can't use [Conditional*] right now as it's evaluated at the wrong time for the managed handler
+            if (!BackendSupportsCustomCertificateHandling)
             {
-                Console.WriteLine($"Skipping {nameof(UseCallback_CallbackThrowsException_ExceptionPropagatesAsInnerException)}()");
+                Console.WriteLine($"Skipping {nameof(UseCallback_CallbackThrowsException_ExceptionPropagatesAsBaseException)}()");
                 return;
             }
 
-            var handler = new HttpClientHandler();
-            using (var client = new HttpClient(handler))
+            HttpClientHandler handler = CreateHttpClientHandler();
+            using (HttpClient client = CreateHttpClient(handler))
             {
                 var e = new DivideByZeroException();
                 handler.ServerCertificateCustomValidationCallback = delegate { throw e; };
                 
                 HttpRequestException ex = await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync(Configuration.Http.SecureRemoteEchoServer));
-                Assert.Same(e, ex.InnerException);
+                Assert.Same(e, ex.GetBaseException());
             }
         }
 
@@ -233,19 +298,19 @@ namespace System.Net.Http.Functional.Tests
             new object[] { Configuration.Http.WrongHostNameCertRemoteServer },
         };
 
-        [OuterLoop] // TODO: Issue #11345
+        [OuterLoop("Uses external server")]
         [ConditionalTheory(nameof(ClientSupportsDHECipherSuites))]
         [MemberData(nameof(CertificateValidationServers))]
         public async Task NoCallback_BadCertificate_ThrowsException(string url)
         {
-            using (var client = new HttpClient())
+            using (HttpClient client = CreateHttpClient())
             {
                 await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync(url));
             }
         }
 
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "UAP doesn't allow revocation checking to be turned off")]
-        [OuterLoop] // TODO: Issue #11345
+        [OuterLoop("Uses external server")]
         [ConditionalFact(nameof(ClientSupportsDHECipherSuites))]
         public async Task NoCallback_RevokedCertificate_NoRevocationChecking_Succeeds()
         {
@@ -254,7 +319,7 @@ namespace System.Net.Http.Functional.Tests
             // CheckCertificateRevocationList throws in the general case.
             try
             {
-                using (var client = new HttpClient())
+                using (HttpClient client = CreateHttpClient())
                 using (HttpResponseMessage response = await client.GetAsync(Configuration.Http.RevokedCertRemoteServer))
                 {
                     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -262,23 +327,24 @@ namespace System.Net.Http.Functional.Tests
             }
             catch (HttpRequestException)
             {
-                if (!ShouldSuppressRevocationException)
+                if (UseSocketsHttpHandler || !ShouldSuppressRevocationException)
                     throw;
             }
         }
 
-        [OuterLoop] // TODO: Issue #11345
+        [OuterLoop("Uses external server")]
         [Fact]
         public async Task NoCallback_RevokedCertificate_RevocationChecking_Fails()
         {
-            if (BackendDoesNotSupportCustomCertificateHandling) // can't use [Conditional*] right now as it's evaluated at the wrong time for the managed handler
+            if (!BackendSupportsCustomCertificateHandling)
             {
                 Console.WriteLine($"Skipping {nameof(NoCallback_RevokedCertificate_RevocationChecking_Fails)}()");
                 return;
             }
 
-            var handler = new HttpClientHandler() { CheckCertificateRevocationList = true };
-            using (var client = new HttpClient(handler))
+            HttpClientHandler handler = CreateHttpClientHandler();
+            handler.CheckCertificateRevocationList = true;
+            using (HttpClient client = CreateHttpClient(handler))
             {
                 await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync(Configuration.Http.RevokedCertRemoteServer));
             }
@@ -291,16 +357,16 @@ namespace System.Net.Http.Functional.Tests
             new object[] { Configuration.Http.WrongHostNameCertRemoteServer , SslPolicyErrors.RemoteCertificateNameMismatch},
         };
 
-        public async Task UseCallback_BadCertificate_ExpectedPolicyErrors_Helper(string url, SslPolicyErrors expectedErrors)
+        private async Task UseCallback_BadCertificate_ExpectedPolicyErrors_Helper(string url, string useSocketsHttpHandlerString, string useHttp2String, SslPolicyErrors expectedErrors)
         {
-            if (BackendDoesNotSupportCustomCertificateHandling) // can't use [Conditional*] right now as it's evaluated at the wrong time for the managed handler
+            if (!BackendSupportsCustomCertificateHandling)
             {
                 Console.WriteLine($"Skipping {nameof(UseCallback_BadCertificate_ExpectedPolicyErrors)}({url}, {expectedErrors})");
                 return;
             }
 
-            var handler = new HttpClientHandler();
-            using (var client = new HttpClient(handler))
+            HttpClientHandler handler = CreateHttpClientHandler(useSocketsHttpHandlerString, useHttp2String);
+            using (HttpClient client = CreateHttpClient(handler, useHttp2String))
             {
                 bool callbackCalled = false;
 
@@ -310,13 +376,7 @@ namespace System.Net.Http.Functional.Tests
                     Assert.NotNull(request);
                     Assert.NotNull(cert);
                     Assert.NotNull(chain);
-                    if (!ManagedHandlerTestHelpers.IsEnabled)
-                    {
-                        // TODO #21452: This test is failing with the managed handler on the exact value of the managed errors,
-                        // e.g. reporting "RemoteCertificateNameMismatch, RemoteCertificateChainErrors" when we only expect
-                        // "RemoteCertificateChainErrors"
-                        Assert.Equal(expectedErrors, errors);
-                    }
+                    Assert.Equal(expectedErrors, errors);
                     return true;
                 };
 
@@ -329,70 +389,94 @@ namespace System.Net.Http.Functional.Tests
             }
         }
 
-        [OuterLoop] // TODO: Issue #11345
-        [ConditionalTheory(nameof(BackendSupportsCustomCertificateHandlingAndClientSupportsDHECipherSuites))]
+        [ActiveIssue(30054, TargetFrameworkMonikers.Uap)]
+        [OuterLoop("Uses external server")]
+        [Theory]
         [MemberData(nameof(CertificateValidationServersAndExpectedPolicies))]
         public async Task UseCallback_BadCertificate_ExpectedPolicyErrors(string url, SslPolicyErrors expectedErrors)
         {
-            if (PlatformDetection.IsUap)
-            {
-                // UAP HTTP stack caches connections per-process. This causes interference when these tests run in
-                // the same process as the other tests. Each test needs to be isolated to its own process.
-                // See dicussion: https://github.com/dotnet/corefx/issues/21945
-                RemoteInvoke((remoteUrl, remoteExpectedErrors) =>
-                {
-                    UseCallback_BadCertificate_ExpectedPolicyErrors_Helper(
-                        remoteUrl,
-                        (SslPolicyErrors)Enum.Parse(typeof(SslPolicyErrors), remoteExpectedErrors)).Wait();
+            const int SEC_E_BUFFER_TOO_SMALL = unchecked((int)0x80090321);
 
-                    return SuccessExitCode;
-                }, url, expectedErrors.ToString()).Dispose();
-            }
-            else
-            {
-                await UseCallback_BadCertificate_ExpectedPolicyErrors_Helper(url, expectedErrors);
-            }
-        }
-
-        [OuterLoop] // TODO: Issue #11345
-        [Fact]
-        public async Task SSLBackendNotSupported_Callback_ThrowsPlatformNotSupportedException()
-        {
-            if (BackendSupportsCustomCertificateHandling) // can't use [Conditional*] right now as it's evaluated at the wrong time for the managed handler
+            if (!BackendSupportsCustomCertificateHandlingAndClientSupportsDHECipherSuites)
             {
                 return;
             }
 
-            using (var client = new HttpClient(new HttpClientHandler() { ServerCertificateCustomValidationCallback = delegate { return true; } }))
+            try
+            {
+                if (PlatformDetection.IsUap)
+                {
+                    // UAP HTTP stack caches connections per-process. This causes interference when these tests run in
+                    // the same process as the other tests. Each test needs to be isolated to its own process.
+                    // See dicussion: https://github.com/dotnet/corefx/issues/21945
+                    RemoteExecutor.Invoke((remoteUrl, remoteExpectedErrors, useSocketsHttpHandlerString, useHttp2String) =>
+                    {
+                        UseCallback_BadCertificate_ExpectedPolicyErrors_Helper(
+                            remoteUrl,
+                            useSocketsHttpHandlerString,
+                            useHttp2String,
+                            (SslPolicyErrors)Enum.Parse(typeof(SslPolicyErrors), remoteExpectedErrors)).Wait();
+
+                        return RemoteExecutor.SuccessExitCode;
+                    }, url, expectedErrors.ToString(), UseSocketsHttpHandler.ToString(), UseHttp2.ToString()).Dispose();
+                }
+                else
+                {
+                    await UseCallback_BadCertificate_ExpectedPolicyErrors_Helper(url, UseSocketsHttpHandler.ToString(), UseHttp2.ToString(), expectedErrors);
+                }
+            }
+            catch (HttpRequestException e) when (e.InnerException?.GetType().Name == "WinHttpException" &&
+                e.InnerException.HResult == SEC_E_BUFFER_TOO_SMALL &&
+                !PlatformDetection.IsWindows10Version1607OrGreater)
+            {
+                // Testing on old Windows versions can hit https://github.com/dotnet/corefx/issues/7812
+                // Ignore SEC_E_BUFFER_TOO_SMALL error on such cases.
+            }
+        }
+
+        [OuterLoop("Uses external server")]
+        [Fact]
+        public async Task SSLBackendNotSupported_Callback_ThrowsPlatformNotSupportedException()
+        {
+            if (BackendSupportsCustomCertificateHandling)
+            {
+                return;
+            }
+
+            HttpClientHandler handler = CreateHttpClientHandler();
+            handler.ServerCertificateCustomValidationCallback = delegate { return true; }; // Do not use TestHelper.AllowAllCertificates / HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            using (HttpClient client = CreateHttpClient(handler))
             {
                 await Assert.ThrowsAsync<PlatformNotSupportedException>(() => client.GetAsync(Configuration.Http.SecureRemoteEchoServer));
             }
         }
 
-        [OuterLoop] // TODO: Issue #11345
+        [OuterLoop("Uses external server")]
         [Fact]
         // For macOS the "custom handling" means that revocation can't be *disabled*. So this test does not apply.
         [PlatformSpecific(~TestPlatforms.OSX)]
         public async Task SSLBackendNotSupported_Revocation_ThrowsPlatformNotSupportedException()
         {
-            if (BackendSupportsCustomCertificateHandling) // can't use [Conditional*] right now as it's evaluated at the wrong time for the managed handler
+            if (BackendSupportsCustomCertificateHandling)
             {
                 return;
             }
 
-            using (var client = new HttpClient(new HttpClientHandler() { CheckCertificateRevocationList = true }))
+            HttpClientHandler handler = CreateHttpClientHandler();
+            handler.CheckCertificateRevocationList = true;
+            using (HttpClient client = CreateHttpClient(handler))
             {
                 await Assert.ThrowsAsync<PlatformNotSupportedException>(() => client.GetAsync(Configuration.Http.SecureRemoteEchoServer));
             }
         }
 
-        [OuterLoop] // TODO: Issue #11345
+        [OuterLoop("Uses external server")]
         [PlatformSpecific(TestPlatforms.Windows)] // CopyToAsync(Stream, TransportContext) isn't used on unix
         [Fact]
         public async Task PostAsync_Post_ChannelBinding_ConfiguredCorrectly()
         {
             var content = new ChannelBindingAwareContent("Test contest");
-            using (var client = new HttpClient())
+            using (HttpClient client = CreateHttpClient())
             using (HttpResponseMessage response = await client.PostAsync(Configuration.Http.SecureRemoteEchoServer, content))
             {
                 // Validate status.

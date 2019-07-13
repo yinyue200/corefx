@@ -1,5 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<root>
+﻿<root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -82,6 +81,9 @@
   <data name="Arg_RankMultiDimNotSupported" xml:space="preserve">
     <value>Only single dimensional arrays are supported for the requested action.</value>
   </data>
+  <data name="Argument_EncodeDestinationTooSmall" xml:space="preserve">
+    <value>The destination is too small to hold the encoded value.</value>
+  </data>
   <data name="Argument_InvalidFlag" xml:space="preserve">
     <value>Value of flags is invalid.</value>
   </data>
@@ -151,6 +153,9 @@
   <data name="Cryptography_ECC_NamedCurvesOnly" xml:space="preserve">
     <value>Only named curves are supported on this platform.</value>
   </data>
+  <data name="Cryptography_Encryption_MessageTooLong" xml:space="preserve">
+    <value>The message exceeds the maximum allowable length for the chosen options ({0}).</value>
+  </data>
   <data name="Cryptography_Der_Invalid_Encoding" xml:space="preserve">
     <value>ASN1 corrupted data.</value>
   </data>
@@ -178,6 +183,12 @@
   <data name="Cryptography_InvalidStoreHandle" xml:space="preserve">
     <value>The store handle is invalid.</value>
   </data>
+  <data name="Cryptography_KeyTooSmall" xml:space="preserve">
+    <value>The key is too small for the requested operation.</value>
+  </data>
+  <data name="Cryptography_OAEP_Decryption_Failed" xml:space="preserve">
+    <value>Error occurred while decoding OAEP padding.</value>
+  </data>
   <data name="Cryptography_OpenInvalidHandle" xml:space="preserve">
     <value>Cannot open an invalid handle.</value>
   </data>
@@ -186,6 +197,12 @@
   </data>
   <data name="Cryptography_PrivateKey_WrongAlgorithm" xml:space="preserve">
     <value>The provided key does not match the public key algorithm for this certificate.</value>
+  </data>
+  <data name="Cryptography_RSA_DecryptWrongSize" xml:space="preserve">
+    <value>The length of the data to decrypt is not valid for the size of this key.</value>
+  </data>
+  <data name="Cryptography_SignHash_WrongSize" xml:space="preserve">
+    <value>The provided hash value is not the expected size for the specified hash algorithm.</value>
   </data>
   <data name="Cryptography_Unix_X509_DisallowedStoreNotEmpty" xml:space="preserve">
    <value>The Disallowed store is not supported on this platform, but already has data. All files under '{0}' must be removed.</value>
@@ -235,6 +252,9 @@
   <data name="Cryptography_X509_PKCS7_NoSigner" xml:space="preserve">
     <value>Cannot find the original signer.</value>
   </data>
+  <data name="Cryptography_X509_StoreAddFailure" xml:space="preserve">
+    <value>The X509 certificate could not be added to the store.</value>
+  </data>
   <data name="Cryptography_X509_StoreNoFileAvailable" xml:space="preserve">
     <value>The X509 certificate could not be added to the store because all candidate file names were in use.</value>
   </data>
@@ -251,7 +271,7 @@
       <value>The platform does not have a definition for an X509 certificate store named '{0}' with a StoreLocation of '{1}', and does not support creating it.</value>
   </data>
   <data name="InvalidOperation_EnumNotStarted" xml:space="preserve">
-    <value>Enumeration has not started.  Call MoveNext.</value>
+    <value>Enumeration has not started. Call MoveNext.</value>
   </data>
   <data name="NotSupported_ECDsa_Csp" xml:space="preserve">
     <value>CryptoApi ECDsa keys are not supported.</value>
@@ -333,5 +353,50 @@
   </data>
   <data name="Cryptography_InvalidDsaParameters_QRestriction_LargeKey" xml:space="preserve">
     <value>The specified DSA parameters are not valid; Q's length must be one of 20, 32 or 64 bytes.</value>
+  </data>
+  <data name="Cryptography_WriteEncodedValue_OneValueAtATime" xml:space="preserve">
+    <value>The input to WriteEncodedValue must represent a single encoded value with no trailing data.</value>
+  </data>
+  <data name="Cryptography_Asn_EnumeratedValueRequiresNonFlagsEnum" xml:space="preserve">
+    <value>ASN.1 Enumerated values only apply to enum types without the [Flags] attribute.</value>
+  </data>
+  <data name="Cryptography_Asn_NamedBitListRequiresFlagsEnum" xml:space="preserve">
+    <value>Named bit list operations require an enum with the [Flags] attribute.</value>
+  </data>
+  <data name="Cryptography_Asn_NamedBitListValueTooBig" xml:space="preserve">
+    <value>The encoded named bit list value is larger than the value size of the '{0}' enum.</value>
+  </data>
+  <data name="Cryptography_Asn_UniversalValueIsFixed" xml:space="preserve">
+    <value>Tags with TagClass Universal must have the appropriate TagValue value for the data type being read or written.</value>
+  </data>
+  <data name="Cryptography_Asn_UnusedBitCountRange" xml:space="preserve">
+    <value>Unused bit count must be between 0 and 7, inclusive.</value>
+  </data>
+  <data name="Cryptography_AsnWriter_EncodeUnbalancedStack" xml:space="preserve">
+    <value>Encode cannot be called while a Sequence or SetOf is still open.</value>
+  </data>
+  <data name="Cryptography_AsnWriter_PopWrongTag" xml:space="preserve">
+    <value>Cannot pop the requested tag as it is not currently in progress.</value>
+  </data>
+  <data name="Cryptography_NotValidPublicOrPrivateKey" xml:space="preserve">
+    <value>Key is not a valid public or private key.</value>
+  </data>
+  <data name="Cryptography_Pkcs8_EncryptedReadFailed" xml:space="preserve">
+    <value>The EncryptedPrivateKeyInfo structure was decoded but was not successfully interpreted, the password may be incorrect.</value>
+  </data>
+  <data name="Cryptography_UnknownAlgorithmIdentifier" xml:space="preserve">
+    <value>The algorithm identified by '{0}' is unknown, not valid for the requested usage, or was not handled.</value>
+  </data>
+  <data name="Argument_InvalidValue" xml:space="preserve">
+    <value>Value was invalid.</value>
+  </data>
+  <data name="Cryptography_AlgKdfRequiresChars" xml:space="preserve">
+    <value>The KDF for algorithm '{0}' requires a char-based password input.</value>
+  </data>
+  <data name="Cryptography_RSAPrivateKey_VersionTooNew" xml:space="preserve">
+    <value>The provided RSAPrivateKey value has version '{0}', but version '{1}' is the maximum supported.</value>
+  </data>
+  <data name="Cryptography_NotValidPrivateKey" xml:space="preserve">
+    <value>Key is not a valid private key.</value>
   </data>
 </root>

@@ -18,9 +18,6 @@ namespace System.Net.WebSockets
 {
     internal abstract class WebSocketBase : WebSocket, IDisposable
     {
-#if DEBUG
-        private volatile string _closeStack;
-#endif
         private readonly OutstandingOperationHelper _closeOutstandingOperationHelper;
         private readonly OutstandingOperationHelper _closeOutputOutstandingOperationHelper;
         private readonly OutstandingOperationHelper _receiveOutstandingOperationHelper;
@@ -35,7 +32,6 @@ namespace System.Net.WebSockets
         private readonly SemaphoreSlim _sendFrameThrottle;
         // locking _ThisLock protects access to
         // - State
-        // - _closeStack
         // - _closeAsyncStartedReceive
         // - _closeReceivedTaskCompletionSource
         // - _closeNetworkConnectionTask
@@ -119,14 +115,6 @@ namespace System.Net.WebSockets
                 {
                     NetEventSource.Exit(this, parameters);
                 }
-            }
-        }
-
-        internal static bool LoggingEnabled
-        {
-            get
-            {
-                return NetEventSource.IsEnabled;
             }
         }
 
@@ -1134,11 +1122,7 @@ namespace System.Net.WebSockets
             bool endOfMessage)
         {
             Debug.Assert(messageType == WebSocketMessageType.Binary || messageType == WebSocketMessageType.Text,
-                string.Format(CultureInfo.InvariantCulture,
-                    "The value of 'messageType' ({0}) is invalid. Valid message types: '{1}, {2}'",
-                    messageType,
-                    WebSocketMessageType.Binary,
-                    WebSocketMessageType.Text));
+                $"The value of 'messageType' ({messageType}) is invalid. Valid message types: '{WebSocketMessageType.Binary}, {WebSocketMessageType.Text}'");
 
             if (messageType == WebSocketMessageType.Text)
             {
@@ -1176,8 +1160,7 @@ namespace System.Net.WebSockets
                     // This indicates a contract violation of the websocket protocol component,
                     // because we currently don't support any WebSocket extensions and would
                     // not accept a Websocket handshake requesting extensions
-                    Debug.Assert(false,
-                    string.Format(CultureInfo.InvariantCulture,
+                    Debug.Fail(string.Format(CultureInfo.InvariantCulture,
                         "The value of 'bufferType' ({0}) is invalid. Valid buffer types: {1}, {2}, {3}, {4}, {5}.",
                         bufferType,
                         WebSocketProtocolComponent.BufferType.Close,
@@ -1203,15 +1186,6 @@ namespace System.Net.WebSockets
             uint dataBufferCount)
         {
             _internalBuffer.ValidateNativeBuffers(action, bufferType, dataBuffers, dataBufferCount);
-        }
-
-        internal void ThrowIfClosedOrAborted()
-        {
-            if (State == WebSocketState.Closed || State == WebSocketState.Aborted)
-            {
-                throw new WebSocketException(WebSocketError.InvalidState,
-                    SR.Format(SR.net_WebSockets_InvalidState_ClosedOrAborted, GetType().FullName, State));
-            }
         }
 
         private void ThrowIfAborted(bool aborted, Exception innerException)
@@ -1418,11 +1392,7 @@ namespace System.Net.WebSockets
             int receiveState;
             if ((receiveState = Interlocked.Exchange(ref _receiveState, newReceiveState)) != expectedReceiveState)
             {
-                Debug.Assert(false,
-                    string.Format(CultureInfo.InvariantCulture,
-                        "'_receiveState' had an invalid value '{0}'. The expected value was '{1}'.",
-                        receiveState,
-                        expectedReceiveState));
+                Debug.Fail($"'_receiveState' had an invalid value '{receiveState}'. The expected value was '{expectedReceiveState}'.");
             }
         }
 
@@ -1795,10 +1765,7 @@ namespace System.Net.WebSockets
 
                                     break;
                                 default:
-                                    string assertMessage = string.Format(CultureInfo.InvariantCulture,
-                                        "Invalid action '{0}' returned from WebSocketGetAction.",
-                                        action);
-                                    Debug.Assert(false, assertMessage);
+                                    Debug.Fail($"Invalid action '{action}' returned from WebSocketGetAction.");
                                     throw new InvalidOperationException();
                             }
                         }
@@ -1868,7 +1835,7 @@ namespace System.Net.WebSockets
                             _receiveState = ReceiveState.Application;
                             break;
                         case ReceiveState.Application:
-                            Debug.Assert(false, "'originalReceiveState' MUST NEVER be ReceiveState.Application at this point.");
+                            Debug.Fail("'originalReceiveState' MUST NEVER be ReceiveState.Application at this point.");
                             break;
                         case ReceiveState.PayloadAvailable:
                             WebSocketReceiveResult receiveResult;
@@ -1880,8 +1847,7 @@ namespace System.Net.WebSockets
                             _receiveCompleted = true;
                             break;
                         default:
-                            Debug.Assert(false,
-                                string.Format(CultureInfo.InvariantCulture, "Invalid ReceiveState '{0}'.", originalReceiveState));
+                            Debug.Fail($"Invalid ReceiveState '{originalReceiveState}'.");
                             break;
                     }
                 }

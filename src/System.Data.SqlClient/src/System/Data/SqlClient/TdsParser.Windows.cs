@@ -20,20 +20,22 @@ namespace System.Data.SqlClient
             // Have to post read to initialize MARS - will get callback on this when connection goes
             // down or is closed.
 
-            IntPtr temp = IntPtr.Zero;
+            PacketHandle temp = default;
             uint error = TdsEnums.SNI_SUCCESS;
 
             _pMarsPhysicalConObj.IncrementPendingCallbacks();
-            object handle = _pMarsPhysicalConObj.SessionHandle;
-            temp = (IntPtr)_pMarsPhysicalConObj.ReadAsync(out error, ref handle);
+            SessionHandle handle = _pMarsPhysicalConObj.SessionHandle;
+            temp = _pMarsPhysicalConObj.ReadAsync(handle, out error);
 
-            if (temp != IntPtr.Zero)
+            Debug.Assert(temp.Type == PacketHandle.NativePointerType, "unexpected packet type when requiring NativePointer");
+
+            if (temp.NativePointer != IntPtr.Zero)
             {
                 // Be sure to release packet, otherwise it will be leaked by native.
                 _pMarsPhysicalConObj.ReleasePacket(temp);
             }
-            
-            Debug.Assert(IntPtr.Zero == temp, "unexpected syncReadPacket without corresponding SNIPacketRelease");
+
+            Debug.Assert(IntPtr.Zero == temp.NativePointer, "unexpected syncReadPacket without corresponding SNIPacketRelease");
             if (TdsEnums.SNI_SUCCESS_IO_PENDING != error)
             {
                 Debug.Assert(TdsEnums.SNI_SUCCESS != error, "Unexpected successful read async on physical connection before enabling MARS!");
@@ -55,7 +57,7 @@ namespace System.Data.SqlClient
                     if (!s_fSSPILoaded)
                     {
                         // use local for ref param to defer setting s_maxSSPILength until we know the call succeeded.
-                        UInt32 maxLength = 0;
+                        uint maxLength = 0;
 
                         if (0 != SNINativeMethodWrapper.SNISecInitPackage(ref maxLength))
                             SSPIError(SQLMessage.SSPIInitializeError(), TdsEnums.INIT_SSPI_PACKAGE);
@@ -66,7 +68,7 @@ namespace System.Data.SqlClient
                 }
             }
 
-            if (s_maxSSPILength > Int32.MaxValue)
+            if (s_maxSSPILength > int.MaxValue)
             {
                 throw SQL.InvalidSSPIPacketSize();   // SqlBu 332503
             }

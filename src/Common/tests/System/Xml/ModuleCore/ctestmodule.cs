@@ -226,7 +226,7 @@ namespace OLEDB.Test.ModuleCore
                 {
                     //Add the Variation Scope, if no scope was specified
                     if (xpath[0] != '/')
-                        xpath = String.Format(varfilter, xpath);
+                        xpath = string.Format(varfilter, xpath);
                 }
             }
 
@@ -265,6 +265,29 @@ namespace OLEDB.Test.ModuleCore
             }
             Console.WriteLine("Pass:{0}, Fail:{1}, Skip:{2}", PassCount, FailCount, SkipCount);
             return tagVARIATION_STATUS.eVariationStatusPassed;
+        }
+
+        public override IEnumerable<XunitTestCase> TestCases()
+        {
+            List<object> children = Children;
+            if (children != null && children.Count > 0)
+            {
+                foreach (object child in children)
+                {
+                    CTestCase tc = child as CTestCase;
+                    if (tc != null)
+                    {
+                        if (CModInfo.IsTestCaseSelected(tc.Name))
+                        {
+                            tc.Init();
+                            foreach (XunitTestCase testCase in tc.TestCases())
+                            {
+                                yield return testCase;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

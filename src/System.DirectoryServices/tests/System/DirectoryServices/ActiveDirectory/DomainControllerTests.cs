@@ -7,6 +7,7 @@ using Xunit;
 
 namespace System.DirectoryServices.ActiveDirectory.Tests
 {
+    [ConditionalClass(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer))]
     public class DomainControllerTests
     {
         [Fact]
@@ -26,24 +27,31 @@ namespace System.DirectoryServices.ActiveDirectory.Tests
             AssertExtensions.Throws<ArgumentException>("context", () => DomainController.GetDomainController(context));
         }
 
-        [ConditionalTheory(nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsNotWindowsNanoServer))]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer))]
         [OuterLoop("Takes too long on domain joined machines")]
         [InlineData("\0")]
-        [InlineData("server:port")]
         [InlineData("[")]
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Access to path is denied when in App container")]
-        public void GetDomainController_InvalidName_ThrowsActiveDirectoryObjectNotFoundException(string name)
+        public void GetDomainController_InvalidName(string name)
         {
             var context = new DirectoryContext(DirectoryContextType.DirectoryServer, name);
-            Assert.Throws<ActiveDirectoryObjectNotFoundException>(() => DomainController.GetDomainController(context));
+            Exception exception = Record.Exception(() => DomainController.GetDomainController(context));
+            Assert.NotNull(exception);
+            Assert.True(exception is ActiveDirectoryObjectNotFoundException ||
+                        exception is ActiveDirectoryOperationException,
+                        $"We got unrecognized exception {exception}");
         }
 
-        [ConditionalFact(nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsNotWindowsNanoServer))]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer), nameof(PlatformDetection.IsNotWindowsIoTCore))]
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Access to path is denied when in App container")]
-        public void GetDomainController_InvalidIPV6_ThrowsActiveDirectoryObjectNotFoundException()
+        public void GetDomainController_InvalidIPV6()
         {
             var context = new DirectoryContext(DirectoryContextType.DirectoryServer, "[::1]:port");
-            Assert.Throws<ActiveDirectoryObjectNotFoundException>(() => DomainController.GetDomainController(context));
+            Exception exception = Record.Exception(() => DomainController.GetDomainController(context));
+            Assert.NotNull(exception);
+            Assert.True(exception is ActiveDirectoryObjectNotFoundException ||
+                        exception is ActiveDirectoryOperationException,
+                        $"We got unrecognized exception {exception}");
         }
 
         [Fact]
@@ -109,19 +117,25 @@ namespace System.DirectoryServices.ActiveDirectory.Tests
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Not approved COM object for app")]
         public void FindAll_NoSuchName_ReturnsEmpty()
         {
-            var context = new DirectoryContext(DirectoryContextType.Domain, "\0");
-            Assert.Empty(DomainController.FindAll(context));
-            Assert.Empty(DomainController.FindAll(context, "siteName"));
+            // Domain joined machines can have entries in the DomainController.
+            if (PlatformDetection.IsDomainJoinedMachine)
+            {
+                var context = new DirectoryContext(DirectoryContextType.Domain, "\0");
+                Assert.NotNull(DomainController.FindAll(context));
+                Assert.NotNull(DomainController.FindAll(context, "siteName"));
+            }
         }
 
         [Fact]
         [OuterLoop]
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Getting information about domain is denied inside App")]
-        [ActiveIssue("https://github.com/dotnet/corefx/issues/21553", TargetFrameworkMonikers.UapAot)]
         public void FindAll_NullName_ThrowsActiveDirectoryOperationException()
         {
             var context = new DirectoryContext(DirectoryContextType.Domain);
-            Assert.Throws<ActiveDirectoryOperationException>(() => DomainController.FindAll(context));
+            if (!PlatformDetection.IsDomainJoinedMachine)
+            {
+                Assert.Throws<ActiveDirectoryOperationException>(() => DomainController.FindAll(context));
+            }
         }
 
         [Fact]
@@ -130,7 +144,7 @@ namespace System.DirectoryServices.ActiveDirectory.Tests
             AssertExtensions.Throws<ArgumentNullException>("context", () => DomainController.FindAll(null));
             AssertExtensions.Throws<ArgumentNullException>("context", () => DomainController.FindAll(null, "siteName"));
         }
-   
+
         [Theory]
         [InlineData(DirectoryContextType.ApplicationPartition)]
         [InlineData(DirectoryContextType.ConfigurationSet)]

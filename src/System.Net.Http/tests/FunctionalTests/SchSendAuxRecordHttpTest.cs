@@ -11,19 +11,12 @@ using Xunit.Abstractions;
 
 namespace System.Net.Http.Functional.Tests
 {
-    using Configuration = System.Net.Test.Common.Configuration;
-
-    [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "dotnet/corefx #20010")]
-    public class SchSendAuxRecordHttpTest
+    [ActiveIssue(26539)]    // Flaky test
+    [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "HttpsTestServer not compatible on UAP")]
+    public abstract class SchSendAuxRecordHttpTest : HttpClientHandlerTestBase
     {
-        readonly ITestOutputHelper _output;
-        
-        public SchSendAuxRecordHttpTest(ITestOutputHelper output)
-        {
-            _output = output;
-        }
+        public SchSendAuxRecordHttpTest(ITestOutputHelper output) : base(output) { }
 
-        [OuterLoop] // TODO: Issue #11345
         [Fact]
         [PlatformSpecific(TestPlatforms.Windows)]
         public async Task HttpClient_ClientUsesAuxRecord_Ok()
@@ -32,9 +25,10 @@ namespace System.Net.Http.Functional.Tests
             options.AllowedProtocols = SslProtocols.Tls;
 
             using (var server = new HttpsTestServer(options))
-            using (var handler = new HttpClientHandler() { ServerCertificateCustomValidationCallback = LoopbackServer.AllowAllCertificates })
-            using (var client = new HttpClient(handler))
+            using (HttpClientHandler handler = CreateHttpClientHandler())
+            using (HttpClient client = CreateHttpClient(handler))
             {
+                handler.ServerCertificateCustomValidationCallback = TestHelper.AllowAllCertificates;
                 server.Start();
 
                 var tasks = new Task[2];
@@ -76,7 +70,7 @@ namespace System.Net.Http.Functional.Tests
                 string requestUriString = "https://localhost:" + server.Port.ToString();
                 tasks[1] = client.GetStringAsync(requestUriString);
 
-                await Task.WhenAll(tasks).TimeoutAfter(15 * 1000);
+                await tasks.WhenAllOrAnyFailed(15 * 1000);
 
                 if (serverAuxRecordDetectedInconclusive)
                 {

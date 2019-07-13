@@ -16,11 +16,7 @@ using System.Linq;
 
 namespace System.Runtime.Serialization
 {
-#if uapaot
-    public sealed class EnumDataContract : DataContract
-#else
     internal sealed class EnumDataContract : DataContract
-#endif
     {
         private EnumDataContractCriticalHelper _helper;
 
@@ -339,7 +335,7 @@ namespace System.Runtime.Serialization
             for (int i = 0; i < Members.Count; i++)
             {
                 string memberName = Members[i].Name;
-                if (memberName.Length == count && String.CompareOrdinal(value, index, memberName, 0, count) == 0)
+                if (memberName.Length == count && string.CompareOrdinal(value, index, memberName, 0, count) == 0)
                 {
                     return Values[i];
                 }

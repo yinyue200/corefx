@@ -23,7 +23,7 @@ namespace System.Xml.Tests
         public bool bWarningCallback = false;
         public bool bErrorCallback = false;
 
-        public void ValidateSchemaSet(XmlSchemaSet ss, int schCount, bool isCompiled, int countGT, int countGE, int countGA, string str)
+        private void ValidateSchemaSet(XmlSchemaSet ss, int schCount, bool isCompiled, int countGT, int countGE, int countGA, string str)
         {
             _output.WriteLine(str);
             Assert.Equal(ss.Count, schCount);
@@ -33,7 +33,7 @@ namespace System.Xml.Tests
             Assert.Equal(ss.GlobalAttributes.Count, countGA);
         }
 
-        public void ValidationCallback(object sender, ValidationEventArgs args)
+        private void ValidationCallback(object sender, ValidationEventArgs args)
         {
             if (args.Severity == XmlSeverityType.Warning)
             {
@@ -635,15 +635,15 @@ namespace System.Xml.Tests
             string correctUri = Path.GetFullPath(path);
             _output.WriteLine("Include uri: " + includeUri);
             _output.WriteLine("Correct uri: " + correctUri);
-            Stream s = new FileStream(Path.GetFullPath(path), FileMode.Open, FileAccess.Read, FileShare.Read, 1);
-            XmlReader r = XmlReader.Create(s, new XmlReaderSettings(), includeUri);
-            _output.WriteLine("Reader uri: " + r.BaseURI);
-            XmlSchema som = null;
-            using (r)
+            using (Stream s = new FileStream(Path.GetFullPath(path), FileMode.Open, FileAccess.Read, FileShare.Read, 1))
             {
-                som = XmlSchema.Read(r, new ValidationEventHandler(ValidationCallback));
+                XmlReader r = XmlReader.Create(s, new XmlReaderSettings(), includeUri);
+                _output.WriteLine("Reader uri: " + r.BaseURI);
+                using (r)
+                {
+                    return XmlSchema.Read(r, new ValidationEventHandler(ValidationCallback));
+                }
             }
-            return som;
         }
     }
 }

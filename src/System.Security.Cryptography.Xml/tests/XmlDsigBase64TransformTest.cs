@@ -1,3 +1,5 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// See the LICENSE file in the project root for more information
 //
 // XmlDsigBase64TransformTest.cs - Test Cases for XmlDsigBase64Transform
 //
@@ -150,7 +152,7 @@ namespace System.Security.Cryptography.Xml.Tests
             Stream s = (Stream)transform.GetOutput();
             string output = Stream2String(s);
             // Note that ChildNodes does not contain the text node.
-            Assert.Equal(String.Empty, output);
+            Assert.Equal(string.Empty, output);
         }
 
         [Fact]
@@ -170,7 +172,7 @@ namespace System.Security.Cryptography.Xml.Tests
         public void LoadInputWithUnsupportedType()
         {
             byte[] bad = { 0xBA, 0xD };
-            // LAMESPEC: input MUST be one of InputType - but no exception is thrown (not documented)
+            // input MUST be one of InputType - but no exception is thrown (not documented)
             transform.LoadInput(bad);
         }
 

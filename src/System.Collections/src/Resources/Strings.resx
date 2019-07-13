@@ -1,5 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<root>
+﻿<root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -79,6 +78,9 @@
   <data name="Argument_AddingDuplicate" xml:space="preserve">
     <value>An item with the same key has already been added. Key: {0}</value>
   </data>
+  <data name="InvalidOperation_ConcurrentOperationsNotSupported" xml:space="preserve">
+    <value>Operations that change non-concurrent collections must have exclusive access. A concurrent update was performed on this collection and corrupted its state. The collection's state is no longer correct.</value>
+  </data>
   <data name="InvalidOperation_EmptyQueue" xml:space="preserve">
     <value>Queue empty.</value>
   </data>
@@ -86,7 +88,7 @@
     <value>Enumeration has either not started or has already finished.</value>
   </data>
   <data name="InvalidOperation_EnumFailedVersion" xml:space="preserve">
-    <value>Collection was modified; enumeration operation may not execute.</value>
+    <value>Collection was modified after the enumerator was instantiated.</value>
   </data>
   <data name="InvalidOperation_EmptyStack" xml:space="preserve">
     <value>Stack empty.</value>
@@ -159,5 +161,8 @@
   </data>
   <data name="Serialization_MissingValues" xml:space="preserve">
     <value>The values for this dictionary are missing.</value>
+  </data>
+  <data name="Arg_KeyNotFoundWithKey" xml:space="preserve">
+    <value>The given key '{0}' was not present in the dictionary.</value>
   </data>
 </root>

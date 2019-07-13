@@ -13,7 +13,6 @@ using Microsoft.Win32;
 using System;
 using System.Collections;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
@@ -158,7 +157,7 @@ nameof(name));
                     }
                     else
                     {
-                        Debug.Assert(false, string.Format(CultureInfo.InvariantCulture, "Win32GetSecurityInfo() failed with unexpected error code {0}", error));
+                        Debug.Fail($"Win32GetSecurityInfo() failed with unexpected error code {error}");
                         exception = new InvalidOperationException(SR.Format(SR.AccessControl_UnexpectedError, error));
                     }
                 }
@@ -300,7 +299,7 @@ nameof(name));
                         }
                         else
                         {
-                            Debug.Assert(false, string.Format(CultureInfo.InvariantCulture, "Unexpected error code {0}", error));
+                            Debug.Fail($"Unexpected error code {error}");
                             exception = new InvalidOperationException(SR.Format(SR.AccessControl_UnexpectedError, error));
                         }
                     }
@@ -346,7 +345,6 @@ nameof(name));
             {
                 throw new ArgumentNullException(nameof(name));
             }
-            Contract.EndContractBlock();
 
             Persist(name, null, includeSections, exceptionContext);
         }
@@ -368,7 +366,6 @@ nameof(name));
             {
                 throw new ArgumentNullException(nameof(handle));
             }
-            Contract.EndContractBlock();
 
             Persist(null, handle, includeSections, exceptionContext);
         }

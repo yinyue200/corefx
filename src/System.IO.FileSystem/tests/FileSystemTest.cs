@@ -3,11 +3,12 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Diagnostics;
+using Microsoft.DotNet.XUnitExtensions;
 using Xunit;
 
 namespace System.IO.Tests
 {
-    public abstract partial class FileSystemTest : RemoteExecutorTestBase
+    public abstract partial class FileSystemTest : FileCleanupTestBase
     {
         public static readonly byte[] TestBuffer = { 0xBA, 0x5E, 0xBA, 0x11, 0xF0, 0x07, 0xBA, 0x11 };
 
@@ -28,10 +29,30 @@ namespace System.IO.Tests
         public static TheoryData WhiteSpace = IOInputs.GetWhiteSpace().ToTheoryData();
         public static TheoryData UncPathsWithoutShareName = IOInputs.GetUncPathsWithoutShareName().ToTheoryData();
         public static TheoryData PathsWithReservedDeviceNames = IOInputs.GetPathsWithReservedDeviceNames().ToTheoryData();
-        public static TheoryData PathsWithAlternativeDataStreams = IOInputs.GetPathsWithAlternativeDataStreams().ToTheoryData();
+        public static TheoryData PathsWithColons = IOInputs.GetPathsWithColons().ToTheoryData();
         public static TheoryData PathsWithComponentLongerThanMaxComponent = IOInputs.GetPathsWithComponentLongerThanMaxComponent().ToTheoryData();
         public static TheoryData ControlWhiteSpace = IOInputs.GetControlWhiteSpace().ToTheoryData();
         public static TheoryData NonControlWhiteSpace = IOInputs.GetNonControlWhiteSpace().ToTheoryData();
+
+        public static TheoryData<string> TrailingSeparators
+        {
+            get
+            {
+                var data = new TheoryData<string>()
+                {
+                    "",
+                    "" + Path.DirectorySeparatorChar,
+                    "" + Path.DirectorySeparatorChar + Path.DirectorySeparatorChar
+                };
+
+                if (PlatformDetection.IsWindows)
+                {
+                    data.Add("" + Path.AltDirectorySeparatorChar);
+                }
+
+                return data;
+            }
+        }
 
         /// <summary>
         /// In some cases (such as when running without elevated privileges),
@@ -61,7 +82,7 @@ namespace System.IO.Tests
 
         protected string GetNamedPipeServerStreamName()
         {
-            if (PlatformDetection.IsWinRT)
+            if (PlatformDetection.IsInAppContainer)
             {
                 return @"LOCAL\" + Guid.NewGuid().ToString("N");
             }

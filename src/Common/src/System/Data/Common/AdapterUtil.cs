@@ -17,7 +17,7 @@ namespace System.Data.Common
 {
     internal static partial class ADP
     {
-        // NOTE: Initializing a Task in SQL CLR requires the "UNSAFE" permission set (http://msdn.microsoft.com/en-us/library/ms172338.aspx)
+        // NOTE: Initializing a Task in SQL CLR requires the "UNSAFE" permission set (https://docs.microsoft.com/en-us/dotnet/framework/performance/sql-server-programming-and-host-protection-attributes)
         // Therefore we are lazily initializing these Tasks to avoid forcing customers to use the "UNSAFE" set when they are actually using no Async features
         private static Task<bool> _trueTask;
         internal static Task<bool> TrueTask => _trueTask ?? (_trueTask = Task.FromResult(true));
@@ -128,6 +128,61 @@ namespace System.Data.Common
             NotSupportedException e = new NotSupportedException(error);
             TraceExceptionAsReturnValue(e);
             return e;
+        }
+
+        // the return value is true if the string was quoted and false if it was not
+        // this allows the caller to determine if it is an error or not for the quotedString to not be quoted
+        internal static bool RemoveStringQuotes(string quotePrefix, string quoteSuffix, string quotedString, out string unquotedString)
+        {
+            int prefixLength = quotePrefix != null ? quotePrefix.Length : 0;
+            int suffixLength = quoteSuffix != null ? quoteSuffix.Length : 0;
+
+            if ((suffixLength + prefixLength) == 0)
+            {
+                unquotedString = quotedString;
+                return true;
+            }
+
+            if (quotedString == null)
+            {
+                unquotedString = quotedString;
+                return false;
+            }
+
+            int quotedStringLength = quotedString.Length;
+
+            // is the source string too short to be quoted
+            if (quotedStringLength < prefixLength + suffixLength)
+            {
+                unquotedString = quotedString;
+                return false;
+            }
+
+            // is the prefix present?
+            if (prefixLength > 0)
+            {
+                if (!quotedString.StartsWith(quotePrefix, StringComparison.Ordinal))
+                {
+                    unquotedString = quotedString;
+                    return false;
+                }
+            }
+
+            // is the suffix present?
+            if (suffixLength > 0)
+            {
+                if (!quotedString.EndsWith(quoteSuffix, StringComparison.Ordinal))
+                {
+                    unquotedString = quotedString;
+                    return false;
+                }
+                unquotedString = quotedString.Substring(prefixLength, quotedStringLength - (prefixLength + suffixLength)).Replace(quoteSuffix + quoteSuffix, quoteSuffix);
+            }
+            else
+            {
+                unquotedString = quotedString.Substring(prefixLength, quotedStringLength - prefixLength);
+            }
+            return true;
         }
 
         internal static ArgumentOutOfRangeException NotSupportedEnumerationValue(Type type, string value, string method)
@@ -306,24 +361,33 @@ namespace System.Data.Common
 
         internal static string BuildQuotedString(string quotePrefix, string quoteSuffix, string unQuotedString)
         {
-            var resultString = new StringBuilder();
+            var resultString = new StringBuilder(unQuotedString.Length + quoteSuffix.Length + quoteSuffix.Length);
+            AppendQuotedString(resultString, quotePrefix, quoteSuffix, unQuotedString);
+            return resultString.ToString();
+        }
+
+        internal static string AppendQuotedString(StringBuilder buffer, string quotePrefix, string quoteSuffix, string unQuotedString)
+        {
+
             if (!string.IsNullOrEmpty(quotePrefix))
             {
-                resultString.Append(quotePrefix);
+                buffer.Append(quotePrefix);
             }
 
             // Assuming that the suffix is escaped by doubling it. i.e. foo"bar becomes "foo""bar".
             if (!string.IsNullOrEmpty(quoteSuffix))
             {
-                resultString.Append(unQuotedString.Replace(quoteSuffix, quoteSuffix + quoteSuffix));
-                resultString.Append(quoteSuffix);
+                int start = buffer.Length;
+                buffer.Append(unQuotedString);
+                buffer.Replace(quoteSuffix, quoteSuffix + quoteSuffix, start, unQuotedString.Length);
+                buffer.Append(quoteSuffix);
             }
             else
             {
-                resultString.Append(unQuotedString);
+                buffer.Append(unQuotedString);
             }
 
-            return resultString.ToString();
+            return buffer.ToString();
         }
 
         //
@@ -429,9 +493,6 @@ namespace System.Data.Common
         {
             return ArgumentOutOfRange(SR.ADP_InvalidSeekOrigin, parameterName);
         }
-
-        internal static readonly bool IsWindowsNT = (PlatformID.Win32NT == Environment.OSVersion.Platform);
-        internal static readonly bool IsPlatformNT5 = (ADP.IsWindowsNT && (Environment.OSVersion.Version.Major >= 5));
 
         internal static void SetCurrentTransaction(Transaction transaction)
         {

@@ -31,7 +31,7 @@ Globalization support has the following potential challenges for applications:
 * Different behavior across OSes (and potentially OS versions).
 * Installing/carrying the [ICU](http://icu-project.org) package on Linux (~28 MB).
 
-Note: On Linux, .NET Core relies on globalization data from ICU. For example, [.NET Core Linux Docker images](https://github.com/dotnet/dotnet-docker/blob/master/2.0/runtime-deps/stretch/Dockerfile) install this component. Globalization data is available on Windows and macOS as part of their base installs.
+Note: On Linux, .NET Core relies on globalization data from ICU. For example, [.NET Core Linux Docker images](https://github.com/dotnet/dotnet-docker/blob/master/2.0/runtime-deps/stretch/amd64/Dockerfile) install this component. Globalization data is available on Windows and macOS as part of their base installs.
   
 ## Cultures and culture data
  
@@ -98,18 +98,32 @@ When running on Linux, ICU is used to get the time zone display name. In invaria
  
 ## Enabling the invariant mode
  
-Applications can enable the invariant mode by setting the config switch System.Globalization.Invariant to true, in the `runtimeconfig.json` file, as you can see in the following example:
+Applications can enable the invariant mode by either of the following:
 
-```json
-{
-    "runtimeOptions": {
-        "configProperties": {
-            "System.Globalization.Invariant": true
-        },
+1. in project file:
+
+    ```xml
+    <ItemGroup>
+      <RuntimeHostConfigurationOption Include="System.Globalization.Invariant" Value="true" />
+    </ItemGroup>
+    ```
+
+2. in `runtimeconfig.json` file:
+
+    ```json
+    {
+        "runtimeOptions": {
+            "configProperties": {
+                "System.Globalization.Invariant": true
+            }
+        }
     }
-}
-```
- 
+    ```
+  
+3. setting environment variable value `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT` to `true` or `1`.
+
+Note: value set in project file or `runtimeconfig.json` has higher priority than the environment variable.
+
 ## APP behavior with and without the invariant config switch
  
 - If the invariant config switch is not set or it is set false

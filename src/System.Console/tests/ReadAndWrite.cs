@@ -195,7 +195,7 @@ public class ReadAndWrite
         }
     }
 
-    public static unsafe void ValidateConsoleEncoding(Encoding encoding)
+    private static unsafe void ValidateConsoleEncoding(Encoding encoding)
     {
         Assert.NotNull(encoding);
 
@@ -259,9 +259,6 @@ public class ReadAndWrite
     }
 
     [Fact]
-    // On the full framework it is not guaranteed to eat the preamble bytes
-    [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework)]
-    [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "https://github.com/dotnet/corefx/issues/21483")]
     public static unsafe void OutputEncodingPreamble()
     {
         Encoding curEncoding = Console.OutputEncoding;
@@ -284,7 +281,6 @@ public class ReadAndWrite
     }
 
     [Fact]
-    [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "https://github.com/dotnet/corefx/issues/21483")]
     public static unsafe void OutputEncoding()
     {
         Encoding curEncoding = Console.OutputEncoding;

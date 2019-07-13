@@ -225,7 +225,7 @@ namespace System.Linq.Expressions
         {
             return new ArgumentException(Strings.PropertyTypeMustMatchGetter, paramName);
         }
-        
+
         /// <summary>
         /// ArgumentException with message like "Property type must match the value type of setter"
         /// </summary>
@@ -1349,10 +1349,10 @@ namespace System.Linq.Expressions
         {
             return ExpressionTypeDoesNotMatchConstructorParameter(p0, p1, GetParamName(paramName, index));
         }
-        
+
         /// <summary>
-         /// ArgumentException with message like "Expression must be readable"
-         /// </summary>
+        /// ArgumentException with message like "Expression must be readable"
+        /// </summary>
         internal static Exception ExpressionMustBeReadable(string paramName)
         {
             return new ArgumentException(Strings.ExpressionMustBeReadable, paramName);
@@ -1368,7 +1368,7 @@ namespace System.Linq.Expressions
 
         internal static Exception InvalidArgumentValue(string paramName)
         {
-            return new ArgumentException(Strings.InvalidArgumentValue, paramName);
+            return new ArgumentException(Strings.InvalidArgumentValue_ParamName, paramName);
         }
 
         internal static Exception NonEmptyCollectionRequired(string paramName)

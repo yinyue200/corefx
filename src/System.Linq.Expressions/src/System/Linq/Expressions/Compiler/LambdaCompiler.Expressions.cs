@@ -171,7 +171,7 @@ namespace System.Linq.Expressions.Compiler
 
             // Optimization: inline code for literal lambda's directly
             //
-            // This is worth it because otherwise we end up with a extra call
+            // This is worth it because otherwise we end up with an extra call
             // to DynamicMethod.CreateDelegate, which is expensive.
             //
             if (node.LambdaOperand != null)
@@ -181,7 +181,12 @@ namespace System.Linq.Expressions.Compiler
             }
 
             expr = node.Expression;
-            Debug.Assert(!typeof(LambdaExpression).IsAssignableFrom(expr.Type));
+            if (typeof(LambdaExpression).IsAssignableFrom(expr.Type))
+            {
+                // if the invoke target is a lambda expression tree, first compile it into a delegate
+                expr = Expression.Call(expr, expr.Type.GetMethod("Compile", Array.Empty<Type>()));
+            }
+
             EmitMethodCall(expr, expr.Type.GetInvokeMethod(), node, CompilationFlags.EmitAsNoTail | CompilationFlags.EmitExpressionStart);
         }
 

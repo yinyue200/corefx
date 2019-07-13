@@ -17,6 +17,8 @@ using System.Transactions;
 
 using Microsoft.SqlServer.Server;
 using Xunit;
+using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace System.Data.SqlClient.ManualTesting.Tests
 {
@@ -41,11 +43,43 @@ namespace System.Data.SqlClient.ManualTesting.Tests
         // data value and server consts
         private string _connStr;
 
-        [CheckConnStrSetupFact]
+        [ActiveIssue(27858, TestPlatforms.AnyUnix)]
+        [ConditionalFact(typeof(DataTestUtility), nameof(DataTestUtility.AreConnStringsSetup))]
         public void TestMain()
         {
             Assert.True(RunTestCoreAndCompareWithBaseline());
         }
+
+        [ConditionalFact(typeof(DataTestUtility), nameof(DataTestUtility.AreConnStringsSetup))]
+        public void TestPacketNumberWraparound()
+        {
+            // this test uses a specifically crafted sql record enumerator and data to put the TdsParserStateObject.WritePacket(byte,bool)
+            // into a state where it can't differentiate between a packet in the middle of a large packet-set after a byte counter wraparound
+            // and the first packet of the connection and in doing so trips over a check for packet length from the input which has been 
+            // forced to tell it that there is no output buffer space left, this causes an uncancellable infinite loop
+
+            // if the enumerator is completely read to the end then the bug is no longer present and the packet creation task returns,
+            // if the timeout occurs it is probable (but not absolute) that the write is stuck
+
+            var enumerator = new WraparoundRowEnumerator(1000000);
+
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            int returned = Task.WaitAny(
+                Task.Factory.StartNew(
+                    () => RunPacketNumberWraparound(enumerator),
+                    TaskCreationOptions.DenyChildAttach | TaskCreationOptions.LongRunning
+                ),
+                Task.Delay(TimeSpan.FromSeconds(60))
+            );
+            stopwatch.Stop();
+            if (enumerator.MaxCount != enumerator.Count)
+            {
+                Console.WriteLine($"enumerator.Count={enumerator.Count}, enumerator.MaxCount={enumerator.MaxCount}, elapsed={stopwatch.Elapsed.TotalSeconds}");
+            }
+            Assert.True(enumerator.MaxCount == enumerator.Count);
+        }
+
 
         public TvpTest()
         {
@@ -160,7 +194,7 @@ namespace System.Data.SqlClient.ManualTesting.Tests
             internal CarriageReturnLineFeedReplacer(TextWriter output)
             {
                 if (output == null)
-                    throw new ArgumentNullException("output");
+                    throw new ArgumentNullException(nameof(output));
 
                 _output = output;
             }
@@ -215,7 +249,7 @@ namespace System.Data.SqlClient.ManualTesting.Tests
             }
         }
 
-#region Main test methods
+        #region Main test methods
         private void ColumnBoundariesTest()
         {
             IEnumerator<StePermutation> boundsMD = SteStructuredTypeBoundaries.AllColumnTypesExceptUdts.GetEnumerator(
@@ -308,25 +342,25 @@ namespace System.Data.SqlClient.ManualTesting.Tests
             }
         }
 
-        public void QueryHintsTest()
+        private void QueryHintsTest()
         {
             using (SqlConnection conn = new SqlConnection(_connStr))
             {
                 conn.Open();
 
                 Guid randomizer = Guid.NewGuid();
-                string typeName = String.Format("dbo.[QHint_{0}]", randomizer);
-                string procName = String.Format("dbo.[QHint_Proc_{0}]", randomizer);
-                string createTypeSql = String.Format(
+                string typeName = string.Format("dbo.[QHint_{0}]", randomizer);
+                string procName = string.Format("dbo.[QHint_Proc_{0}]", randomizer);
+                string createTypeSql = string.Format(
                         "CREATE TYPE {0} AS TABLE("
                             + " c1 Int DEFAULT -1,"
                             + " c2 NVarChar(40) DEFAULT N'DEFUALT',"
                             + " c3 DateTime DEFAULT '1/1/2006',"
                             + " c4 Int DEFAULT -1)",
                             typeName);
-                string createProcSql = String.Format(
+                string createProcSql = string.Format(
                         "CREATE PROC {0}(@tvp {1} READONLY) AS SELECT TOP(2) * FROM @tvp ORDER BY c1", procName, typeName);
-                string dropSql = String.Format("DROP PROC {0}; DROP TYPE {1}", procName, typeName);
+                string dropSql = string.Format("DROP PROC {0}; DROP TYPE {1}", procName, typeName);
 
                 try
                 {
@@ -549,9 +583,34 @@ namespace System.Data.SqlClient.ManualTesting.Tests
             }
         }
 
-#endregion
+        private static async Task RunPacketNumberWraparound(WraparoundRowEnumerator enumerator)
+        {
+            using (var connection = new SqlConnection(DataTestUtility.TcpConnStr))
+            using (var cmd = new SqlCommand("unimportant")
+            {
+                CommandType = System.Data.CommandType.StoredProcedure,
+                Connection = connection,
+            })
+            {
+                await cmd.Connection.OpenAsync();
+                cmd.Parameters.Add(new SqlParameter("@rows", SqlDbType.Structured)
+                {
+                    TypeName = "unimportant",
+                    Value = enumerator,
+                });
+                try
+                {
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                catch (Exception)
+                {
+                    // ignore the errors caused by the sproc and table type not existing
+                }
+            }
+        }
+        #endregion
 
-#region Utility Methods
+        #region Utility Methods
 
         private bool AllowableDifference(string source, object result, StePermutation metadata)
         {
@@ -663,9 +722,9 @@ namespace System.Data.SqlClient.ManualTesting.Tests
             {
                 resultValue = (SqlDecimal)result;
             }
-            else if (result.GetType() == typeof(Decimal))
+            else if (result.GetType() == typeof(decimal))
             {
-                resultValue = new SqlDecimal((Decimal)result);
+                resultValue = new SqlDecimal((decimal)result);
             }
             else if (result.GetType() == typeof(SqlMoney))
             {
@@ -717,7 +776,7 @@ namespace System.Data.SqlClient.ManualTesting.Tests
                     {
                         try
                         {
-                            Decimal dummy = source.Value;
+                            decimal dummy = source.Value;
                         }
                         catch (OverflowException)
                         {
@@ -753,7 +812,7 @@ namespace System.Data.SqlClient.ManualTesting.Tests
                                 {
                                     if (source is char[])
                                     {
-                                        source = new String((char[])source);
+                                        source = new string((char[])source);
                                         isMatch = AllowableDifference((string)source, result, metadata);
                                     }
                                     else if (source is byte[])
@@ -769,23 +828,23 @@ namespace System.Data.SqlClient.ManualTesting.Tests
                                         source = new string(((SqlChars)source).Value);
                                         isMatch = AllowableDifference((string)source, result, metadata);
                                     }
-                                    else if (source is SqlInt64 && result is Int64)
+                                    else if (source is SqlInt64 && result is long)
                                     {
                                         isMatch = result.Equals(((SqlInt64)source).Value);
                                     }
-                                    else if (source is SqlInt32 && result is Int32)
+                                    else if (source is SqlInt32 && result is int)
                                     {
                                         isMatch = result.Equals(((SqlInt32)source).Value);
                                     }
-                                    else if (source is SqlInt16 && result is Int16)
+                                    else if (source is SqlInt16 && result is short)
                                     {
                                         isMatch = result.Equals(((SqlInt16)source).Value);
                                     }
-                                    else if (source is SqlSingle && result is Single)
+                                    else if (source is SqlSingle && result is float)
                                     {
                                         isMatch = result.Equals(((SqlSingle)source).Value);
                                     }
-                                    else if (source is SqlDouble && result is Double)
+                                    else if (source is SqlDouble && result is double)
                                     {
                                         isMatch = result.Equals(((SqlDouble)source).Value);
                                     }
@@ -804,9 +863,9 @@ namespace System.Data.SqlClient.ManualTesting.Tests
                                 }
                                 break;
                             case TypeCode.Decimal:
-                                if (result is SqlDecimal || result is Decimal || result is SqlMoney)
+                                if (result is SqlDecimal || result is decimal || result is SqlMoney)
                                 {
-                                    isMatch = AllowableDifference(new SqlDecimal((Decimal)source), result, metadata);
+                                    isMatch = AllowableDifference(new SqlDecimal((decimal)source), result, metadata);
                                 }
                                 break;
                             default:
@@ -1052,7 +1111,7 @@ namespace System.Data.SqlClient.ManualTesting.Tests
                 cmd.ExecuteNonQuery();
 
                 // and create the proc that uses the type            
-                cmd.CommandText = String.Format("CREATE PROC {0}(@tvp {1} READONLY) AS SELECT * FROM @tvp order by {2}",
+                cmd.CommandText = string.Format("CREATE PROC {0}(@tvp {1} READONLY) AS SELECT * FROM @tvp order by {2}",
                         GetProcName(tvpPerm), GetTypeName(tvpPerm), colOrdinal - 1);
                 cmd.ExecuteNonQuery();
             }
@@ -1115,7 +1174,7 @@ namespace System.Data.SqlClient.ManualTesting.Tests
                 }
                 catch (SqlException se)
                 {
-                    Console.WriteLine("SqlException: {0}", se.Message);
+                    Console.WriteLine("SqlException. Error Code: {0}", se.Number);
                 }
                 catch (InvalidOperationException ioe)
                 {
@@ -1291,7 +1350,7 @@ namespace System.Data.SqlClient.ManualTesting.Tests
                 {
                     object value;
                     // Special case to handle decimal values that may be too large for GetValue
-                    if (!rdr.IsDBNull(columnOrd) && rdr.GetFieldType(columnOrd) == typeof(Decimal))
+                    if (!rdr.IsDBNull(columnOrd) && rdr.GetFieldType(columnOrd) == typeof(decimal))
                     {
                         value = rdr.GetSqlValue(columnOrd);
                     }
@@ -1370,7 +1429,7 @@ namespace System.Data.SqlClient.ManualTesting.Tests
         }
 
 
-#endregion
+        #endregion
     }
 
     internal class TvpRestartableReader : DbDataReader
@@ -1459,31 +1518,31 @@ namespace System.Data.SqlClient.ManualTesting.Tests
             SqlDataRecord rec = _sourceData[0];
 
             DataTable schemaTable = new DataTable();
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.ColumnName, typeof(System.String)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.ColumnOrdinal, typeof(System.Int32)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.ColumnSize, typeof(System.Int32)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.NumericPrecision, typeof(System.Int16)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.NumericScale, typeof(System.Int16)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.ColumnName, typeof(string)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.ColumnOrdinal, typeof(int)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.ColumnSize, typeof(int)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.NumericPrecision, typeof(short)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.NumericScale, typeof(short)));
 
             schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.DataType, typeof(System.Type)));
             schemaTable.Columns.Add(new DataColumn(SchemaTableOptionalColumn.ProviderSpecificDataType, typeof(System.Type)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.NonVersionedProviderType, typeof(System.Int32)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.ProviderType, typeof(System.Int32)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.NonVersionedProviderType, typeof(int)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.ProviderType, typeof(int)));
 
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.IsLong, typeof(System.Boolean)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.AllowDBNull, typeof(System.Boolean)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableOptionalColumn.IsReadOnly, typeof(System.Boolean)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableOptionalColumn.IsRowVersion, typeof(System.Boolean)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.IsLong, typeof(bool)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.AllowDBNull, typeof(bool)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableOptionalColumn.IsReadOnly, typeof(bool)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableOptionalColumn.IsRowVersion, typeof(bool)));
 
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.IsUnique, typeof(System.Boolean)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.IsKey, typeof(System.Boolean)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableOptionalColumn.IsAutoIncrement, typeof(System.Boolean)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableOptionalColumn.IsHidden, typeof(System.Boolean)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.IsUnique, typeof(bool)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.IsKey, typeof(bool)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableOptionalColumn.IsAutoIncrement, typeof(bool)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableOptionalColumn.IsHidden, typeof(bool)));
 
-            schemaTable.Columns.Add(new DataColumn(SchemaTableOptionalColumn.BaseCatalogName, typeof(System.String)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.BaseSchemaName, typeof(System.String)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.BaseTableName, typeof(System.String)));
-            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.BaseColumnName, typeof(System.String)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableOptionalColumn.BaseCatalogName, typeof(string)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.BaseSchemaName, typeof(string)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.BaseTableName, typeof(string)));
+            schemaTable.Columns.Add(new DataColumn(SchemaTableColumn.BaseColumnName, typeof(string)));
 
             for (int i = 0; i < rec.FieldCount; i++)
             {
@@ -1546,17 +1605,17 @@ namespace System.Data.SqlClient.ManualTesting.Tests
             return _sourceData[_currentRow].GetDateTime(ordinal);
         }
 
-        override public Decimal GetDecimal(int ordinal)
+        override public decimal GetDecimal(int ordinal)
         {
             // DataRecord may have illegal values for Decimal...
-            Decimal result;
+            decimal result;
             try
             {
                 result = _sourceData[_currentRow].GetDecimal(ordinal);
             }
             catch (OverflowException)
             {
-                result = (Decimal)1;
+                result = (decimal)1;
             }
             return result;
         }
@@ -1576,27 +1635,27 @@ namespace System.Data.SqlClient.ManualTesting.Tests
             return _sourceData[_currentRow].GetGuid(ordinal);
         }
 
-        override public Int16 GetInt16(int ordinal)
+        override public short GetInt16(int ordinal)
         {
             return _sourceData[_currentRow].GetInt16(ordinal);
         }
 
-        override public Int32 GetInt32(int ordinal)
+        override public int GetInt32(int ordinal)
         {
             return _sourceData[_currentRow].GetInt32(ordinal);
         }
 
-        override public Int64 GetInt64(int ordinal)
+        override public long GetInt64(int ordinal)
         {
             return _sourceData[_currentRow].GetInt64(ordinal);
         }
 
-        override public String GetString(int ordinal)
+        override public string GetString(int ordinal)
         {
             return _sourceData[_currentRow].GetString(ordinal);
         }
 
-        override public Object GetValue(int ordinal)
+        override public object GetValue(int ordinal)
         {
             return _sourceData[_currentRow].GetValue(ordinal);
         }
@@ -1625,4 +1684,49 @@ namespace System.Data.SqlClient.ManualTesting.Tests
         }
     }
 
+    internal class WraparoundRowEnumerator : IEnumerable<SqlDataRecord>, IEnumerator<SqlDataRecord>
+    {
+        private int _count;
+        private int _maxCount;
+        private SqlDataRecord _record;
+
+        public WraparoundRowEnumerator(int maxCount)
+        {
+            _maxCount = maxCount;
+            _record = new SqlDataRecord(new SqlMetaData("someData", SqlDbType.VarBinary, 8000));
+
+            // 56 31 0 0 is result of calling BitConverter.GetBytes((int)7992)
+            // The rest of the bytes are just padding to get 56, 31, 0, 0 to be in bytes 8-11 of TdsParserStatObject._outBuff after the 256th packet
+            _record.SetBytes(
+                0,
+                0,
+                new byte[] { 1, 2, 56, 31, 0, 0, 7, 8, 9, 10, 11, 12, 13, 14 },
+                0,
+                14);
+
+            // change any of the 56 31 0 0 bytes and this program completes as expected in a couple seconds
+        }
+
+        public bool MoveNext()
+        {
+            _count++;
+            return _count < _maxCount;
+        }
+
+        public SqlDataRecord Current => _record;
+
+        object IEnumerator.Current => Current;
+
+        public int Count { get => this._count; set => this._count = value; }
+        public int MaxCount { get => this._maxCount; set => this._maxCount = value; }
+
+        public IEnumerator<SqlDataRecord> GetEnumerator() => this;
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public void Dispose() { }
+        public void Reset() { }
+
+
+    }
 }

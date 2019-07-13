@@ -223,7 +223,6 @@ namespace System.Linq.Tests
 
         [Theory]
         [MemberData(nameof(ManyConcatsData))]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Stack overflows on desktop due to inefficient Concat implementation")]
         public void ManyConcatsRunOnce(IEnumerable<IEnumerable<int>> sources, IEnumerable<int> expected)
         {
             foreach (var transform in IdentityTransforms<int>())
@@ -254,16 +253,7 @@ namespace System.Linq.Tests
 
             Action<Action> assertThrows = (testCode) =>
             {
-                // The full .NET Framework uses unsigned arithmetic summing up collection counts.
-                // See https://github.com/dotnet/corefx/pull/11492.
-                if (PlatformDetection.IsFullFramework)
-                {
-                    testCode();
-                }
-                else
-                {
-                    Assert.Throws<OverflowException>(testCode);
-                }
+                Assert.Throws<OverflowException>(testCode);
             };
 
             // We need to use checked arithmetic summing up the collections' counts.
@@ -284,7 +274,6 @@ namespace System.Linq.Tests
 
         [Fact]
         [OuterLoop("This test tries to catch stack overflows and can take a long time.")]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Stack overflows on desktop due to inefficient Concat implementation")]
         public void CountOfConcatCollectionChainShouldBeResilientToStackOverflow()
         {
             // Currently, .Concat chains of 3+ ICollections are represented as a
@@ -319,7 +308,6 @@ namespace System.Linq.Tests
 
         [Fact]
         [OuterLoop("This test tries to catch stack overflows and can take a long time.")]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Stack overflows on desktop due to inefficient Concat implementation")]
         public void CountOfConcatEnumerableChainShouldBeResilientToStackOverflow()
         {
             // Concat chains where one or more of the inputs is not an ICollection
@@ -355,7 +343,6 @@ namespace System.Linq.Tests
 
         [Fact]
         [OuterLoop("This test tries to catch stack overflows and can take a long time.")]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Stack overflows on desktop due to inefficient Concat implementation")]
         public void GettingFirstEnumerableShouldBeResilientToStackOverflow()
         {
             // When MoveNext() is first called on a chain of 3+ Concats, we have to
@@ -384,7 +371,6 @@ namespace System.Linq.Tests
 
         [Fact]
         [OuterLoop("This test tries to catch stack overflows and can take a long time.")]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Stack overflows on desktop due to inefficient Concat implementation")]
         public void GetEnumerableOfConcatCollectionChainFollowedByEnumerableNodeShouldBeResilientToStackOverflow()
         {
             // Since concatenating even 1 lazy enumerable ruins the ability for ToArray/ToList
@@ -420,6 +406,124 @@ namespace System.Linq.Tests
                 Assert.True(en.MoveNext());
                 Assert.Equal(0xf00, en.Current);
             }
+        }
+
+        [Theory]
+        [MemberData(nameof(GetToArrayDataSources))]
+        public void CollectionInterleavedWithLazyEnumerables_ToArray(IEnumerable<int>[] arrays)
+        {
+            // See https://github.com/dotnet/corefx/issues/23680
+
+            IEnumerable<int> concats = arrays[0];
+
+            for (int i = 1; i < arrays.Length; i++)
+            {
+                concats = concats.Concat(arrays[i]);
+            }
+
+            int[] results = concats.ToArray();
+
+            for (int i = 0; i < results.Length; i++)
+            {
+                Assert.Equal(i, results[i]);
+            }
+        }
+
+        public static IEnumerable<object[]> GetToArrayDataSources()
+        {
+            // Marker at the end
+            yield return new object[]
+            {
+                new IEnumerable<int>[]
+                {
+                    new TestEnumerable<int>(new int[] { 0 }),
+                    new TestEnumerable<int>(new int[] { 1 }),
+                    new TestEnumerable<int>(new int[] { 2 }),
+                    new int[] { 3 },
+                }
+            };
+
+            // Marker at beginning
+            yield return new object[]
+            {
+                new IEnumerable<int>[]
+                {
+                    new int[] { 0 },
+                    new TestEnumerable<int>(new int[] { 1 }),
+                    new TestEnumerable<int>(new int[] { 2 }),
+                    new TestEnumerable<int>(new int[] { 3 }),
+                }
+            };
+
+            // Marker in middle
+            yield return new object[]
+            {
+                new IEnumerable<int>[]
+                {
+                    new TestEnumerable<int>(new int[] { 0 }),
+                    new int[] { 1 },
+                    new TestEnumerable<int>(new int[] { 2 }),
+                }
+            };
+
+            // Non-marker in middle
+            yield return new object[]
+            {
+                new IEnumerable<int>[]
+                {
+                    new int[] { 0 },
+                    new TestEnumerable<int>(new int[] { 1 }),
+                    new int[] { 2 },
+                }
+            };
+
+            // Big arrays (marker in middle)
+            yield return new object[]
+            {
+                new IEnumerable<int>[]
+                {
+                    new TestEnumerable<int>(Enumerable.Range(0, 100).ToArray()),
+                    Enumerable.Range(100, 100).ToArray(),
+                    new TestEnumerable<int>(Enumerable.Range(200, 100).ToArray()),
+                }
+            };
+
+            // Big arrays (non-marker in middle)
+            yield return new object[]
+            {
+                new IEnumerable<int>[]
+                {
+                    Enumerable.Range(0, 100).ToArray(),
+                    new TestEnumerable<int>(Enumerable.Range(100, 100).ToArray()),
+                    Enumerable.Range(200, 100).ToArray(),
+                }
+            };
+
+            // Interleaved (first marker)
+            yield return new object[]
+            {
+                new IEnumerable<int>[]
+                {
+                    new int[] { 0 },
+                    new TestEnumerable<int>(new int[] { 1 }),
+                    new int[] { 2 },
+                    new TestEnumerable<int>(new int[] { 3 }),
+                    new int[] { 4 },
+                }
+            };
+
+            // Interleaved (first non-marker)
+            yield return new object[]
+            {
+                new IEnumerable<int>[]
+                {
+                    new TestEnumerable<int>(new int[] { 0 }),
+                    new int[] { 1 },
+                    new TestEnumerable<int>(new int[] { 2 }),
+                    new int[] { 3 },
+                    new TestEnumerable<int>(new int[] { 4 }),
+                }
+            };
         }
     }
 }

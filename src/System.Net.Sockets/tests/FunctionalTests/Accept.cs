@@ -4,11 +4,14 @@
 
 using System.Threading.Tasks;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace System.Net.Sockets.Tests
 {
     public abstract class Accept<T> : SocketTestHelperBase<T> where T : SocketHelperBase, new()
     {
+        public Accept(ITestOutputHelper output) : base(output) { }
+
         [OuterLoop] // TODO: Issue #11345
         [Theory]
         [MemberData(nameof(Loopbacks))]
@@ -40,17 +43,10 @@ namespace System.Net.Sockets.Tests
         [InlineData(5)]
         public async Task Accept_ConcurrentAcceptsBeforeConnects_Success(int numberAccepts)
         {
-            // The SyncForceNonBlocking implementation currently toggles the listener's Blocking setting
-            // back and force on every Accept, which causes pending sync Accepts to return EWOULDBLOCK.
-            // For now, just skip the test for SyncForceNonBlocking.
-            // TODO: Issue #22885
-            if (typeof(T) == typeof(SocketHelperSyncForceNonBlocking))
-                return;
-
             using (Socket listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
-                listener.Listen(numberAccepts);
+                Listen(listener, numberAccepts);
 
                 var clients = new Socket[numberAccepts];
                 var servers = new Task<Socket>[numberAccepts];
@@ -97,17 +93,10 @@ namespace System.Net.Sockets.Tests
         [InlineData(5)]
         public async Task Accept_ConcurrentAcceptsAfterConnects_Success(int numberAccepts)
         {
-            // The SyncForceNonBlocking implementation currently toggles the listener's Blocking setting
-            // back and force on every Accept, which causes pending sync Accepts to return EWOULDBLOCK.
-            // For now, just skip the test for SyncForceNonBlocking.
-            // TODO: Issue #22885
-            if (typeof(T) == typeof(SocketHelperSyncForceNonBlocking))
-                return;
-
             using (Socket listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
             {
                 listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
-                listener.Listen(numberAccepts);
+                Listen(listener, numberAccepts);
 
                 var clients = new Socket[numberAccepts];
                 var clientConnects = new Task[numberAccepts];
@@ -275,11 +264,54 @@ namespace System.Net.Sockets.Tests
                 Assert.Throws<InvalidOperationException>(() => { AcceptAsync(listener, server); });
             }
         }
+
+        [Fact]
+        public async Task AcceptAsync_MultipleAcceptsThenDispose_AcceptsThrowAfterDispose()
+        {
+            if (UsesSync)
+            {
+                return;
+            }
+
+            for (int i = 0; i < 100; i++)
+            {
+                using (var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                {
+                    listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+                    listener.Listen(2);
+
+                    Task accept1 = AcceptAsync(listener);
+                    Task accept2 = AcceptAsync(listener);
+                    listener.Dispose();
+                    await Assert.ThrowsAnyAsync<Exception>(() => accept1);
+                    await Assert.ThrowsAnyAsync<Exception>(() => accept2);
+                }
+            }
+        }
     }
 
-    public sealed class AcceptSync : Accept<SocketHelperSync> { }
-    public sealed class AcceptSyncForceNonBlocking : Accept<SocketHelperSyncForceNonBlocking> { }
-    public sealed class AcceptApm : Accept<SocketHelperApm> { }
-    public sealed class AcceptTask : Accept<SocketHelperTask> { }
-    public sealed class AcceptEap : Accept<SocketHelperEap> { }
+    public sealed class AcceptSync : Accept<SocketHelperArraySync>
+    {
+        public AcceptSync(ITestOutputHelper output) : base(output) {}
+    }
+
+    public sealed class AcceptSyncForceNonBlocking : Accept<SocketHelperSyncForceNonBlocking>
+    {
+        public AcceptSyncForceNonBlocking(ITestOutputHelper output) : base(output) {}
+    }
+
+    public sealed class AcceptApm : Accept<SocketHelperApm>
+    {
+        public AcceptApm(ITestOutputHelper output) : base(output) {}
+    }
+
+    public sealed class AcceptTask : Accept<SocketHelperTask>
+    {
+        public AcceptTask(ITestOutputHelper output) : base(output) {}
+    }
+
+    public sealed class AcceptEap : Accept<SocketHelperEap>
+    {
+        public AcceptEap(ITestOutputHelper output) : base(output) {}
+    }
 }

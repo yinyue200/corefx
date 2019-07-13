@@ -12,7 +12,7 @@ namespace System.Drawing.Internal
     /// Represents a Win32 device context.  Provides operations for setting some of the properties of a device context.
     /// It's the managed wrapper for an HDC.
     ///
-    /// This class is divided into two files separating the code that needs to be compiled into reatail builds and
+    /// This class is divided into two files separating the code that needs to be compiled into retail builds and
     /// debugging code.
     /// </summary>
     internal sealed partial class DeviceContext : MarshalByRefObject, IDeviceContext, IDisposable
@@ -23,9 +23,9 @@ namespace System.Drawing.Internal
         /// 
         /// The hDc is released/deleted only when owned by the object, meaning it was created internally; 
         /// in this case, the object is responsible for releasing/deleting it. 
-        /// In the case the object is created from an exisiting hdc, it is not released; this is consistent 
+        /// In the case the object is created from an existing hdc, it is not released; this is consistent 
         /// with the Win32 guideline that says if you call GetDC/CreateDC/CreatIC/CreateEnhMetafile, you are 
-        /// responsible for calling ReleaseDC/DeleteDC/DeleteEnhMetafile respectivelly.
+        /// responsible for calling ReleaseDC/DeleteDC/DeleteEnhMetafile respectively.
         /// 
         /// This class implements some of the operations commonly performed on the properties of a dc in WinForms, 
         /// specially for interacting with GDI+, like clipping and coordinate transformation.  
@@ -34,9 +34,9 @@ namespace System.Drawing.Internal
         /// DrawString (GDI+).  
         /// 
         /// Other properties are persisted from operation to operation until they are reset, like clipping, 
-        /// one can make several calls to Graphics or WindowsGraphics obect after setting the dc clip area and 
+        /// one can make several calls to Graphics or WindowsGraphics object after setting the dc clip area and 
         /// before resetting it; these kinds of properties are the ones implemented in this class.
-        /// This kind of properties place an extra chanllenge in the scenario where a DeviceContext is obtained 
+        /// This kind of properties place an extra challenge in the scenario where a DeviceContext is obtained 
         /// from a Graphics object that has been used with GDI+, because GDI+ saves the hdc internally, rendering the 
         /// DeviceContext underlying hdc out of sync.  DeviceContext needs to support these kind of properties to 
         /// be able to keep the GDI+ and GDI HDCs in sync.
@@ -49,7 +49,7 @@ namespace System.Drawing.Internal
         /// 5. View port origin.
         /// 6. Window extent
         /// 
-        /// Other non-persisted properties just for information: Background/Forground color, Palette, Color adjustment,
+        /// Other non-persisted properties just for information: Background/Foreground color, Palette, Color adjustment,
         /// Color space, ICM mode and profile, Current pen position, Binary raster op (not supported by GDI+), 
         /// Background mode, Logical Pen, DC pen color, ARc direction, Miter limit, Logical brush, DC brush color,
         /// Brush origin, Polygon filling mode, Bitmap stretching mode, Logical font, Intercharacter spacing, 
@@ -107,7 +107,7 @@ namespace System.Drawing.Internal
 #if GDI_FINALIZATION_WATCH
                     else
                     {
-                        try { Debug.WriteLine(string.Format("Allocation stack:\r\n{0}\r\nDeallocation stack:\r\n{1}", AllocationSite, DeAllocationSite)); } catch  {}
+                        try { Debug.WriteLine($"Allocation stack:\r\n{AllocationSite}\r\nDeallocation stack:\r\n{DeAllocationSite}"); } catch  {}
                     }
 #endif
                 }
@@ -132,7 +132,7 @@ namespace System.Drawing.Internal
 
 
         /// <summary>
-        /// Constructor to contruct a DeviceContext object from an window handle.
+        /// Constructor to construct a DeviceContext object from an window handle.
         /// </summary>
         private DeviceContext(IntPtr hWnd)
         {
@@ -144,12 +144,12 @@ namespace System.Drawing.Internal
             // the hDc will be created on demand.
 
 #if TRACK_HDC
-            Debug.WriteLine( DbgUtil.StackTraceToStr(String.Format( "DeviceContext( hWnd=0x{0:x8} )", unchecked((int) hWnd))));
+            Debug.WriteLine( DbgUtil.StackTraceToStr(string.Format( "DeviceContext( hWnd=0x{0:x8} )", unchecked((int) hWnd))));
 #endif
         }
 
         /// <summary>
-        /// Constructor to contruct a DeviceContext object from an existing Win32 device context handle.
+        /// Constructor to construct a DeviceContext object from an existing Win32 device context handle.
         /// </summary>
         private DeviceContext(IntPtr hDC, DeviceContextType dcType)
         {
@@ -164,7 +164,7 @@ namespace System.Drawing.Internal
                 _hWnd = IntUnsafeNativeMethods.WindowFromDC(new HandleRef(this, _hDC));
             }
 #if TRACK_HDC
-            Debug.WriteLine( DbgUtil.StackTraceToStr( String.Format("DeviceContext( hDC=0x{0:X8}, Type={1} )", unchecked((int) hDC), dcType) ));
+            Debug.WriteLine( DbgUtil.StackTraceToStr( string.Format("DeviceContext( hDC=0x{0:X8}, Type={1} )", unchecked((int) hDC), dcType) ));
 #endif
         }
 
@@ -254,7 +254,7 @@ namespace System.Drawing.Internal
                     // CreateDC and CreateIC add an HDC handle to the HandleCollector; to remove it properly we need 
                     // to call DeleteHDC.
 #if TRACK_HDC
-                    Debug.WriteLine( DbgUtil.StackTraceToStr( String.Format("DC.DeleteHDC(hdc=0x{0:x8})", unchecked((int) _hDC))));
+                    Debug.WriteLine( DbgUtil.StackTraceToStr( string.Format("DC.DeleteHDC(hdc=0x{0:x8})", unchecked((int) _hDC))));
 #endif
 
                     IntUnsafeNativeMethods.DeleteHDC(new HandleRef(this, _hDC));
@@ -267,7 +267,7 @@ namespace System.Drawing.Internal
                     // CreatCompatibleDC adds a GDI handle to HandleCollector, to remove it properly we need to call 
                     // DeleteDC.
 #if TRACK_HDC
-                    Debug.WriteLine( DbgUtil.StackTraceToStr( String.Format("DC.DeleteDC(hdc=0x{0:x8})", unchecked((int) _hDC))));
+                    Debug.WriteLine( DbgUtil.StackTraceToStr( string.Format("DC.DeleteDC(hdc=0x{0:x8})", unchecked((int) _hDC))));
 #endif
                     IntUnsafeNativeMethods.DeleteDC(new HandleRef(this, _hDC));
 
@@ -300,7 +300,7 @@ namespace System.Drawing.Internal
                 // For example, the default font is System.
                 _hDC = IntUnsafeNativeMethods.GetDC(new HandleRef(this, _hWnd));
 #if TRACK_HDC
-                Debug.WriteLine( DbgUtil.StackTraceToStr( String.Format("hdc[0x{0:x8}]=DC.GetHdc(hWnd=0x{1:x8})", unchecked((int) _hDC), unchecked((int) _hWnd))));
+                Debug.WriteLine( DbgUtil.StackTraceToStr( string.Format("hdc[0x{0:x8}]=DC.GetHdc(hWnd=0x{1:x8})", unchecked((int) _hDC), unchecked((int) _hWnd))));
 #endif            
             }
 
@@ -321,7 +321,7 @@ namespace System.Drawing.Internal
                 IntUnsafeNativeMethods.ReleaseDC(new HandleRef(this, _hWnd), new HandleRef(this, _hDC));
                 // Note: retVal == 0 means it was not released but doesn't necessarily means an error; class or private DCs are never released.
 #if TRACK_HDC
-                Debug.WriteLine( DbgUtil.StackTraceToStr( String.Format("[ret={0}]=DC.ReleaseDC(hDc=0x{1:x8}, hWnd=0x{2:x8})", retVal, unchecked((int) _hDC), unchecked((int) _hWnd))));
+                Debug.WriteLine( DbgUtil.StackTraceToStr( string.Format("[ret={0}]=DC.ReleaseDC(hDc=0x{1:x8}, hWnd=0x{2:x8})", retVal, unchecked((int) _hDC), unchecked((int) _hWnd))));
 #endif                 
                 _hDC = IntPtr.Zero;
             }
@@ -347,7 +347,7 @@ namespace System.Drawing.Internal
             IntUnsafeNativeMethods.RestoreDC(new HandleRef(this, _hDC), -1);
 #if TRACK_HDC
             // Note: Winforms may call this method during app exit at which point the DC may have been finalized already causing this assert to popup.
-            Debug.WriteLine( DbgUtil.StackTraceToStr( String.Format("ret[0]=DC.RestoreHdc(hDc=0x{1:x8}, state={2})", result, unchecked((int) _hDC), restoreState) ));
+            Debug.WriteLine( DbgUtil.StackTraceToStr( string.Format("ret[0]=DC.RestoreHdc(hDc=0x{1:x8}, state={2})", result, unchecked((int) _hDC), restoreState) ));
 #endif 
             Debug.Assert(_contextStack != null, "Someone is calling RestoreHdc() before SaveHdc()");
 
@@ -396,7 +396,7 @@ namespace System.Drawing.Internal
             _contextStack.Push(g);
 
 #if TRACK_HDC
-            Debug.WriteLine( DbgUtil.StackTraceToStr( String.Format("state[0]=DC.SaveHdc(hDc=0x{1:x8})", state, unchecked((int) _hDC)) ));
+            Debug.WriteLine( DbgUtil.StackTraceToStr( string.Format("state[0]=DC.SaveHdc(hDc=0x{1:x8})", state, unchecked((int) _hDC)) ));
 #endif
 
             return state;

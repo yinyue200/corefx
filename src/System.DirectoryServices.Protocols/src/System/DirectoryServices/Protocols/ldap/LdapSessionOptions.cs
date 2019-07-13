@@ -12,7 +12,6 @@ using System.Text;
 using System.Diagnostics;
 using System.Security.Authentication;
 using System.Runtime.CompilerServices;
-using System.Security.Permissions;
 
 namespace System.DirectoryServices.Protocols
 {
@@ -237,7 +236,7 @@ namespace System.DirectoryServices.Protocols
             {
                 if (value < TimeSpan.Zero)
                 {
-                    throw new ArgumentException(SR.NoNegativeTime, nameof(value));
+                    throw new ArgumentException(SR.NoNegativeTimeLimit, nameof(value));
                 }
 
                 // Prevent integer overflow.
@@ -276,7 +275,7 @@ namespace System.DirectoryServices.Protocols
             {
                 if (value < TimeSpan.Zero)
                 {
-                    throw new ArgumentException(SR.NoNegativeTime, nameof(value));
+                    throw new ArgumentException(SR.NoNegativeTimeLimit, nameof(value));
                 }
 
                 // Prevent integer overflow.
@@ -418,7 +417,7 @@ namespace System.DirectoryServices.Protocols
             {
                 if (value < TimeSpan.Zero)
                 {
-                    throw new ArgumentException(SR.NoNegativeTime, nameof(value));
+                    throw new ArgumentException(SR.NoNegativeTimeLimit, nameof(value));
                 }
 
                 // Prevent integer overflow.
@@ -1109,7 +1108,6 @@ namespace System.DirectoryServices.Protocols
             return value;
         }
 
-        [PermissionSet(SecurityAction.Assert, Unrestricted = true)]
         private static bool AddLdapHandleRef(LdapConnection ldapConnection)
         {
             bool success = false;
@@ -1126,7 +1124,6 @@ namespace System.DirectoryServices.Protocols
             return success;
         }
 
-        [PermissionSet(SecurityAction.Assert, Unrestricted = true)]
         private static void ReleaseLdapHandleRef(LdapConnection ldapConnection)
         {
             if (ldapConnection != null && ldapConnection._ldapHandle != null && !ldapConnection._ldapHandle.IsInvalid)

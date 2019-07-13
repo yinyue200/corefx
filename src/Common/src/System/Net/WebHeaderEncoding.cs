@@ -13,9 +13,6 @@ namespace System.Net
     // It doesn't work for string -> byte[] because of best-fit-mapping problems.
     internal static class WebHeaderEncoding
     {
-        // We don't want '?' replacement characters, just fail.
-        private static readonly Encoding s_utf8Decoder = Encoding.GetEncoding("utf-8", EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
-
         internal static unsafe string GetString(byte[] bytes, int byteIndex, int byteCount)
         {
             fixed (byte* pBytes = bytes)
@@ -83,49 +80,6 @@ namespace System.Net
                 GetBytes(myString, 0, myString.Length, bytes, 0);
             }
             return bytes;
-        }
-
-        // The normal client header parser just casts bytes to chars (see GetString).
-        // Check if those bytes were actually utf-8 instead of ASCII.
-        // If not, just return the input value.
-        internal static string DecodeUtf8FromString(string input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
-            {
-                return input;
-            }
-
-            bool possibleUtf8 = false;
-            for (int i = 0; i < input.Length; i++)
-            {
-                if (input[i] > (char)255)
-                {
-                    return input; // This couldn't have come from the wire, someone assigned it directly.
-                }
-                else if (input[i] > (char)127)
-                {
-                    possibleUtf8 = true;
-                    break;
-                }
-            }
-            if (possibleUtf8)
-            {
-                byte[] rawBytes = new byte[input.Length];
-                for (int i = 0; i < input.Length; i++)
-                {
-                    if (input[i] > (char)255)
-                    {
-                        return input; // This couldn't have come from the wire, someone assigned it directly.
-                    }
-                    rawBytes[i] = (byte)input[i];
-                }
-                try
-                {
-                    return s_utf8Decoder.GetString(rawBytes);
-                }
-                catch (ArgumentException) { } // Not actually Utf-8
-            }
-            return input;
         }
     }
 }

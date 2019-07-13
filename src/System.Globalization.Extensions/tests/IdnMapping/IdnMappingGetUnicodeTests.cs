@@ -59,6 +59,17 @@ namespace System.Globalization.Tests
             Assert.Equal(expected, new IdnMapping().GetUnicode(ascii, index, count));
         }
 
+        [SkipOnTargetFramework(~TargetFrameworkMonikers.Netcoreapp, "Optimization in .NET Core")]
+        [Theory]
+        [InlineData("www.microsoft.com")]
+        [InlineData("bing.com")]
+        public void GetUnicode_NoTranslationNeeded_ResultIsSameObjectAsInput(string input)
+        {
+            Assert.Same(input, new IdnMapping().GetUnicode(input));
+            Assert.NotSame(input, new IdnMapping().GetUnicode(input.Substring(1)));
+            Assert.NotSame(input, new IdnMapping().GetUnicode(input.Substring(0, input.Length - 1)));
+        }
+
         public static IEnumerable<object[]> GetUnicode_Invalid_TestData()
         {
             // Ascii is null
@@ -100,7 +111,7 @@ namespace System.Globalization.Tests
             GetUnicode_Invalid(new IdnMapping() { UseStd3AsciiRules = true }, ascii, index, count, exceptionType);
         }
 
-        public static void GetUnicode_Invalid(IdnMapping idnMapping, string ascii, int index, int count, Type exceptionType)
+        private static void GetUnicode_Invalid(IdnMapping idnMapping, string ascii, int index, int count, Type exceptionType)
         {
             if (ascii == null || index + count == ascii.Length)
             {

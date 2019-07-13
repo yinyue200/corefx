@@ -17,7 +17,6 @@ namespace System.DirectoryServices.AccountManagement
         //
         bool IList.IsFixedSize
         {
-            [System.Security.SecurityCritical]
             get
             {
                 return IsFixedSize;
@@ -26,24 +25,21 @@ namespace System.DirectoryServices.AccountManagement
 
         bool IList.IsReadOnly
         {
-            [System.Security.SecurityCritical]
             get
             {
                 return IsReadOnly;
             }
         }
 
-        [System.Security.SecurityCritical]
         int IList.Add(object value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
 
             _inner.Add((T)value);
             return Count;
         }
 
-        [System.Security.SecurityCritical]
         void IList.Clear()
         {
             Clear();
@@ -52,25 +48,23 @@ namespace System.DirectoryServices.AccountManagement
         bool IList.Contains(object value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
 
             return _inner.Contains((T)value);
         }
 
-        [System.Security.SecurityCritical]
         int IList.IndexOf(object value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
 
             return IndexOf((T)value);
         }
 
-        [System.Security.SecurityCritical]
         void IList.Insert(int index, object value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
 
             Insert(index, (T)value);
         }
@@ -78,12 +72,11 @@ namespace System.DirectoryServices.AccountManagement
         void IList.Remove(object value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
 
             _inner.Remove((T)value);
         }
 
-        [System.Security.SecurityCritical]
         void IList.RemoveAt(int index)
         {
             RemoveAt(index);
@@ -91,17 +84,15 @@ namespace System.DirectoryServices.AccountManagement
 
         object IList.this[int index]
         {
-            [System.Security.SecurityCritical]
             get
             {
                 return this[index];
             }
 
-            [System.Security.SecurityCritical]
             set
             {
                 if (value == null)
-                    throw new ArgumentNullException("value");
+                    throw new ArgumentNullException(nameof(value));
 
                 this[index] = (T)value;
             }
@@ -125,7 +116,6 @@ namespace System.DirectoryServices.AccountManagement
 
         bool ICollection.IsSynchronized
         {
-            [System.Security.SecurityCritical]
             get
             {
                 return IsSynchronized;
@@ -134,7 +124,6 @@ namespace System.DirectoryServices.AccountManagement
 
         object ICollection.SyncRoot
         {
-            [System.Security.SecurityCritical]
             get
             {
                 return SyncRoot;
@@ -160,7 +149,6 @@ namespace System.DirectoryServices.AccountManagement
         //
         // IEnumerable
         //
-        [System.Security.SecurityCritical]
         IEnumerator IEnumerable.GetEnumerator()
         {
             return (IEnumerator)GetEnumerator();
@@ -189,7 +177,7 @@ namespace System.DirectoryServices.AccountManagement
         public void Add(T value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
 
             _inner.Add(value);
         }
@@ -202,7 +190,7 @@ namespace System.DirectoryServices.AccountManagement
         public bool Contains(T value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
 
             return _inner.Contains(value);
         }
@@ -210,7 +198,7 @@ namespace System.DirectoryServices.AccountManagement
         public int IndexOf(T value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
 
             int index = 0;
 
@@ -239,12 +227,12 @@ namespace System.DirectoryServices.AccountManagement
             _inner.MarkChange();
 
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
 
             if ((index < 0) || (index > _inner.combinedValues.Count))
             {
                 GlobalDebug.WriteLineIf(GlobalDebug.Warn, "PrincipalValueCollection", "Insert({0}): out of range (count={1})", index, _inner.combinedValues.Count);
-                throw new ArgumentOutOfRangeException("index");
+                throw new ArgumentOutOfRangeException(nameof(index));
             }
 
             TrackedCollection<T>.ValueEl el = new TrackedCollection<T>.ValueEl();
@@ -257,7 +245,7 @@ namespace System.DirectoryServices.AccountManagement
         public bool Remove(T value)
         {
             if (value == null)
-                throw new ArgumentNullException("value");
+                throw new ArgumentNullException(nameof(value));
 
             return _inner.Remove(value);
         }
@@ -269,7 +257,7 @@ namespace System.DirectoryServices.AccountManagement
             if ((index < 0) || (index >= _inner.combinedValues.Count))
             {
                 GlobalDebug.WriteLineIf(GlobalDebug.Warn, "PrincipalValueCollection", "RemoveAt({0}): out of range (count={1})", index, _inner.combinedValues.Count);
-                throw new ArgumentOutOfRangeException("index");
+                throw new ArgumentOutOfRangeException(nameof(index));
             }
 
             TrackedCollection<T>.ValueEl el = _inner.combinedValues[index];
@@ -297,7 +285,7 @@ namespace System.DirectoryServices.AccountManagement
                 if ((index < 0) || (index >= _inner.combinedValues.Count))
                 {
                     GlobalDebug.WriteLineIf(GlobalDebug.Warn, "PrincipalValueCollection", "this[{0}].get: out of range (count={1})", index, _inner.combinedValues.Count);
-                    throw new ArgumentOutOfRangeException("index");
+                    throw new ArgumentOutOfRangeException(nameof(index));
                 }
 
                 TrackedCollection<T>.ValueEl el = _inner.combinedValues[index];
@@ -321,11 +309,11 @@ namespace System.DirectoryServices.AccountManagement
                 if ((index < 0) || (index >= _inner.combinedValues.Count))
                 {
                     GlobalDebug.WriteLineIf(GlobalDebug.Warn, "PrincipalValueCollection", "this[{0}].set: out of range (count={1})", index, _inner.combinedValues.Count);
-                    throw new ArgumentOutOfRangeException("index");
+                    throw new ArgumentOutOfRangeException(nameof(index));
                 }
 
                 if (value == null)
-                    throw new ArgumentNullException("value");
+                    throw new ArgumentNullException(nameof(value));
 
                 TrackedCollection<T>.ValueEl el = _inner.combinedValues[index];
 
@@ -361,7 +349,6 @@ namespace System.DirectoryServices.AccountManagement
         //
         // IEnumerable<T>
         //
-        [System.Security.SecurityCritical]
         public IEnumerator<T> GetEnumerator()
         {
             return new ValueCollectionEnumerator<T>(_inner, _inner.combinedValues);

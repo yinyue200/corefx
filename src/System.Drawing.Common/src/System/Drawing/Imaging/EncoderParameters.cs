@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Runtime.InteropServices;
+using Gdip = System.Drawing.SafeNativeMethods.Gdip;
 
 namespace System.Drawing.Imaging
 {
@@ -35,7 +36,7 @@ namespace System.Drawing.Imaging
         /// <summary>
         /// Copy the EncoderParameters data into a chunk of memory to be consumed by native GDI+ code.
         ///
-        /// We need to marshal the EncoderParameters info from/to native GDI+ ourselve since the definition of the managed/unmanaged classes
+        /// We need to marshal the EncoderParameters info from/to native GDI+ ourselves since the definition of the managed/unmanaged classes
         /// are different and the native class is a bit weird. The native EncoderParameters class is defined in GDI+ as follows:
         /// 
         /// class EncoderParameters {
@@ -60,7 +61,7 @@ namespace System.Drawing.Imaging
 
             if (memory == IntPtr.Zero)
             {
-                throw SafeNativeMethods.Gdip.StatusException(SafeNativeMethods.Gdip.OutOfMemory);
+                throw Gdip.StatusException(Gdip.OutOfMemory);
             }
 
             Marshal.WriteIntPtr(memory, (IntPtr)length);
@@ -83,7 +84,7 @@ namespace System.Drawing.Imaging
         {
             if (memory == IntPtr.Zero)
             {
-                throw SafeNativeMethods.Gdip.StatusException(SafeNativeMethods.Gdip.InvalidParameter);
+                throw Gdip.StatusException(Gdip.InvalidParameter);
             }
 
             int count = Marshal.ReadIntPtr(memory).ToInt32();

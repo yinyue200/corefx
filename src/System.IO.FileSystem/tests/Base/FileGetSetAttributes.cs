@@ -12,13 +12,20 @@ namespace System.IO.Tests
         [Theory]
         [InlineData(FileAttributes.ReadOnly)]
         [InlineData(FileAttributes.Normal)]
-        [PlatformSpecific(TestPlatforms.AnyUnix)]  // Unix valid file attributes
-        public void UnixAttributeSetting(FileAttributes attr)
+        [PlatformSpecific(TestPlatforms.AnyUnix)]
+        public void SettingAttributes_Unix(FileAttributes attributes)
         {
             string path = CreateItem();
-            SetAttributes(path, attr);
-            Assert.Equal(attr, GetAttributes(path));
-            SetAttributes(path, 0);
+            AssertSettingAttributes(path, attributes);
+        }
+
+        [Theory]
+        [InlineData(FileAttributes.Hidden)]
+        [PlatformSpecific(TestPlatforms.OSX | TestPlatforms.FreeBSD)]
+        public void SettingAttributes_OSXAndFreeBSD(FileAttributes attributes)
+        {
+            string path = CreateItem();
+            AssertSettingAttributes(path, attributes);
         }
 
         [Theory]
@@ -29,12 +36,17 @@ namespace System.IO.Tests
         [InlineData(FileAttributes.Normal)]
         [InlineData(FileAttributes.Temporary)]
         [InlineData(FileAttributes.ReadOnly | FileAttributes.Hidden)]
-        [PlatformSpecific(TestPlatforms.Windows)]  // Valid Windows file attribute
-        public void WindowsAttributeSetting(FileAttributes attr)
+        [PlatformSpecific(TestPlatforms.Windows)]
+        public void SettingAttributes_Windows(FileAttributes attributes)
         {
             string path = CreateItem();
-            SetAttributes(path, attr);
-            Assert.Equal(attr, GetAttributes(path));
+            AssertSettingAttributes(path, attributes);
+        }
+
+        private void AssertSettingAttributes(string path, FileAttributes attributes)
+        {
+            SetAttributes(path, attributes);
+            Assert.Equal(attributes, GetAttributes(path));
             SetAttributes(path, 0);
         }
 
@@ -44,12 +56,20 @@ namespace System.IO.Tests
         [InlineData(FileAttributes.SparseFile)]
         [InlineData(FileAttributes.ReparsePoint)]
         [InlineData(FileAttributes.Compressed)]
-        [PlatformSpecific(TestPlatforms.AnyUnix)]  // Unix invalid file attributes
-        public void UnixInvalidAttributes(FileAttributes attr)
+        [PlatformSpecific(TestPlatforms.AnyUnix)]
+        public void SettingInvalidAttributes_Unix(FileAttributes attributes)
         {
             string path = CreateItem();
-            SetAttributes(path, attr);
-            Assert.Equal(FileAttributes.Normal, GetAttributes(path));
+            AssertSettingInvalidAttributes(path, attributes);
+        }
+
+        [Theory]
+        [InlineData(FileAttributes.Hidden)]
+        [PlatformSpecific(TestPlatforms.AnyUnix & ~(TestPlatforms.OSX | TestPlatforms.FreeBSD))]
+        public void SettingInvalidAttributes_UnixExceptOSXAndFreeBSD(FileAttributes attributes)
+        {
+            string path = CreateItem();
+            AssertSettingInvalidAttributes(path, attributes);
         }
 
         [Theory]
@@ -58,11 +78,40 @@ namespace System.IO.Tests
         [InlineData(FileAttributes.SparseFile)]
         [InlineData(FileAttributes.ReparsePoint)]
         [InlineData(FileAttributes.Compressed)]
-        [PlatformSpecific(TestPlatforms.Windows)]  // Invalid Windows file attributes 
-        public void WindowsInvalidAttributes(FileAttributes attr)
+        [PlatformSpecific(TestPlatforms.Windows)]
+        public void SettingInvalidAttributes_Windows(FileAttributes attributes)
         {
             string path = CreateItem();
-            SetAttributes(path, attr);
+            AssertSettingInvalidAttributes(path, attributes);
+        }
+
+        private void AssertSettingInvalidAttributes(string path, FileAttributes attributes)
+        {
+            SetAttributes(path, attributes);
+            Assert.Equal(FileAttributes.Normal, GetAttributes(path));
+        }
+
+        [Theory,
+            InlineData(":bar"),
+            InlineData(":bar:$DATA")]
+        [PlatformSpecific(TestPlatforms.Windows)]
+        public void GettingAndSettingAttributes_AlternateDataStream_Windows(string streamName)
+        {
+            string path = CreateItem();
+            streamName = path + streamName;
+            File.Create(streamName);
+
+            FileAttributes attributes = GetAttributes(streamName);
+            Assert.NotEqual((FileAttributes)0, attributes);
+            Assert.NotEqual((FileAttributes)(-1), attributes);
+
+            // Attributes are shared for the file and all streams
+            SetAttributes(streamName, FileAttributes.Hidden);
+            Assert.Equal(FileAttributes.Hidden, GetAttributes(streamName));
+            Assert.Equal(FileAttributes.Hidden, GetAttributes(path));
+
+            SetAttributes(path, FileAttributes.Normal);
+            Assert.Equal(FileAttributes.Normal, GetAttributes(streamName));
             Assert.Equal(FileAttributes.Normal, GetAttributes(path));
         }
     }

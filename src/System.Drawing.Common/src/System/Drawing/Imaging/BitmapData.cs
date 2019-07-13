@@ -2,23 +2,10 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Runtime.InteropServices;
-
 namespace System.Drawing.Imaging
 {
-    /// <summary>
-    /// Specifies the attributes of a bitmap image.
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public sealed class BitmapData
+    public partial class BitmapData
     {
-        private int _width;
-        private int _height;
-        private int _stride;
-        private int _pixelFormat;
-        private IntPtr _scan0;
-        private int _reserved;
-
         /// <summary>
         /// Specifies the pixel width of the <see cref='Bitmap'/>.
         /// </summary>
@@ -51,7 +38,7 @@ namespace System.Drawing.Imaging
         /// </summary>
         public PixelFormat PixelFormat
         {
-            get { return (PixelFormat)_pixelFormat; }
+            get { return _pixelFormat; }
             set
             {
                 switch (value)
@@ -81,11 +68,10 @@ namespace System.Drawing.Imaging
                     case PixelFormat.Format64bppArgb:
                         break;
                     default:
-                        throw new System.ComponentModel.InvalidEnumArgumentException("value", unchecked((int)value), typeof(PixelFormat));
+                        throw new System.ComponentModel.InvalidEnumArgumentException(nameof(value), unchecked((int)value), typeof(PixelFormat));
                 }
 
-
-                _pixelFormat = (int)value;
+                _pixelFormat = value;
             }
         }
 

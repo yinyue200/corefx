@@ -76,11 +76,12 @@ namespace System.Linq.Expressions.Compiler
             if (!curTypeInfo.TypeChain.TryGetValue(lookingUp, out nextTypeInfo))
             {
                 nextTypeInfo = new TypeInfo();
-                if (lookingUp.CanCache())
+                if (!lookingUp.IsCollectible)
                 {
                     curTypeInfo.TypeChain[lookingUp] = nextTypeInfo;
                 }
             }
+
             return nextTypeInfo;
         }
 
@@ -154,7 +155,7 @@ namespace System.Linq.Expressions.Compiler
                 for (int i = 0; i < types.Length; i++)
                 {
                     Type type = types[i];
-                    if (type.IsByRef || type.IsPointer)
+                    if (type.IsByRef || type.IsByRefLike || type.IsPointer)
                     {
                         needCustom = true;
                         break;

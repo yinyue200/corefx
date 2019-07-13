@@ -13,7 +13,7 @@ namespace System.Net
     // A list of cookies maintained in Sorted order. Only one cookie with matching Name/Domain/Path
     [Serializable]
     [System.Runtime.CompilerServices.TypeForwardedFrom("System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089")]
-    public class CookieCollection : ICollection
+    public class CookieCollection : ICollection<Cookie>, IReadOnlyCollection<Cookie>, ICollection
     {
         internal enum Stamp
         {
@@ -95,6 +95,27 @@ namespace System.Net
             }
         }
 
+        public void Clear()
+        {
+            m_list.Clear();
+        }
+
+        public bool Contains(Cookie cookie)
+        {
+            return IndexOf(cookie) >= 0;
+        }
+
+        public bool Remove(Cookie cookie)
+        {
+            int idx = IndexOf(cookie);
+            if (idx == -1)
+            {
+                return false;
+            }
+            m_list.RemoveAt(idx);
+            return true;
+        }
+
         public bool IsReadOnly
         {
             get
@@ -173,16 +194,16 @@ namespace System.Net
         // If isStrict == true, replace the cookie if found same with newest Variant.
         // Returns 1 if added, 0 if replaced or rejected.
 
-/* 
+/*
     TODO: #13607
     VSO 449560
     Reflecting on internal method won't work on AOT without rd.xml and DisableReflection
     block in toolchain.Networking team will be working on exposing methods from S.Net.Primitive
-    public, this is a temporary workaround till that happens. 
+    public, this is a temporary workaround till that happens.
 */
-#if uap 
+#if uap
         public
-#else 
+#else
         internal
 #endif
         int InternalAdd(Cookie cookie, bool isStrict)
@@ -241,23 +262,17 @@ namespace System.Net
             m_list.RemoveAt(idx);
         }
 
+        IEnumerator<Cookie> IEnumerable<Cookie>.GetEnumerator()
+        {
+            foreach (Cookie cookie in m_list)
+            {
+                yield return cookie;
+            }
+        }
+
         public IEnumerator GetEnumerator()
         {
             return m_list.GetEnumerator();
         }
-
-#if DEBUG
-        internal void Dump()
-        {
-            if (NetEventSource.IsEnabled)
-            {
-                if (NetEventSource.IsEnabled) NetEventSource.Enter(this);
-                foreach (Cookie cookie in this)
-                {
-                    cookie.Dump();
-                }
-            }
-        }
-#endif
     }
 }

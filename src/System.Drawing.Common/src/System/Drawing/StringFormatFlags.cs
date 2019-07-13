@@ -24,7 +24,7 @@ namespace System.Drawing
         /// Specifies that no part of any glyph overhangs the bounding rectangle. By default some glyphs
         /// overhang the rectangle slightly where necessary to appear at the edge visually. For example
         /// when an italic lower case letter f in a font such as Garamond is aligned at the far left
-        /// of a rectangle, the lower part of the f will reach slightly further left thanthe left edge
+        /// of a rectangle, the lower part of the f will reach slightly further left than the left edge
         /// of the rectangle. Setting this flag will ensure no painting outside the rectangle but will
         /// cause the aligned edges of adjacent lines of text to appear uneven.
         /// 
@@ -32,7 +32,7 @@ namespace System.Drawing
         /// The GDI+ equivalent for this is StringFormatFlags::StringFormatFlagsNoFitBlackBox,
         /// which is defined as 0x4.  This was a mistake introduced since the first version of
         /// the product and fixing it at this point would be a breaking change.
-        /// http://msdn.microsoft.com/library/default.asp?url=/library/en-us/gdicpp/GDIPlus/GDIPlusreference/enumerations/stringformatflags.asp, 
+        /// <see href="https://docs.microsoft.com/en-us/windows/desktop/api/gdiplusenums/ne-gdiplusenums-stringformatflags"/>
         /// </summary>
         FitBlackBox = 0x00000004,
 

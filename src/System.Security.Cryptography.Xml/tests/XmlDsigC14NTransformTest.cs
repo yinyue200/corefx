@@ -1,3 +1,5 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// See the LICENSE file in the project root for more information
 //
 // XmlDsigC14NTransformTest.cs - Test Cases for XmlDsigC14NTransform
 //
@@ -51,7 +53,7 @@ namespace System.Security.Cryptography.Xml.Tests
             CheckProperties(transform);
         }
 
-        public void CheckProperties(XmlDsigC14NTransform transform)
+        private static void CheckProperties(XmlDsigC14NTransform transform)
         {
             Assert.Null(transform.Context);
             Assert.Equal(new[] { typeof(Stream), typeof(XmlDocument), typeof(XmlNodeList) }, transform.InputTypes);
@@ -379,7 +381,7 @@ namespace System.Security.Cryptography.Xml.Tests
             XmlDocument doc = new XmlDocument();
             doc.AppendChild(doc.CreateElement("foo", "urn:foo"));
             doc.DocumentElement.AppendChild(doc.CreateElement("bar", "urn:bar"));
-            Assert.Equal(String.Empty, doc.DocumentElement.GetAttribute("xmlns"));
+            Assert.Equal(string.Empty, doc.DocumentElement.GetAttribute("xmlns"));
             XmlDsigC14NTransform t = new XmlDsigC14NTransform();
             t.LoadInput(doc);
             Stream s = t.GetOutput() as Stream;

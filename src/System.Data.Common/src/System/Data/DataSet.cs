@@ -2144,7 +2144,7 @@ namespace System.Data
                         //While inference we ignore root elements text content
                         if (!fSchemaFound && Tables.Count == 0 && !topNode.HasChildNodes)
                         {
-                            //We shoule not come add SC of root elemnt to topNode if we are not infering
+                            //We shoule not come add SC of root elemnt to topNode if we are not inferring
                             _fTopLevelTable = true;
                             isfTopLevelTableSet = true;
                             if ((rootNodeSimpleContent != null && rootNodeSimpleContent.Length > 0))
@@ -3063,7 +3063,7 @@ namespace System.Data
         private void OnInitialized() => Initialized?.Invoke(this, EventArgs.Empty);
 
         /// <summary>
-        /// This method should be overriden by subclasses to restrict tables being removed.
+        /// This method should be overridden by subclasses to restrict tables being removed.
         /// </summary>
         protected internal virtual void OnRemoveTable(DataTable table) { }
 
@@ -3077,7 +3077,7 @@ namespace System.Data
         }
 
         /// <summary>
-        /// This method should be overriden by subclasses to restrict tables being removed.
+        /// This method should be overridden by subclasses to restrict tables being removed.
         /// </summary>
         protected virtual void OnRemoveRelation(DataRelation relation) { }
 

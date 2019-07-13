@@ -131,7 +131,7 @@ namespace System.Data.Tests
         [Fact]
         public void CanRemove_PartOfConstraint()
         {
-            DataSet ds = DataProvider.CreateForigenConstraint();
+            DataSet ds = DataProvider.CreateForeignConstraint();
             Assert.Equal(false, ds.Tables.CanRemove(ds.Tables[0]));
             Assert.Equal(false, ds.Tables.CanRemove(ds.Tables[1]));
         }
@@ -240,6 +240,8 @@ namespace System.Data.Tests
             }
             Assert.Equal(2, count);
         }
+
+        [Fact]
         public void IndexOf_ByDataTable()
         {
             var ds = new DataSet();
@@ -257,6 +259,7 @@ namespace System.Data.Tests
             Assert.Equal(-1, ds.Tables.IndexOf(dt2));
         }
 
+        [Fact]
         public void IndexOf_ByName()
         {
             var ds = new DataSet();
@@ -453,7 +456,7 @@ namespace System.Data.Tests
         [Fact]
         public void DataTableCollection_RemoveAt_I3()
         {
-            DataSet ds = DataProvider.CreateForigenConstraint();
+            DataSet ds = DataProvider.CreateForeignConstraint();
 
             AssertExtensions.Throws<ArgumentException>(null, () => ds.Tables.RemoveAt(0)); //Parent table
         }

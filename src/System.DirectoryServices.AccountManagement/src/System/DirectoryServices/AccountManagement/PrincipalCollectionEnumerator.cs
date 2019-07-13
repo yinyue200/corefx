@@ -18,7 +18,6 @@ namespace System.DirectoryServices.AccountManagement
 
         public Principal Current
         {
-            [System.Security.SecuritySafeCritical]
             get
             {
                 CheckDisposed();
@@ -47,7 +46,6 @@ namespace System.DirectoryServices.AccountManagement
 
         object IEnumerator.Current
         {
-            [System.Security.SecurityCritical]
             get
             {
                 return Current;
@@ -58,7 +56,6 @@ namespace System.DirectoryServices.AccountManagement
         // Public methods
         //
 
-        [System.Security.SecuritySafeCritical]
         public bool MoveNext()
         {
             GlobalDebug.WriteLineIf(GlobalDebug.Info, "PrincipalCollectionEnumerator", "Entering MoveNext");
@@ -203,17 +200,15 @@ namespace System.DirectoryServices.AccountManagement
                 }
             }
 
-            Debug.Fail(String.Format(CultureInfo.CurrentCulture, "PrincipalCollectionEnumerator.MoveNext: fell off end of function, mode = {0}", _currentMode.ToString()));
+            Debug.Fail($"PrincipalCollectionEnumerator.MoveNext: fell off end of function, mode = {_currentMode}");
             return false;
         }
 
-        [System.Security.SecurityCritical]
         bool IEnumerator.MoveNext()
         {
             return MoveNext();
         }
 
-        [System.Security.SecurityCritical]
         public void Reset()
         {
             GlobalDebug.WriteLineIf(GlobalDebug.Info, "PrincipalCollectionEnumerator", "Reset");
@@ -227,7 +222,6 @@ namespace System.DirectoryServices.AccountManagement
             _currentMode = CurrentEnumeratorMode.None;
         }
 
-        [System.Security.SecurityCritical]
         void IEnumerator.Reset()
         {
             Reset();
@@ -314,7 +308,6 @@ namespace System.DirectoryServices.AccountManagement
 
         private PrincipalCollection _memberCollection = null;
 
-        [System.Security.SecurityCritical]
         private void CheckChanged()
         {
             // Make sure the app hasn't changed our underlying list

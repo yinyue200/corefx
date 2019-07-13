@@ -11,7 +11,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-#pragma warning disable 0420
 namespace System.Threading.Tasks
 {
     /// <summary>
@@ -182,8 +181,8 @@ namespace System.Threading.Tasks
 
             bool bRetVal = FindNewWork(out nFromInclusiveLocal, out nToExclusiveLocal);
 
-            Debug.Assert((nFromInclusiveLocal <= Int32.MaxValue) && (nFromInclusiveLocal >= Int32.MinValue) &&
-                            (nToExclusiveLocal <= Int32.MaxValue) && (nToExclusiveLocal >= Int32.MinValue));
+            Debug.Assert((nFromInclusiveLocal <= int.MaxValue) && (nFromInclusiveLocal >= int.MinValue) &&
+                            (nToExclusiveLocal <= int.MaxValue) && (nToExclusiveLocal >= int.MinValue));
 
             // convert to 32 bit before returning
             nFromInclusiveLocal32 = (int)nFromInclusiveLocal;
@@ -241,7 +240,7 @@ namespace System.Threading.Tasks
             //
             // find the actual number of index ranges we will need
             //
-            Debug.Assert((uSpan / uRangeSize) < Int32.MaxValue);
+            Debug.Assert((uSpan / uRangeSize) < int.MaxValue);
 
             int nNumRanges = (int)(uSpan / uRangeSize);
 
@@ -299,4 +298,3 @@ namespace System.Threading.Tasks
         }
     }
 }
-#pragma warning restore 0420

@@ -2,13 +2,14 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-#if USE_ETW // TODO: Enable when TraceEvent is available on CoreCLR. GitHub issue #4864.
-using Microsoft.Diagnostics.Tracing.Session;
-#endif
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+#if USE_MDT_EVENTSOURCE
+using Microsoft.Diagnostics.Tracing;
+#else
 using System.Diagnostics.Tracing;
+#endif
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -84,7 +85,27 @@ namespace BasicEventSourceTests
         public abstract int PayloadCount { get; }
         public virtual string PayloadString(int propertyIndex, string propertyName)
         {
-            return PayloadValue(propertyIndex, propertyName).ToString();
+            var obj = PayloadValue(propertyIndex, propertyName);
+            var asDict = obj as IDictionary<string, object>;
+            if (asDict != null)
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append("{");
+                bool first = true;
+                foreach (var key in asDict.Keys)
+                {
+                    if (!first)
+                        sb.Append(",");
+                    first = false;
+                    var value = asDict[key];
+                    sb.Append(key).Append(":").Append(value != null ? value.ToString() : "NULL");
+                }
+                sb.Append("}");
+                return sb.ToString();
+            }
+            if (obj != null)
+                return obj.ToString();
+            return "";
         }
         public abstract IList<string> PayloadNames { get; }
 
@@ -112,197 +133,56 @@ namespace BasicEventSourceTests
             {
                 if (i != 0)
                     sb.Append(',');
-                sb.Append(PayloadString(i, null));
+                sb.Append(PayloadString(i, PayloadNames[i]));
             }
             sb.Append(')');
             return sb.ToString();
         }
     }
 
-#if USE_ETW // TODO: Enable when TraceEvent is available on CoreCLR. GitHub issue #4864.
-    /**************************************************************************/
-    /* Concrete implementation of the Listener abstraction */
-
-    /// <summary>
-    /// Implementation of the Listener abstraction for ETW.  
-    /// </summary>
-    public class EtwListener : Listener
-    {
-        internal static void EnsureStopped()
-        {
-            using (var session = new TraceEventSession("EventSourceTestSession", "EventSourceTestData.etl"))
-                session.Stop();
-        }
-
-        public EtwListener(string dataFileName = "EventSourceTestData.etl", string sessionName = "EventSourceTestSession")
-        {
-            _dataFileName = dataFileName;
-
-            // Today you have to be Admin to turn on ETW events (anyone can write ETW events).   
-            if (TraceEventSession.IsElevated() != true)
-            {
-                throw new ApplicationException("Need to be elevated to run. ");
-            }
-
-            if (dataFileName == null)
-            {
-                Debug.WriteLine("Creating a real time session " + sessionName);
-
-                Task.Factory.StartNew(delegate ()
-                {
-                    var session = new TraceEventSession(sessionName, dataFileName);
-                    session.Source.AllEvents += OnEventHelper;
-                    Debug.WriteLine("Listening for real time events");
-                    _session = session;    // Indicate that we are alive.  
-                    _session.Source.Process();
-                    Debug.WriteLine("Real time listening stopping.");
-                });
-
-                SpinWait.SpinUntil(() => _session != null); // Wait for real time thread to wake up. 
-            }
-            else
-            {
-                // Normalize to a full path name.  
-                dataFileName = Path.GetFullPath(dataFileName);
-                Debug.WriteLine("Creating ETW data file " + Path.GetFullPath(dataFileName));
-                _session = new TraceEventSession(sessionName, dataFileName);
-            }
-        }
-
-        public override void EventSourceCommand(string eventSourceName, EventCommand command, FilteringOptions options = null)
-        {
-            if (command == EventCommand.Enable)
-            {
-                if (options == null)
-                    options = new FilteringOptions();
-
-                _session.EnableProvider(eventSourceName, (TraceEventLevel)options.Level, (ulong)options.Keywords,
-                    new TraceEventProviderOptions() { Arguments = options.Args });
-            }
-            else if (command == EventCommand.Disable)
-            {
-                _session.DisableProvider(TraceEventProviders.GetEventSourceGuidFromName(eventSourceName));
-            }
-            else
-                throw new NotImplementedException();
-            Thread.Sleep(200);          // Calls are async, give them time to work.  
-        }
-
-        public override void Dispose()
-        {
-            _session.Flush();
-            Thread.Sleep(1010);      // Let it drain.
-            _session.Dispose();     // This also will kill the real time thread 
-
-            if (_dataFileName != null)
-            {
-                using (var traceEventSource = new ETWTraceEventSource(_dataFileName))
-                {
-                    Debug.WriteLine("Processing data file " + Path.GetFullPath(_dataFileName));
-
-                    // Parse all the events as best we can, and also send unhandled events there as well.  
-                    traceEventSource.Registered.All += OnEventHelper;
-                    traceEventSource.Dynamic.All += OnEventHelper;
-                    traceEventSource.UnhandledEvents += OnEventHelper;
-                    // Process all the events in the file.  
-                    traceEventSource.Process();
-                    Debug.WriteLine("Done processing data file " + Path.GetFullPath(_dataFileName));
-                }
-            }
-        }
-
-    #region private
-        private void OnEventHelper(TraceEvent data)
-        {
-            // Ignore manifest events. 
-            if ((int)data.ID == 0xFFFE)
-                return;
-            this.OnEvent(new EtwEvent(data));
-        }
-
-        /// <summary>
-        /// EtwEvent implements the 'Event' abstraction for ETW events (it has a TraceEvent in it) 
-        /// </summary>
-        internal class EtwEvent : Event
-        {
-            public override bool IsEtw { get { return true; } }
-            public override string ProviderName { get { return _data.ProviderName; } }
-            public override string EventName { get { return _data.EventName; } }
-            public override object PayloadValue(int propertyIndex, string propertyName)
-            {
-                if (propertyName != null)
-                    Assert.Equal(propertyName, _data.PayloadNames[propertyIndex]);
-                return _data.PayloadValue(propertyIndex);
-            }
-            public override string PayloadString(int propertyIndex, string propertyName)
-            {
-                Assert.Equal(propertyName, _data.PayloadNames[propertyIndex]);
-                return _data.PayloadString(propertyIndex);
-            }
-            public override int PayloadCount { get { return _data.PayloadNames.Length; } }
-            public override IList<string> PayloadNames { get { return _data.PayloadNames; } }
-
-    #region private
-            internal EtwEvent(TraceEvent data) { _data = data.Clone(); }
-
-            private TraceEvent _data;
-    #endregion
-        }
-
-        private string _dataFileName;
-        private volatile TraceEventSession _session;
-    #endregion
-
-    }
-#endif //USE_ETW
-
     public class EventListenerListener : Listener
     {
         private EventListener _listener;
         private Action<EventSource> _onEventSourceCreated;
 
-#if FEATURE_ETLEVENTS
-		public event EventHandler<EventSourceCreatedEventArgs> EventSourceCreated
+        public event EventHandler<EventSourceCreatedEventArgs> EventSourceCreated
         {
             add
             {
                 if (this._listener != null)
-				    this._listener.EventSourceCreated += value;
-			}
+                    this._listener.EventSourceCreated += value;
+            }
             remove
             {
                 if (this._listener != null)
-				    this._listener.EventSourceCreated -= value;
-			}
-		}
-        
+                    this._listener.EventSourceCreated -= value;
+            }
+        }
+
         public event EventHandler<EventWrittenEventArgs> EventWritten
         {
             add
             {
                 if (this._listener != null)
-				    this._listener.EventWritten += value;
+                    this._listener.EventWritten += value;
             }
             remove
             {
                 if (this._listener != null)
                     this._listener.EventWritten -= value;
-			}
-		}
-#endif
+            }
+        }
 
         public EventListenerListener(bool useEventsToListen = false)
         {
-#if FEATURE_ETLEVENTS
             if (useEventsToListen)
             {
                 _listener = new HelperEventListener(null);
-                _listener.EventSourceCreated += (sender, eventSourceCreatedEventArgs) 
+                _listener.EventSourceCreated += (sender, eventSourceCreatedEventArgs)
                     => _onEventSourceCreated?.Invoke(eventSourceCreatedEventArgs.EventSource);
                 _listener.EventWritten += mListenerEventWritten;
             }
             else
-#endif
             {
                 _listener = new HelperEventListener(this);
             }
@@ -310,6 +190,13 @@ namespace BasicEventSourceTests
 
         public override void Dispose()
         {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            EventTestHarness.LogWriteLine("Disposing Listener");
             _listener.Dispose();
         }
 
@@ -325,6 +212,8 @@ namespace BasicEventSourceTests
 
         public override void EventSourceCommand(string eventSourceName, EventCommand command, FilteringOptions options = null)
         {
+            EventTestHarness.LogWriteLine("Sending command {0} to EventSource {1} Options {2}", eventSourceName, command, options);
+
             if (options == null)
                 options = new FilteringOptions();
 
@@ -370,10 +259,8 @@ namespace BasicEventSourceTests
 
             protected override void OnEventWritten(EventWrittenEventArgs eventData)
             {
-#if FEATURE_ETLEVENTS
                 // OnEventWritten is abstract in netfx <= 461
-                base.OnEventWritten(eventData); 
-#endif
+                base.OnEventWritten(eventData);
                 _forwardTo?.OnEvent?.Invoke(new EventListenerEvent(eventData));
             }
         }
@@ -411,5 +298,7 @@ namespace BasicEventSourceTests
                 return _data.Payload[propertyIndex];
             }
         }
+
+        private bool _disposed;
     }
 }

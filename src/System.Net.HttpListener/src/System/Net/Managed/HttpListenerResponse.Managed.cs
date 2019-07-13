@@ -284,7 +284,7 @@ namespace System.Net
 
             writer.Write(FormatHeaders(_webHeaders));
             writer.Flush();
-            int preamble = encoding.GetPreamble().Length;
+            int preamble = encoding.Preamble.Length;
             EnsureResponseStream();
 
             /* Assumes that the ms was at position 0 */
@@ -315,7 +315,15 @@ namespace System.Net
                     {
                         if (anyValues)
                         {
-                            sb.Append(", ");
+                            if (key.Equals(HttpKnownHeaderNames.SetCookie, StringComparison.OrdinalIgnoreCase) ||
+                                key.Equals(HttpKnownHeaderNames.SetCookie2, StringComparison.OrdinalIgnoreCase))
+                            {
+                                sb.Append("\r\n").Append(key).Append(": ");
+                            }
+                            else
+                            {
+                                sb.Append(", ");
+                            }
                         }
                         sb.Append(value);
                         anyValues = true;

@@ -112,7 +112,7 @@ namespace System.DirectoryServices
 
         /// <devdoc>
         /// Initializes a new instance of the <see cref='System.DirectoryServices.DirectorySearcher'/> class with <see cref='System.DirectoryServices.DirectorySearcher.SearchRoot'/> set to its default 
-        /// value, and <see cref='System.DirectoryServices.DirectorySearcher.Filter'/>, <see cref='System.DirectoryServices.DirectorySearcher.PropertiesToLoad'/>, and <see cref='System.DirectoryServices.DirectorySearcher.SearchScope'/> set to the respective given values.</para>
+        /// value, and <see cref='System.DirectoryServices.DirectorySearcher.Filter'/>, <see cref='System.DirectoryServices.DirectorySearcher.PropertiesToLoad'/>, and <see cref='System.DirectoryServices.DirectorySearcher.SearchScope'/> set to the respective given values.
         /// </devdoc>
         public DirectorySearcher(string filter, string[] propertiesToLoad, SearchScope scope) : this(null, filter, propertiesToLoad, scope)
         {
@@ -168,7 +168,7 @@ namespace System.DirectoryServices
         /// <devdoc>
         ///  Gets or sets the maximum amount of time that the client waits for
         ///  the server to return results. If the server does not respond within this time,
-        ///  the search is aborted, and no results are returned.</para>
+        ///  the search is aborted, and no results are returned.
         /// </devdoc>
         public TimeSpan ClientTimeout
         {
@@ -176,9 +176,9 @@ namespace System.DirectoryServices
             set
             {
                 // prevent integer overflow
-                if (value.TotalSeconds > Int32.MaxValue)
+                if (value.TotalSeconds > int.MaxValue)
                 {
-                    throw new ArgumentException(SR.TimespanExceedMax, "value");
+                    throw new ArgumentException(SR.TimespanExceedMax, nameof(value));
                 }
 
                 _clientTimeout = value;
@@ -187,7 +187,7 @@ namespace System.DirectoryServices
 
         /// <devdoc>
         /// Gets or sets a value indicating whether the search should retrieve only the names of requested
-        /// properties or the names and values of requested properties.</para>
+        /// properties or the names and values of requested properties.
         /// </devdoc>        
         [DefaultValue(false)]
         public bool PropertyNamesOnly { get; set; }
@@ -260,7 +260,7 @@ namespace System.DirectoryServices
                     value != ReferralChasingOption.Subordinate &&
                     value != ReferralChasingOption.External &&
                     value != ReferralChasingOption.All)
-                    throw new InvalidEnumArgumentException("value", (int)value, typeof(ReferralChasingOption));
+                    throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(ReferralChasingOption));
 
                 _referralChasing = value;
             }
@@ -276,7 +276,7 @@ namespace System.DirectoryServices
             set
             {
                 if (value < SearchScope.Base || value > SearchScope.Subtree)
-                    throw new InvalidEnumArgumentException("value", (int)value, typeof(SearchScope));
+                    throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(SearchScope));
 
                 // user explicitly set SearchScope to something other than Base and also want to do ASQ, it is not supported
                 if (_attributeScopeQuerySpecified == true && value != SearchScope.Base)
@@ -300,9 +300,9 @@ namespace System.DirectoryServices
             set
             {
                 // prevent integer overflow
-                if (value.TotalSeconds > Int32.MaxValue)
+                if (value.TotalSeconds > int.MaxValue)
                 {
-                    throw new ArgumentException(SR.TimespanExceedMax, "value");
+                    throw new ArgumentException(SR.TimespanExceedMax, nameof(value));
                 }
 
                 _serverPageTimeLimit = value;
@@ -319,9 +319,9 @@ namespace System.DirectoryServices
             set
             {
                 // prevent integer overflow
-                if (value.TotalSeconds > Int32.MaxValue)
+                if (value.TotalSeconds > int.MaxValue)
                 {
-                    throw new ArgumentException(SR.TimespanExceedMax, "value");
+                    throw new ArgumentException(SR.TimespanExceedMax, nameof(value));
                 }
 
                 _serverTimeLimit = value;
@@ -398,7 +398,7 @@ namespace System.DirectoryServices
         public bool Asynchronous { get; set; }
 
         /// <devdoc>
-        /// Gets or sets a value indicateing whether the search should also return deleted objects that match the search  
+        /// Gets or sets a value indicating whether the search should also return deleted objects that match the search  
         /// filter.
         /// </devdoc>
         [DefaultValue(false)]
@@ -455,7 +455,7 @@ namespace System.DirectoryServices
             set
             {
                 if (value < DereferenceAlias.Never || value > DereferenceAlias.Always)
-                    throw new InvalidEnumArgumentException("value", (int)value, typeof(DereferenceAlias));
+                    throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(DereferenceAlias));
 
                 _derefAlias = value;
             }
@@ -473,7 +473,7 @@ namespace System.DirectoryServices
             {
                 // make sure the behavior is consistent with native ADSI
                 if (value > (SecurityMasks.None | SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl | SecurityMasks.Sacl))
-                    throw new InvalidEnumArgumentException("value", (int)value, typeof(SecurityMasks));
+                    throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(SecurityMasks));
 
                 _securityMask = value;
             }
@@ -490,7 +490,7 @@ namespace System.DirectoryServices
             set
             {
                 if (value < ExtendedDN.None || value > ExtendedDN.Standard)
-                    throw new InvalidEnumArgumentException("value", (int)value, typeof(ExtendedDN));
+                    throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(ExtendedDN));
 
                 _extendedDN = value;
             }
@@ -671,7 +671,7 @@ namespace System.DirectoryServices
             else
             {
                 adsSearch.ExecuteSearch(Filter, null, -1, out resultsHandle);
-                properties = new string[0];
+                properties = Array.Empty<string>();
             }
 
             SearchResultCollection result = new SearchResultCollection(clonedRoot, resultsHandle, properties, this);

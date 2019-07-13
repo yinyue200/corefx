@@ -1,3 +1,7 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
+
 using System.Collections.Generic;
 using Xunit;
 
@@ -5,7 +9,7 @@ namespace System.Reflection.Tests
 {
     public class TypeDelegatorNetcoreTests
     {
-        private static IEnumerable<object[]> SZArrayOrNotTypes()
+        public static IEnumerable<object[]> SZArrayOrNotTypes()
         {
             yield return new object[] { typeof(int[]), true };
             yield return new object[] { typeof(string[]), true };
@@ -13,7 +17,6 @@ namespace System.Reflection.Tests
             yield return new object[] { typeof(int), false };
             yield return new object[] { typeof(int[]).MakeByRefType(), false };
             yield return new object[] { typeof(int[,]), false };
-            yield return new object[] { typeof(TypeInfoTests), false };
             if (PlatformDetection.IsNonZeroLowerBoundArraySupported)
             {
                 yield return new object[] { Array.CreateInstance(typeof(int), new[] { 2 }, new[] { -1 }).GetType(), false };

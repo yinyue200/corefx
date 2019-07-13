@@ -8,8 +8,6 @@ using System.Runtime.InteropServices;
 
 namespace System.DirectoryServices.Interop
 {
-#pragma warning disable BCL0015 // CoreFxPort
-    [SuppressUnmanagedCodeSecurity]
     internal class SafeNativeMethods
     {
         [DllImport(ExternDll.Oleaut32, PreserveSig = false)]
@@ -29,15 +27,10 @@ namespace System.DirectoryServices.Interop
             ERROR_SUCCESS = 0;
 
         [DllImport(ExternDll.Activeds, CharSet = CharSet.Unicode)]
-        public static extern int ADsGetLastError(out int error, StringBuilder errorBuffer,
-                                                 int errorBufferLength, StringBuilder nameBuffer, int nameBufferLength);
+        public static extern unsafe int ADsGetLastError(out int error, char* errorBuffer, int errorBufferLength, char* nameBuffer, int nameBufferLength);
 
         [DllImport(ExternDll.Activeds, CharSet = CharSet.Unicode)]
         public static extern int ADsSetLastError(int error, string errorString, string provider);
-
-        [DllImport(ExternDll.Kernel32, CharSet = CharSet.Unicode)]
-        public static extern int FormatMessageW(int dwFlags, int lpSource, int dwMessageId,
-                                                int dwLanguageId, StringBuilder lpBuffer, int nSize, int arguments);
 
         public class EnumVariant
         {
@@ -122,18 +115,14 @@ namespace System.DirectoryServices.Interop
         [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
         public interface IEnumVariant
         {
-            [SuppressUnmanagedCodeSecurity]
             void Next([In, MarshalAs(UnmanagedType.U4)] int celt,
                       [In, Out] IntPtr rgvar,
                       [Out, MarshalAs(UnmanagedType.LPArray)] int[] pceltFetched);
 
-            [SuppressUnmanagedCodeSecurity]
             void Skip([In, MarshalAs(UnmanagedType.U4)] int celt);
 
-            [SuppressUnmanagedCodeSecurity]
             void Reset();
 
-            [SuppressUnmanagedCodeSecurity]
             void Clone([Out, MarshalAs(UnmanagedType.LPArray)] IEnumVariant[] ppenum);
         }
     }

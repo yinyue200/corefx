@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// See the LICENSE file in the project root for more information
+
 //
 // TypedReferenceTest.cs
 //
@@ -47,6 +50,12 @@ namespace System.Tests
             public OneStruct oneStruct;
         }
 
+        class ClassWithReadOnlyField
+        {
+            public readonly OneStruct Value;
+            public ClassWithReadOnlyField(OneStruct value) => Value = value;
+        }
+
         [Fact]
         public static void NegativeMakeTypedReference()
         {
@@ -54,7 +63,7 @@ namespace System.Tests
             Type dataType = data.GetType();
             Assert.Throws<ArgumentNullException>(() => { TypedReference.MakeTypedReference(null, dataType.GetFields()); });
             Assert.Throws<ArgumentNullException>(() => { TypedReference.MakeTypedReference(data, null); });
-            AssertExtensions.Throws<ArgumentException>(null, () => { TypedReference.MakeTypedReference(data, Array.Empty<FieldInfo>()); });
+            AssertExtensions.Throws<ArgumentException>("flds", null, () => { TypedReference.MakeTypedReference(data, Array.Empty<FieldInfo>()); });
             AssertExtensions.Throws<ArgumentException>(null, () => { TypedReference.MakeTypedReference(data, new FieldInfo[] { dataType.GetField("oneStruct"), null }); });
             AssertExtensions.Throws<ArgumentException>(null, () => { TypedReference.MakeTypedReference(data, new FieldInfo[] { dataType.GetField("oneStruct"), typeof(OneStruct).GetField("b") }); });
         }
@@ -72,7 +81,16 @@ namespace System.Tests
             Assert.Equal(structObj, TypedReference.ToObject(reference));
         }
 
-#if !uapaot  // ActiveIssue UapAot TFS 430781 - __makeref causes ILC fatal error.
+        [SkipOnTargetFramework(~TargetFrameworkMonikers.Netcoreapp, "https://github.com/dotnet/coreclr/pull/21193")]
+        [Fact]
+        public static void MakeTypedReference_ReadOnlyField_Succeeds()
+        {
+            var os = new OneStruct() { b = 42, field = "data" };
+            var c = new ClassWithReadOnlyField(os);
+            TypedReference tr = TypedReference.MakeTypedReference(c, new FieldInfo[] { c.GetType().GetField("Value") }); // doesn't throw
+            Assert.Equal(os, TypedReference.ToObject(tr));
+        }
+
         [Fact]
         public static void GetTargetTypeTests()
         {
@@ -108,9 +126,7 @@ namespace System.Tests
             reference = __makeref(boolValue);
             Assert.Equal(boolValue.GetType(), TypedReference.GetTargetType(reference));
         }
-#endif // !uapaot
 
-#if !uapaot  // ActiveIssue UapAot TFS 430781 - __makeref causes ILC fatal error.
         [Fact]
         public static unsafe void PointerTypeTests()
         {
@@ -123,6 +139,5 @@ namespace System.Tests
             Assert.Equal(typeof(UIntPtr), obj.GetType());
             Assert.Equal((UIntPtr)pointerValue, (UIntPtr)obj);
         }
-#endif // !uapaot
     }
 }

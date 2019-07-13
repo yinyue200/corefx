@@ -1,3 +1,7 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
+
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -403,6 +407,7 @@ namespace System.Data.Common
                 bool compValue = s_connectionStringValidValueRegex.IsMatch(keyvalue);
                 Debug.Assert((-1 == keyvalue.IndexOf('\u0000')) == compValue, "IsValueValid mismatch with regex");
 #endif
+                // string.Contains(char) is .NetCore2.1+ specific
                 return (-1 == keyvalue.IndexOf('\u0000'));
             }
             return true;
@@ -416,7 +421,8 @@ namespace System.Data.Common
                 bool compValue = s_connectionStringValidKeyRegex.IsMatch(keyname);
                 Debug.Assert(((0 < keyname.Length) && (';' != keyname[0]) && !Char.IsWhiteSpace(keyname[0]) && (-1 == keyname.IndexOf('\u0000'))) == compValue, "IsValueValid mismatch with regex");
 #endif
-                return ((0 < keyname.Length) && (';' != keyname[0]) && !Char.IsWhiteSpace(keyname[0]) && (-1 == keyname.IndexOf('\u0000')));
+                // string.Contains(char) is .NetCore2.1+ specific
+                return ((0 < keyname.Length) && (';' != keyname[0]) && !char.IsWhiteSpace(keyname[0]) && (-1 == keyname.IndexOf('\u0000')));
             }
             return false;
         }
@@ -524,13 +530,13 @@ namespace System.Data.Common
                 }
                 else
                 {
-                    Debug.Assert(false, "ParseInternal code vs regex throw mismatch " + f.Message);
+                    Debug.Fail("ParseInternal code vs regex throw mismatch " + f.Message);
                 }
                 e = null;
             }
             if (null != e)
             {
-                Debug.Assert(false, "ParseInternal code threw exception vs regex mismatch");
+                Debug.Fail("ParseInternal code threw exception vs regex mismatch");
             }
         }
 #endif

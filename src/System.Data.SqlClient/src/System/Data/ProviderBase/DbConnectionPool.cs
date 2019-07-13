@@ -16,7 +16,7 @@ using System.Transactions;
 
 namespace System.Data.ProviderBase
 {
-    sealed internal class DbConnectionPool
+    sealed internal partial class DbConnectionPool
     {
         private enum State
         {
@@ -413,10 +413,7 @@ namespace System.Data.ProviderBase
 
             _objectList = new List<DbConnectionInternal>(MaxPoolSize);
 
-            if (ADP.IsPlatformNT5)
-            {
-                _transactedConnectionPool = new TransactedConnectionPool(this);
-            }
+            _transactedConnectionPool = new TransactedConnectionPool(this); // initialize irrespective of platform
 
             _poolCreateRequest = new WaitCallback(PoolCreateRequest); // used by CleanupCallback
             _state = State.Running;
@@ -523,7 +520,7 @@ namespace System.Data.ProviderBase
             get { return (null != _identity && DbConnectionPoolIdentity.NoIdentity != _identity); }
         }
 
-        private void CleanupCallback(Object state)
+        private void CleanupCallback(object state)
         {
             // Called when the cleanup-timer ticks over.
 
@@ -664,10 +661,12 @@ namespace System.Data.ProviderBase
             ReclaimEmancipatedObjects();
         }
 
-        private Timer CreateCleanupTimer()
-        {
-            return (new Timer(new TimerCallback(this.CleanupCallback), null, _cleanupWait, _cleanupWait));
-        }
+        private Timer CreateCleanupTimer() =>
+            ADP.UnsafeCreateTimer(
+                new TimerCallback(CleanupCallback),
+                null,
+                _cleanupWait,
+                _cleanupWait);
 
         private DbConnectionInternal CreateObject(DbConnection owningObject, DbConnectionOptions userOptions, DbConnectionInternal oldConnection)
         {
@@ -720,6 +719,9 @@ namespace System.Data.ProviderBase
                 {
                     throw;
                 }
+
+                CheckPoolBlockingPeriod(e);
+
                 newObj = null; // set to null, so we do not return bad new object
                 // Failed to create instance
                 _resError = e;
@@ -728,6 +730,7 @@ namespace System.Data.ProviderBase
 
                 // timer allocation has to be done out of CER block
                 Timer t = new Timer(new TimerCallback(this.ErrorCallback), null, Timeout.Infinite, Timeout.Infinite);
+
                 bool timerIsNotDisposed;
                 try { }
                 finally
@@ -756,6 +759,9 @@ namespace System.Data.ProviderBase
             }
             return newObj;
         }
+
+        //This method is implemented in DbConnectionPool.NetCoreApp 
+        partial void CheckPoolBlockingPeriod(Exception e);
 
         private void DeactivateObject(DbConnectionInternal obj)
         {
@@ -905,7 +911,7 @@ namespace System.Data.ProviderBase
             }
         }
 
-        private void ErrorCallback(Object state)
+        private void ErrorCallback(object state)
         {
             _errorOccurred = false;
             _waitHandles.ErrorEvent.Reset();
@@ -1015,7 +1021,7 @@ namespace System.Data.ProviderBase
                         Interlocked.Exchange(ref _pendingOpensWaiting, 0);
                     }
                 }
-            } while (_pendingOpens.TryPeek(out next));
+            } while (!_pendingOpens.IsEmpty);
         }
 
         internal bool TryGetConnection(DbConnection owningObject, TaskCompletionSource<DbConnectionInternal> retry, DbConnectionOptions userOptions, out DbConnectionInternal connection)
@@ -1373,9 +1379,19 @@ namespace System.Data.ProviderBase
                                 {
                                     while (NeedToReplenish)
                                     {
-                                        // Don't specify any user options because there is no outer connection associated with the new connection
-                                        newObj = CreateObject(owningObject: null, userOptions: null, oldConnection: null);
-
+                                        try
+                                        {
+                                            // Don't specify any user options because there is no outer connection associated with the new connection
+                                            newObj = CreateObject(owningObject: null, userOptions: null, oldConnection: null);
+                                        }
+                                        catch
+                                        {
+                                            // Catch all the exceptions occurring during CreateObject so that they 
+                                            // don't emerge as unhandled on the thread pool and don't crash applications
+                                            // The error is handled in CreateObject and surfaced to the caller of the Connection Pool
+                                            // using the ErrorEvent. Hence it is OK to swallow all exceptions here.
+                                            break;
+                                        }
                                         // We do not need to check error flag here, since we know if
                                         // CreateObject returned null, we are in error case.
                                         if (null != newObj)

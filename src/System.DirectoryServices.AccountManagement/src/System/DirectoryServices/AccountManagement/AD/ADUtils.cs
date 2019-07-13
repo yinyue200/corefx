@@ -23,20 +23,17 @@ namespace System.DirectoryServices.AccountManagement
         // Note that, since computer is a derived class of user in AD, if you don't want to confuse
         // computers with users, you must test an object for computer status before testing it for
         // user status.
-        [System.Security.SecurityCritical]
         static internal bool IsOfObjectClass(DirectoryEntry de, string classToCompare)
         {
             return de.Properties["objectClass"].Contains(classToCompare);
         }
 
-        [System.Security.SecurityCritical]
         static internal bool IsOfObjectClass(SearchResult sr, string classToCompare)
         {
             return sr.Properties["objectClass"].Contains(classToCompare);
         }
 
         // Retrieves the name of the actual server that the DirectoryEntry is connected to
-        [System.Security.SecurityCritical]
         static internal string GetServerName(DirectoryEntry de)
         {
             UnsafeNativeMethods.IAdsObjectOptions objOptions = (UnsafeNativeMethods.IAdsObjectOptions)de.NativeObject;
@@ -46,7 +43,6 @@ namespace System.DirectoryServices.AccountManagement
         // This routine escapes values used in DNs, per RFC 2253 and ADSI escaping rules.
         // It treats its input as a unescaped literal and produces a LDAP string that represents that literal
         // and that is escaped according to RFC 2253 and ADSI rules for DN components.        
-        [System.Security.SecurityCritical]
         static internal string EscapeDNComponent(string dnComponent)
         {
             //
@@ -153,7 +149,6 @@ namespace System.DirectoryServices.AccountManagement
         // This routine escapes values used in search filters, per RFC 2254 escaping rules.
         // It treats its input as a unescaped literal and produces a LDAP string that represents that literal
         // and that is escaped according to RFC 2254 rules.
-        [System.Security.SecurityCritical]
         static internal string EscapeRFC2254SpecialChars(string s)
         {
             StringBuilder sb = new StringBuilder(s.Length);
@@ -305,23 +300,23 @@ namespace System.DirectoryServices.AccountManagement
             return fileTime.ToString(CultureInfo.InvariantCulture);
         }
 
-        static internal DateTime ADFileTimeToDateTime(Int64 filetime)
+        static internal DateTime ADFileTimeToDateTime(long filetime)
         {
             // int64 FILETIME --> DateTime
             return DateTime.FromFileTimeUtc(filetime);
         }
 
-        static internal Int64 DateTimeToADFileTime(DateTime dt)
+        static internal long DateTimeToADFileTime(DateTime dt)
         {
             // DateTime --> int64 FILETIME
             return dt.ToFileTimeUtc();
         }
 
-        static internal Int64 LargeIntToInt64(UnsafeNativeMethods.IADsLargeInteger largeInt)
+        static internal long LargeIntToInt64(UnsafeNativeMethods.IADsLargeInteger largeInt)
         {
             uint lowPart = (uint)largeInt.LowPart;
             uint highPart = (uint)largeInt.HighPart;
-            Int64 i = (long)(((ulong)lowPart) | (((ulong)highPart) << 32));
+            long i = (long)(((ulong)lowPart) | (((ulong)highPart) << 32));
 
             return i;
         }
@@ -363,13 +358,12 @@ namespace System.DirectoryServices.AccountManagement
             return sb.ToString();
         }
 
-        [System.Security.SecurityCritical]
         static internal bool ArePrincipalsInSameForest(Principal p1, Principal p2)
         {
             string p1DnsForestName = ((ADStoreCtx)p1.GetStoreCtxToUse()).DnsForestName;
             string p2DnsForestName = ((ADStoreCtx)p2.GetStoreCtxToUse()).DnsForestName;
 
-            return (String.Compare(p1DnsForestName, p2DnsForestName, StringComparison.OrdinalIgnoreCase) == 0);
+            return (string.Equals(p1DnsForestName, p2DnsForestName, StringComparison.OrdinalIgnoreCase));
         }
 
         /// 
@@ -395,7 +389,6 @@ namespace System.DirectoryServices.AccountManagement
             }
         }
 
-        [System.Security.SecurityCritical]
         static internal Principal DirectoryEntryAsPrincipal(DirectoryEntry de, ADStoreCtx storeCtx)
         {
             if (ADUtils.IsOfObjectClass(de, "computer") ||
@@ -414,7 +407,6 @@ namespace System.DirectoryServices.AccountManagement
             }
         }
 
-        [System.Security.SecurityCritical]
         static internal Principal SearchResultAsPrincipal(SearchResult sr, ADStoreCtx storeCtx, object discriminant)
         {
             if (ADUtils.IsOfObjectClass(sr, "computer") ||
@@ -439,7 +431,6 @@ namespace System.DirectoryServices.AccountManagement
         // domain or the current forest and the target domain's forest.
         // target domain must be the full DNS domain name of the target domain to make the string
         // compare below work properly.
-        [System.Security.SecurityCritical]
         static internal bool VerifyOutboundTrust(string targetDomain, string username, string password)
         {
             Domain currentDom = null;
@@ -462,7 +453,7 @@ namespace System.DirectoryServices.AccountManagement
             // If this is the same domain then we have a trust.
             // Domain.Name always returns full dns name.
             // function is always supplied with a full DNS domain name.
-            if (String.Compare(currentDom.Name, targetDomain, StringComparison.OrdinalIgnoreCase) == 0)
+            if (string.Equals(currentDom.Name, targetDomain, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
@@ -501,8 +492,7 @@ namespace System.DirectoryServices.AccountManagement
             return false;
         }
 
-        [System.Security.SecurityCritical]
-        static internal string RetriveWkDn(DirectoryEntry deBase, string defaultNamingContext, string serverName, Byte[] wellKnownContainerGuid)
+        static internal string RetriveWkDn(DirectoryEntry deBase, string defaultNamingContext, string serverName, byte[] wellKnownContainerGuid)
         {
             /*
                             bool w2k3Supported  = false;

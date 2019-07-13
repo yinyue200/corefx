@@ -6,7 +6,6 @@ using Xunit;
 
 namespace System.IO.IsolatedStorage
 {
-    [ActiveIssue(18940, TargetFrameworkMonikers.UapAot)]
     public class CopyFileTests : IsoStorageTest
     {
         [Fact]
@@ -65,12 +64,12 @@ namespace System.IO.IsolatedStorage
         }
 
         [Fact]
-        public void CopyFile_RaisesInvalidPath()
+        public void CopyFile_RaisesIsolatedStorageException()
         {
             using (IsolatedStorageFile isf = IsolatedStorageFile.GetUserStoreForAssembly())
             {
-                AssertExtensions.Throws<ArgumentException>("path", null, () => isf.CopyFile("\0bad", "bar"));
-                AssertExtensions.Throws<ArgumentException>("path", null, () => isf.CopyFile("foo", "\0bad"));
+                Assert.Throws<IsolatedStorageException>(() => isf.CopyFile("\0bad", "bar"));
+                Assert.Throws<IsolatedStorageException>(() => isf.CopyFile("foo", "\0bad"));
             }
         }
 
@@ -83,8 +82,7 @@ namespace System.IO.IsolatedStorage
             }
         }
 
-        [Theory MemberData(nameof(ValidStores))]
-        [ActiveIssue("dotnet/corefx #18265", TargetFrameworkMonikers.NetFramework)]
+        [Theory, MemberData(nameof(ValidStores))]
         public void CopyFile_CopyOver(PresetScopes scope)
         {
             TestHelper.WipeStores();
@@ -100,8 +98,7 @@ namespace System.IO.IsolatedStorage
             }
         }
 
-        [Theory MemberData(nameof(ValidStores))]
-        [ActiveIssue("dotnet/corefx #18265", TargetFrameworkMonikers.NetFramework)]
+        [Theory, MemberData(nameof(ValidStores))]
         public void CopyFile_CopiesFile(PresetScopes scope)
         {
             TestHelper.WipeStores();

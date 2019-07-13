@@ -60,7 +60,7 @@ namespace System.Xml.Xsl
         public abstract XmlTypeCode TypeCode { get; }
 
         /// <summary>
-        /// Set of alowed names for element, document{element}, attribute and PI
+        /// Set of allowed names for element, document{element}, attribute and PI
         /// Returns XmlQualifiedName.Wildcard for all other types
         /// </summary>
         public abstract XmlQualifiedNameTest NameTest { get; }
@@ -70,7 +70,7 @@ namespace System.Xml.Xsl
         /// SchemaType will follow these rules:
         ///   1. If TypeCode is an atomic type code, then SchemaType will be the corresponding non-null simple type
         ///   2. If TypeCode is Element or Attribute, then SchemaType will be the non-null content type
-        ///   3. If TypeCode is Item, Node, Comment, PI, Text, Document, Namespacce, None, then SchemaType will be AnyType
+        ///   3. If TypeCode is Item, Node, Comment, PI, Text, Document, Namespace, None, then SchemaType will be AnyType
         /// </summary>
         public abstract XmlSchemaType SchemaType { get; }
 
@@ -111,12 +111,6 @@ namespace System.Xml.Xsl
         /// True if items in the sequence are guaranteed to be nodes in document order with no duplicates.
         /// </summary>
         public abstract bool IsDod { get; }
-
-        /// <summary>
-        /// The XmlValueConverter maps each XmlQueryType to various Clr types which are capable of representing it.
-        /// </summary>
-        public abstract XmlValueConverter ClrMapping { get; }
-
 
         //-----------------------------------------------
         // Type Operations
@@ -464,7 +458,6 @@ namespace System.Xml.Xsl
             {
                 case 0:
                     // This assert depends on the way we are going to represent None
-                    // Debug.Assert(false);
                     sb.Append("none");
                     break;
                 case 1:

@@ -152,7 +152,7 @@ internal static class IOInputs
         }
     }
 
-    public static IEnumerable<string> GetPathsWithAlternativeDataStreams()
+    public static IEnumerable<string> GetPathsWithColons()
     {
         yield return @"AA:";
         yield return @"AAA:";
@@ -222,7 +222,7 @@ internal static class IOInputs
     }
 
     public static IEnumerable<string> GetReservedDeviceNames()
-    {   // See: http://msdn.microsoft.com/en-us/library/aa365247.aspx
+    {   // See: https://docs.microsoft.com/en-us/windows/desktop/FileIO/naming-a-file
         yield return "CON";
         yield return "AUX";
         yield return "NUL";

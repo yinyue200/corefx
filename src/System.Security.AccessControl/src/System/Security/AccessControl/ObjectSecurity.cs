@@ -9,13 +9,8 @@
 **
 ===========================================================*/
 
-using Microsoft.Win32;
-using System;
-using System.Collections;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Threading;
@@ -40,7 +35,7 @@ namespace System.Security.AccessControl
 
         private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
-        internal CommonSecurityDescriptor _securityDescriptor;
+        internal readonly CommonSecurityDescriptor _securityDescriptor;
 
         private bool _ownerModified = false;
         private bool _groupModified = false;
@@ -84,7 +79,6 @@ namespace System.Security.AccessControl
             {
                 throw new ArgumentNullException( nameof(securityDescriptor));
             }
-            Contract.EndContractBlock();
 
              _securityDescriptor = securityDescriptor;
         }
@@ -148,6 +142,11 @@ namespace System.Security.AccessControl
         #endregion
 
         #region Protected Properties and Methods
+
+        /// <summary>
+        /// Gets the security descriptor for this instance.
+        /// </summary>
+        protected CommonSecurityDescriptor SecurityDescriptor => _securityDescriptor;
 
         protected void ReadLock()
         {
@@ -369,7 +368,6 @@ namespace System.Security.AccessControl
             {
                 throw new ArgumentNullException( nameof(identity));
             }
-            Contract.EndContractBlock();
 
             WriteLock();
 
@@ -413,7 +411,6 @@ namespace System.Security.AccessControl
             {
                 throw new ArgumentNullException( nameof(identity));
             }
-            Contract.EndContractBlock();
 
             WriteLock();
 
@@ -434,7 +431,6 @@ namespace System.Security.AccessControl
             {
                 throw new ArgumentNullException( nameof(identity));
             }
-            Contract.EndContractBlock();
 
             WriteLock();
 
@@ -455,7 +451,6 @@ namespace System.Security.AccessControl
             {
                 throw new ArgumentNullException( nameof(identity));
             }
-            Contract.EndContractBlock();
 
             WriteLock();
 
@@ -605,7 +600,6 @@ namespace System.Security.AccessControl
                     SR.Arg_EnumAtLeastOneFlag,
 nameof(includeSections));
             }
-            Contract.EndContractBlock();
 
             WriteLock();
 
@@ -655,7 +649,6 @@ nameof(includeSections));
                     SR.Arg_EnumAtLeastOneFlag,
 nameof(includeSections));
             }
-            Contract.EndContractBlock();
 
             WriteLock();
 
@@ -689,7 +682,6 @@ nameof(includeSections));
                     SR.AccessControl_InvalidAccessRuleType, 
 nameof(rule));
             }
-            Contract.EndContractBlock();
 
             WriteLock();
 
@@ -716,7 +708,6 @@ nameof(rule));
                     SR.AccessControl_InvalidAuditRuleType, 
 nameof(rule));
             }
-            Contract.EndContractBlock();
 
             WriteLock();
 

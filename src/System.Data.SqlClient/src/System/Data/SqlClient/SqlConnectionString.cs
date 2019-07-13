@@ -7,17 +7,17 @@
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
-
+using System.Threading;
 
 namespace System.Data.SqlClient
 {
-    internal sealed class SqlConnectionString : DbConnectionOptions
+    internal sealed partial class SqlConnectionString : DbConnectionOptions
     {
         // instances of this class are intended to be immutable, i.e readonly
         // used by pooling classes so it is much easier to verify correctness
         // when not worried about the class being modified during execution
 
-        internal static class DEFAULT
+        internal static partial class DEFAULT
         {
             internal const ApplicationIntent ApplicationIntent = DbConnectionStringDefaults.ApplicationIntent;
             internal const string Application_Name = TdsEnums.SQL_PROVIDER_NAME;
@@ -56,6 +56,9 @@ namespace System.Data.SqlClient
             internal const string Application_Name = "application name";
             internal const string AsynchronousProcessing = "asynchronous processing";
             internal const string AttachDBFilename = "attachdbfilename";
+#if netcoreapp
+            internal const string PoolBlockingPeriod = "poolblockingperiod";
+#endif
             internal const string Connect_Timeout = "connect timeout";
             internal const string Connection_Reset = "connection reset";
             internal const string Context_Connection = "context connection";
@@ -197,9 +200,12 @@ namespace System.Data.SqlClient
 
         private readonly string _workstationId;
 
-        private readonly TypeSystem _typeSystemVersion;
-
         private readonly TransactionBindingEnum _transactionBinding;
+
+        private readonly TypeSystem _typeSystemVersion;
+        private readonly Version _typeSystemAssemblyVersion;
+        private static readonly Version constTypeSystemAsmVersion10 = new Version("10.0.0.0");
+        private static readonly Version constTypeSystemAsmVersion11 = new Version("11.0.0.0");
 
         internal SqlConnectionString(string connectionString) : base(connectionString, GetParseSynonyms())
         {
@@ -214,6 +220,9 @@ namespace System.Data.SqlClient
             }
 
             _integratedSecurity = ConvertValueToIntegratedSecurity();
+#if netcoreapp
+            _poolBlockingPeriod = ConvertValueToPoolBlockingPeriod();
+#endif
             _encrypt = ConvertValueToBoolean(KEY.Encrypt, DEFAULT.Encrypt);
             _enlist = ConvertValueToBoolean(KEY.Enlist, DEFAULT.Enlist);
             _mars = ConvertValueToBoolean(KEY.MARS, DEFAULT.MARS);
@@ -293,7 +302,7 @@ namespace System.Data.SqlClient
                 ValidateValueLength(_workstationId, TdsEnums.MAXLEN_HOSTNAME, KEY.Workstation_Id);
             }
 
-            if (!String.Equals(DEFAULT.FailoverPartner, _failoverPartner, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(DEFAULT.FailoverPartner, _failoverPartner, StringComparison.OrdinalIgnoreCase))
             {
                 // fail-over partner is set
 
@@ -302,12 +311,13 @@ namespace System.Data.SqlClient
                     throw SQL.MultiSubnetFailoverWithFailoverPartner(serverProvidedFailoverPartner: false, internalConnection: null);
                 }
 
-                if (String.Equals(DEFAULT.Initial_Catalog, _initialCatalog, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(DEFAULT.Initial_Catalog, _initialCatalog, StringComparison.OrdinalIgnoreCase))
                 {
                     throw ADP.MissingConnectionOptionValue(KEY.FailoverPartner, KEY.Initial_Catalog);
                 }
             }
 
+            // string.Contains(char) is .NetCore2.1+ specific
             if (0 <= _attachDBFileName.IndexOf('|'))
             {
                 throw ADP.InvalidConnectionOptionValue(KEY.AttachDBFilename);
@@ -317,6 +327,7 @@ namespace System.Data.SqlClient
                 ValidateValueLength(_attachDBFileName, TdsEnums.MAXLEN_ATTACHDBFILE, KEY.AttachDBFilename);
             }
 
+            _typeSystemAssemblyVersion = constTypeSystemAsmVersion10;
 
             if (true == _userInstance && !string.IsNullOrEmpty(_failoverPartner))
             {
@@ -347,6 +358,7 @@ namespace System.Data.SqlClient
             else if (typeSystemVersionString.Equals(TYPESYSTEMVERSION.SQL_Server_2012, StringComparison.OrdinalIgnoreCase))
             {
                 _typeSystemVersion = TypeSystem.SQLServer2012;
+                _typeSystemAssemblyVersion = constTypeSystemAsmVersion11;
             }
             else
             {
@@ -371,7 +383,7 @@ namespace System.Data.SqlClient
                 throw ADP.InvalidConnectionOptionValue(KEY.TransactionBinding);
             }
 
-            if (_applicationIntent == ApplicationIntent.ReadOnly && !String.IsNullOrEmpty(_failoverPartner))
+            if (_applicationIntent == ApplicationIntent.ReadOnly && !string.IsNullOrEmpty(_failoverPartner))
                 throw SQL.ROR_FailoverNotSupportedConnString();
 
             if ((_connectRetryCount < 0) || (_connectRetryCount > 255))
@@ -408,6 +420,9 @@ namespace System.Data.SqlClient
             _userInstance = userInstance;
             _connectTimeout = connectionOptions._connectTimeout;
             _loadBalanceTimeout = connectionOptions._loadBalanceTimeout;
+#if netcoreapp
+            _poolBlockingPeriod = connectionOptions._poolBlockingPeriod;
+#endif
             _maxPoolSize = connectionOptions._maxPoolSize;
             _minPoolSize = connectionOptions._minPoolSize;
             _multiSubnetFailover = connectionOptions._multiSubnetFailover;
@@ -436,7 +451,6 @@ namespace System.Data.SqlClient
         // We always initialize in Async mode so that both synchronous and asynchronous methods
         // will work.  In the future we can deprecate the keyword entirely.
         internal bool Asynchronous { get { return true; } }
-
         // SQLPT 41700: Ignore ResetConnection=False, always reset the connection for security
         internal bool ConnectionReset { get { return true; } }
         //        internal bool EnableUdtDownload { get { return _enableUdtDownload;} }
@@ -472,6 +486,7 @@ namespace System.Data.SqlClient
         internal string WorkstationId { get { return _workstationId; } }
 
         internal TypeSystem TypeSystemVersion { get { return _typeSystemVersion; } }
+        internal Version TypeSystemAssemblyVersion { get { return _typeSystemAssemblyVersion; } }
 
         internal TransactionBindingEnum TransactionBinding { get { return _transactionBinding; } }
 
@@ -489,6 +504,9 @@ namespace System.Data.SqlClient
                     { KEY.Application_Name, KEY.Application_Name },
                     { KEY.AsynchronousProcessing, KEY.AsynchronousProcessing },
                     { KEY.AttachDBFilename, KEY.AttachDBFilename },
+#if netcoreapp
+                    { KEY.PoolBlockingPeriod, KEY.PoolBlockingPeriod},
+#endif
                     { KEY.Connect_Timeout, KEY.Connect_Timeout },
                     { KEY.Connection_Reset, KEY.Connection_Reset },
                     { KEY.Context_Connection, KEY.Context_Connection },
@@ -542,7 +560,7 @@ namespace System.Data.SqlClient
                     { SYNONYM.WSID, KEY.Workstation_Id }
                 };
                 Debug.Assert(synonyms.Count == count, "incorrect initial ParseSynonyms size");
-                s_sqlClientSynonyms = synonyms;
+                Interlocked.CompareExchange(ref s_sqlClientSynonyms, synonyms, null);
             }
             return synonyms;
         }
@@ -598,6 +616,7 @@ namespace System.Data.SqlClient
             }
             // ArgumentException and other types are raised as is (no wrapping)
         }
+
         internal void ThrowUnsupportedIfKeywordSet(string keyword)
         {
             if (ContainsKey(keyword))

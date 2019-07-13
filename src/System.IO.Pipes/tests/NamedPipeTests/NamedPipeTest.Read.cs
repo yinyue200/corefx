@@ -8,7 +8,7 @@ using Xunit;
 
 namespace System.IO.Pipes.Tests
 {
-    [ActiveIssue(22271, TargetFrameworkMonikers.UapNotUapAot)]
+    [ActiveIssue(22271, TargetFrameworkMonikers.Uap)]
     public class NamedPipeTest_Read_ServerOut_ClientIn : PipeTest_Read
     {
         protected override ServerClientPair CreateServerClientPair()
@@ -28,7 +28,7 @@ namespace System.IO.Pipes.Tests
         }
     }
     
-    [ActiveIssue(22271, TargetFrameworkMonikers.UapNotUapAot)]
+    [ActiveIssue(22271, TargetFrameworkMonikers.Uap)]
     public class NamedPipeTest_Read_ServerIn_ClientOut : PipeTest_Read
     {
         protected override ServerClientPair CreateServerClientPair()
@@ -48,7 +48,7 @@ namespace System.IO.Pipes.Tests
         }
     }
     
-    [ActiveIssue(22271, TargetFrameworkMonikers.UapNotUapAot)]
+    [ActiveIssue(22271, TargetFrameworkMonikers.Uap)]
     public class NamedPipeTest_Read_ServerInOut_ClientInOut : PipeTest_Read
     {
         protected override ServerClientPair CreateServerClientPair()
@@ -67,11 +67,10 @@ namespace System.IO.Pipes.Tests
             return ret;
         }
 
-        // InOut pipes can be written/read from either direction
-        public override void WriteToReadOnlyPipe_Throws_NotSupportedException() { }
+        public override bool SupportsBidirectionalReadingWriting => true;
     }
     
-    [ActiveIssue(22271, TargetFrameworkMonikers.UapNotUapAot)]
+    [ActiveIssue(22271, TargetFrameworkMonikers.Uap)]
     public class NamedPipeTest_Read_ServerInOut_ClientInOut_APMWaitForConnection : PipeTest_Read
     {
         protected override ServerClientPair CreateServerClientPair()
@@ -90,7 +89,6 @@ namespace System.IO.Pipes.Tests
             return ret;
         }
 
-        // InOut pipes can be written/read from either direction
-        public override void WriteToReadOnlyPipe_Throws_NotSupportedException() { }
+        public override bool SupportsBidirectionalReadingWriting => true;
     }
 }

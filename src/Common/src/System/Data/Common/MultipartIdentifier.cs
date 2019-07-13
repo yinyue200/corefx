@@ -61,7 +61,7 @@ namespace System.Data.Common
 
         private static bool IsWhitespace(char ch)
         {
-            return Char.IsWhiteSpace(ch);
+            return char.IsWhiteSpace(ch);
         }
 
         internal static string[] ParseMultipartIdentifier(string name, string leftQuote, string rightQuote, char separator, int limit, bool removequotes, string property, bool ThrowOnEmptyMultipartName)
@@ -208,7 +208,7 @@ namespace System.Data.Common
                     case MPIState.MPI_RightQuote:
                         {
                             if (testchar == rightQuoteChar)
-                            { // If the next char is a another right quote then we were escaping the right quote
+                            { // If the next char is another right quote then we were escaping the right quote
                                 sb.Append(testchar);
                                 state = MPIState.MPI_ParseQuote;
                             }

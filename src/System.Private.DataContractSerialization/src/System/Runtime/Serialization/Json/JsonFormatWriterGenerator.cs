@@ -5,13 +5,6 @@
 using System;
 using System.Xml;
 
-#if uapaot
-namespace System.Runtime.Serialization.Json
-{
-    public delegate void JsonFormatClassWriterDelegate(XmlWriterDelegator xmlWriter, object obj, XmlObjectSerializerWriteContextComplexJson context, ClassDataContract dataContract, XmlDictionaryString[] memberNames);
-    public delegate void JsonFormatCollectionWriterDelegate(XmlWriterDelegator xmlWriter, object obj, XmlObjectSerializerWriteContextComplexJson context, CollectionDataContract dataContract);
-}
-#else
 namespace System.Runtime.Serialization.Json
 {
     using System;
@@ -213,18 +206,20 @@ namespace System.Runtime.Serialization.Json
                 int memberCount = (classContract.BaseContract == null) ? 0 :
                     WriteMembers(classContract.BaseContract, extensionDataLocal, derivedMostClassContract);
 
-                _ilg.Call(_contextArg, XmlFormatGeneratorStatics.IncrementItemCountMethod, classContract.Members.Count);
+                int classMemberCount = classContract.Members.Count;
+                _ilg.Call(thisObj: _contextArg, XmlFormatGeneratorStatics.IncrementItemCountMethod, classMemberCount);
 
-                for (int i = 0; i < classContract.Members.Count; i++, memberCount++)
+                for (int i = 0; i < classMemberCount; i++, memberCount++)
                 {
                     DataMember member = classContract.Members[i];
                     Type memberType = member.MemberType;
                     LocalBuilder memberValue = null;
-                    if (member.IsGetOnlyCollection)
-                    {
-                        _ilg.Load(_contextArg);
-                        _ilg.Call(XmlFormatGeneratorStatics.StoreIsGetOnlyCollectionMethod);
-                    }
+
+                    _ilg.Load(_contextArg);
+                    _ilg.Call(methodInfo: member.IsGetOnlyCollection ? 
+                        XmlFormatGeneratorStatics.StoreIsGetOnlyCollectionMethod : 
+                        XmlFormatGeneratorStatics.ResetIsGetOnlyCollectionMethod);
+
                     if (!member.EmitDefaultValue)
                     {
                         memberValue = LoadMemberValue(member);
@@ -232,17 +227,17 @@ namespace System.Runtime.Serialization.Json
                     }
 
                     bool requiresNameAttribute = DataContractJsonSerializerImpl.CheckIfXmlNameRequiresMapping(classContract.MemberNames[i]);
-                    if (requiresNameAttribute || !TryWritePrimitive(memberType, memberValue, member.MemberInfo, null /*arrayItemIndex*/, null /*nameLocal*/, i + _childElementIndex))
+                    if (requiresNameAttribute || !TryWritePrimitive(memberType, memberValue, member.MemberInfo, arrayItemIndex: null, name: null, nameIndex: i + _childElementIndex))
                     {
                         // Note: DataContractSerializer has member-conflict logic here to deal with the schema export
                         //       requirement that the same member can't be of two different types.
                         if (requiresNameAttribute)
                         {
-                            _ilg.Call(null, JsonFormatGeneratorStatics.WriteJsonNameWithMappingMethod, _xmlWriterArg, _memberNamesArg, i + _childElementIndex);
+                            _ilg.Call(thisObj: null, JsonFormatGeneratorStatics.WriteJsonNameWithMappingMethod, _xmlWriterArg, _memberNamesArg, i + _childElementIndex);
                         }
                         else
                         {
-                            WriteStartElement(null /*nameLocal*/, i + _childElementIndex);
+                            WriteStartElement(nameLocal: null, nameIndex: i + _childElementIndex);
                         }
                         if (memberValue == null)
                             memberValue = LoadMemberValue(member);
@@ -252,7 +247,7 @@ namespace System.Runtime.Serialization.Json
 
                     if (classContract.HasExtensionData)
                     {
-                        _ilg.Call(_contextArg, XmlFormatGeneratorStatics.WriteExtensionDataMethod, _xmlWriterArg, extensionDataLocal, memberCount);
+                        _ilg.Call(thisObj: _contextArg, XmlFormatGeneratorStatics.WriteExtensionDataMethod, _xmlWriterArg, extensionDataLocal, memberCount);
                     }
 
                     if (!member.EmitDefaultValue)
@@ -260,14 +255,14 @@ namespace System.Runtime.Serialization.Json
                         if (member.IsRequired)
                         {
                             _ilg.Else();
-                            _ilg.Call(null, XmlFormatGeneratorStatics.ThrowRequiredMemberMustBeEmittedMethod, member.Name, classContract.UnderlyingType);
+                            _ilg.Call(thisObj: null, XmlFormatGeneratorStatics.ThrowRequiredMemberMustBeEmittedMethod, member.Name, classContract.UnderlyingType);
                         }
                         _ilg.EndIf();
                     }
                 }
 
                 _typeIndex++;
-                _childElementIndex += classContract.Members.Count;
+                _childElementIndex += classMemberCount;
                 return memberCount;
             }
 
@@ -732,4 +727,3 @@ namespace System.Runtime.Serialization.Json
         }
     }
 }
-#endif

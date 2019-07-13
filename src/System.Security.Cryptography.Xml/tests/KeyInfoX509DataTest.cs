@@ -1,3 +1,5 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// See the LICENSE file in the project root for more information
 //
 // KeyInfoX509DataTest.cs - Test Cases for KeyInfoX509Data
 //
@@ -127,7 +129,7 @@ namespace System.Security.Cryptography.Xml.Tests
         [Fact]
         public void Constructor_X509Certificate_X509IncludeOptionBad()
         {
-            KeyInfoX509Data data = new KeyInfoX509Data(new X509Certificate(cert), (X509IncludeOption)Int32.MinValue);
+            KeyInfoX509Data data = new KeyInfoX509Data(new X509Certificate(cert), (X509IncludeOption)int.MinValue);
             Assert.Null(data.Certificates);
             Assert.Null(data.CRL);
             Assert.Null(data.IssuerSerials);

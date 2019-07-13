@@ -1,5 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<root>
+﻿<root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -280,6 +279,9 @@
   <data name="UnexpectedEmbeddedPortablePdbDataSignature" xml:space="preserve">
     <value>Unexpected Embedded Portable PDB data signature value.</value>
   </data>
+  <data name="InvalidPdbChecksumDataFormat" xml:space="preserve">
+    <value>Invalid PDB Checksum data format.</value>
+  </data>
   <data name="UnexpectedSignatureHeader" xml:space="preserve">
     <value>Expected signature header for '{0}', but found '{1}' (0x{2:x2}).</value>
   </data>
@@ -339,6 +341,9 @@
   </data>
   <data name="ExpectedNonEmptyList" xml:space="preserve">
     <value>Expected non-empty list.</value>
+  </data>
+  <data name="ExpectedNonEmptyArray" xml:space="preserve">
+    <value>Expected non-empty array.</value>
   </data>
   <data name="ExpectedNonEmptyString" xml:space="preserve">
     <value>Expected non-empty string.</value>

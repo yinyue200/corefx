@@ -142,8 +142,8 @@ namespace System.Xml.Schema
         private const string Quote = "'";
 
         //Empty arrays
-        private static XmlSchemaParticle[] s_emptyParticleArray = new XmlSchemaParticle[0];
-        private static XmlSchemaAttribute[] s_emptyAttributeArray = new XmlSchemaAttribute[0];
+        private static XmlSchemaParticle[] s_emptyParticleArray = Array.Empty<XmlSchemaParticle>();
+        private static XmlSchemaAttribute[] s_emptyAttributeArray = Array.Empty<XmlSchemaAttribute>();
 
         //Whitespace check for text nodes
         private XmlCharType _xmlCharType = XmlCharType.Instance;
@@ -2717,11 +2717,11 @@ namespace System.Xml.Schema
                 {
                     if (name.Namespace.Length != 0)
                     {
-                        builder.Append(SR.Format(SR.Sch_ElementNameAndNamespace, subBuilder.ToString(), name.Namespace));
+                        builder.Append(SR.Format(SR.Sch_ElementNameAndNamespace, subBuilder, name.Namespace));
                     }
                     else
                     {
-                        builder.Append(SR.Format(SR.Sch_ElementName, subBuilder.ToString()));
+                        builder.Append(SR.Format(SR.Sch_ElementName, subBuilder));
                     }
                 }
             }
@@ -2745,7 +2745,7 @@ namespace System.Xml.Schema
                     subBuilder.Append(nsList[i]);
                 }
             }
-            builder.Append(SR.Format(SR.Sch_AnyElementNS, subBuilder.ToString()));
+            builder.Append(SR.Format(SR.Sch_AnyElementNS, subBuilder));
         }
 
         internal static string QNameString(string localName, string ns)

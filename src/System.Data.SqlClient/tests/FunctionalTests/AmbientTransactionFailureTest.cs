@@ -72,7 +72,7 @@ namespace System.Data.SqlClient.Tests
             new object[] { EnlistConnectionInTransaction, s_connectionStringWithEnlistOff }
         };
 
-        [ConditionalTheory(nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsNotArmProcess))] // https://github.com/dotnet/corefx/issues/21598
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsNotArmProcess))] // https://github.com/dotnet/corefx/issues/21598
         [MemberData(nameof(ExceptionTestDataForSqlException))]
         public void TestSqlException(Action<string> connectAction, string connectionString)
         {
@@ -81,13 +81,5 @@ namespace System.Data.SqlClient.Tests
                 connectAction(connectionString);
             });
         }
-
-        [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, ".NET Framework doesn't throw the Not Supported Exception")]
-        public void TestNotSupportedExceptionForTransactionScopeAsync()
-        {
-            Assert.ThrowsAsync<NotSupportedException>(() => ConnectToServerInTransactionScopeTask(s_connectionStringWithEnlistAsDefault));
-        }
-
     }
 }

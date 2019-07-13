@@ -4,15 +4,18 @@
 
 using System.Threading.Tasks;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace System.Net.Sockets.Tests
 {
     public abstract class Connect<T> : SocketTestHelperBase<T> where T : SocketHelperBase, new()
     {
+        public Connect(ITestOutputHelper output) : base(output) {}
+
         [OuterLoop] // TODO: Issue #11345
         [Theory]
         [MemberData(nameof(Loopbacks))]
-        public void Connect_Success(IPAddress listenAt)
+        public async Task Connect_Success(IPAddress listenAt)
         {
             int port;
             using (SocketTestServer.SocketTestServerFactory(SocketImplementationType.Async, listenAt, out port))
@@ -20,7 +23,7 @@ namespace System.Net.Sockets.Tests
                 using (Socket client = new Socket(listenAt.AddressFamily, SocketType.Stream, ProtocolType.Tcp))
                 {
                     Task connectTask = ConnectAsync(client, new IPEndPoint(listenAt, port));
-                    Assert.True(connectTask.Wait(TestSettings.PassingTestTimeout), "IPv4: Timed out while waiting for connection");
+                    await connectTask;
                     Assert.True(client.Connected);
                 }
             }
@@ -29,7 +32,7 @@ namespace System.Net.Sockets.Tests
         [OuterLoop] // TODO: Issue #11345
         [Theory]
         [MemberData(nameof(Loopbacks))]
-        public void Connect_MultipleIPAddresses_Success(IPAddress listenAt)
+        public async Task Connect_MultipleIPAddresses_Success(IPAddress listenAt)
         {
             if (!SupportsMultiConnect)
                 return;
@@ -39,14 +42,12 @@ namespace System.Net.Sockets.Tests
             using (Socket client = new Socket(listenAt.AddressFamily, SocketType.Stream, ProtocolType.Tcp))
             {
                 Task connectTask = MultiConnectAsync(client, new IPAddress[] { IPAddress.Loopback, IPAddress.IPv6Loopback }, port);
-                Assert.True(connectTask.Wait(TestSettings.PassingTestTimeout), "Timed out while waiting for connection");
+                await connectTask;
                 Assert.True(client.Connected);
             }
         }
 
-        [OuterLoop] // TODO: Issue #11345
         [Fact]
-        [ActiveIssue(22765, TestPlatforms.AnyUnix)]
         public async Task Connect_OnConnectedSocket_Fails()
         {
             int port;
@@ -86,9 +87,28 @@ namespace System.Net.Sockets.Tests
         }
     }
 
-    public sealed class ConnectSync : Connect<SocketHelperSync> { }
-    public sealed class ConnectSyncForceNonBlocking : Connect<SocketHelperSyncForceNonBlocking> { }
-    public sealed class ConnectApm : Connect<SocketHelperApm> { }
-    public sealed class ConnectTask : Connect<SocketHelperTask> { }
-    public sealed class ConnectEap : Connect<SocketHelperEap> { }
+    public sealed class ConnectSync : Connect<SocketHelperArraySync>
+    {
+        public ConnectSync(ITestOutputHelper output) : base(output) {}
+    }
+
+    public sealed class ConnectSyncForceNonBlocking : Connect<SocketHelperSyncForceNonBlocking>
+    {
+        public ConnectSyncForceNonBlocking(ITestOutputHelper output) : base(output) {}
+    }
+
+    public sealed class ConnectApm : Connect<SocketHelperApm>
+    {
+        public ConnectApm(ITestOutputHelper output) : base(output) {}
+    }
+
+    public sealed class ConnectTask : Connect<SocketHelperTask>
+    {
+        public ConnectTask(ITestOutputHelper output) : base(output) {}
+    }
+
+    public sealed class ConnectEap : Connect<SocketHelperEap>
+    {
+        public ConnectEap(ITestOutputHelper output) : base(output) {}
+    }
 }

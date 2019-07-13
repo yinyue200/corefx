@@ -15,15 +15,13 @@ namespace System.Data.SqlClient.SNI
     /// <summary>
     /// Named Pipe connection handle
     /// </summary>
-    internal class SNINpHandle : SNIHandle
+    internal sealed class SNINpHandle : SNIHandle
     {
         internal const string DefaultPipePath = @"sql\query"; // e.g. \\HOSTNAME\pipe\sql\query
         private const int MAX_PIPE_INSTANCES = 255;
 
         private readonly string _targetServer;
         private readonly object _callbackObject;
-        private readonly TaskScheduler _writeScheduler;
-        private readonly TaskFactory _writeTaskFactory;
 
         private Stream _stream;
         private NamedPipeClientStream _pipeStream;
@@ -41,8 +39,6 @@ namespace System.Data.SqlClient.SNI
         {
             _targetServer = serverName;
             _callbackObject = callbackObject;
-            _writeScheduler = new ConcurrentExclusiveSchedulerPair().ExclusiveScheduler;
-            _writeTaskFactory = new TaskFactory(_writeScheduler);
 
             try
             {
@@ -65,13 +61,13 @@ namespace System.Data.SqlClient.SNI
                     _pipeStream.Connect((int)ts.TotalMilliseconds);
                 }
             }
-            catch(TimeoutException te)
+            catch (TimeoutException te)
             {
                 SNICommon.ReportSNIError(SNIProviders.NP_PROV, SNICommon.ConnOpenFailedError, te);
                 _status = TdsEnums.SNI_ERROR;
                 return;
             }
-            catch(IOException ioe)
+            catch (IOException ioe)
             {
                 SNICommon.ReportSNIError(SNIProviders.NP_PROV, SNICommon.ConnOpenFailedError, ioe);
                 _status = TdsEnums.SNI_ERROR;
@@ -154,8 +150,7 @@ namespace System.Data.SqlClient.SNI
                 packet = null;
                 try
                 {
-                    packet = new SNIPacket(null);
-                    packet.Allocate(_bufferSize);
+                    packet = new SNIPacket(headerSize: 0, dataSize: _bufferSize);
                     packet.ReadFromStream(_stream);
 
                     if (packet.Length == 0)
@@ -179,24 +174,20 @@ namespace System.Data.SqlClient.SNI
 
         public override uint ReceiveAsync(ref SNIPacket packet)
         {
-            lock (this)
-            {
-                packet = new SNIPacket(null);
-                packet.Allocate(_bufferSize);
+            packet = new SNIPacket(headerSize: 0, dataSize: _bufferSize);
 
-                try
-                {
-                    packet.ReadFromStreamAsync(_stream, _receiveCallback);
-                    return TdsEnums.SNI_SUCCESS_IO_PENDING;
-                }
-                catch (ObjectDisposedException ode)
-                {
-                    return ReportErrorAndReleasePacket(packet, ode);
-                }
-                catch (IOException ioe)
-                {
-                    return ReportErrorAndReleasePacket(packet, ioe);
-                }
+            try
+            {
+                packet.ReadFromStreamAsync(_stream, _receiveCallback);
+                return TdsEnums.SNI_SUCCESS_IO_PENDING;
+            }
+            catch (ObjectDisposedException ode)
+            {
+                return ReportErrorAndReleasePacket(packet, ode);
+            }
+            catch (IOException ioe)
+            {
+                return ReportErrorAndReleasePacket(packet, ioe);
             }
         }
 
@@ -220,45 +211,10 @@ namespace System.Data.SqlClient.SNI
             }
         }
 
-        public override uint SendAsync(SNIPacket packet, SNIAsyncCallback callback = null)
+        public override uint SendAsync(SNIPacket packet, bool disposePacketAfterSendAsync, SNIAsyncCallback callback = null)
         {
-            SNIPacket newPacket = packet;
-
-            _writeTaskFactory.StartNew(() =>
-            {
-                try
-                {
-                    lock (this)
-                    {
-                        packet.WriteToStream(_stream);
-                    }
-                }
-                catch (Exception e)
-                {
-                    SNICommon.ReportSNIError(SNIProviders.NP_PROV, SNICommon.InternalExceptionError, e);
-
-                    if (callback != null)
-                    {
-                        callback(packet, TdsEnums.SNI_ERROR);
-                    }
-                    else
-                    {
-                        _sendCallback(packet, TdsEnums.SNI_ERROR);
-                    }
-
-                    return;
-                }
-
-                if (callback != null)
-                {
-                    callback(packet, TdsEnums.SNI_SUCCESS);
-                }
-                else
-                {
-                    _sendCallback(packet, TdsEnums.SNI_SUCCESS);
-                }
-            });
-
+            SNIAsyncCallback cb = callback ?? _sendCallback;
+            packet.WriteToStreamAsync(_stream, cb, SNIProviders.NP_PROV, disposePacketAfterSendAsync);
             return TdsEnums.SNI_SUCCESS_IO_PENDING;
         }
 

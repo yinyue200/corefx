@@ -7,6 +7,7 @@ using System.IO.PortsTests;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Legacy.Support;
 using Xunit;
 
@@ -27,10 +28,10 @@ namespace System.IO.Ports.Tests
         private const int defaultCharOffset = 0;
         private const int defaultCharCount = 1;
 
-        //The maximum buffer size when a exception occurs
+        //The maximum buffer size when an exception occurs
         private const int maxBufferSizeForException = 255;
 
-        //The maximum buffer size when a exception is not expected
+        //The maximum buffer size when an exception is not expected
         private const int maxBufferSize = 8;
 
         public enum ReadDataFromEnum { NonBuffered, Buffered, BufferedAndNonBuffered };
@@ -380,7 +381,7 @@ namespace System.IO.Ports.Tests
                 char[] charXmitBuffer = TCSupport.GetRandomChars(512, TCSupport.CharacterOptions.None);
                 char[] charRcvBuffer = new char[charXmitBuffer.Length];
                 ASyncRead asyncRead = new ASyncRead(com1, charRcvBuffer, 0, charRcvBuffer.Length);
-                Thread asyncReadThread = new Thread(asyncRead.Read);
+                var asyncReadTask = new Task(asyncRead.Read);
 
 
                 Debug.WriteLine(
@@ -395,7 +396,7 @@ namespace System.IO.Ports.Tests
                 if (!com2.IsOpen) //This is necessary since com1 and com2 might be the same port if we are using a loopback
                     com2.Open();
 
-                asyncReadThread.Start();
+                asyncReadTask.Start();
                 asyncRead.ReadStartedEvent.WaitOne();
                 // The WaitOne only tells us that the thread has started to execute code in the method
                 Thread.Sleep(2000); // We need to wait to guarantee that we are executing code in SerialPort
@@ -419,6 +420,8 @@ namespace System.IO.Ports.Tests
                     Assert.Equal(charXmitBuffer.Length, receivedLength);
                     Assert.Equal(charXmitBuffer, charRcvBuffer);
                 }
+
+                TCSupport.WaitForTaskCompletion(asyncReadTask);
             }
         }
 
@@ -431,7 +434,7 @@ namespace System.IO.Ports.Tests
                 char[] charXmitBuffer = TCSupport.GetRandomChars(1023, TCSupport.CharacterOptions.ASCII);
                 int readResult;
 
-                Debug.WriteLine("Verifying that Read(char[], int, int) will compact data in the buffer buffer");
+                Debug.WriteLine("Verifying that Read(char[], int, int) will compact data in the buffer");
 
                 com1.Encoding = Encoding.ASCII;
                 com2.Encoding = Encoding.ASCII;
@@ -809,7 +812,7 @@ namespace System.IO.Ports.Tests
             com2.Write(bytesToWrite, 0, bytesToWrite.Length);
             com1.ReadTimeout = 500;
 
-            //This is pretty lame but we will have to live with if for now becuase we can not 
+            //This is pretty silly but we will have to live with if for now becuase we can not 
             //gaurentee the number of bytes Write will add
             Thread.Sleep((int)(((bytesToWrite.Length * 10.0) / com1.BaudRate) * 1000) + 250);
 
@@ -949,7 +952,7 @@ namespace System.IO.Ports.Tests
 
                 if (encoding.EncodingName == Encoding.UTF7.EncodingName)
                 {
-                    //If UTF7Encoding is being used we we might leave a - in the stream
+                    //If UTF7Encoding is being used we might leave a - in the stream
                     if (com1.BytesToRead == xmitByteBuffer.Length + 1)
                     {
                         int byteRead;

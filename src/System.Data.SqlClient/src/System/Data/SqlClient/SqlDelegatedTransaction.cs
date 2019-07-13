@@ -1,4 +1,8 @@
-﻿using System.Data.Common;
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
+
+using System.Data.Common;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Reflection;
@@ -9,7 +13,7 @@ using System.Transactions;
 
 namespace System.Data.SqlClient
 {
-    sealed internal class SqlDelegatedTransaction : IPromotableSinglePhaseNotification
+    sealed internal partial class SqlDelegatedTransaction : IPromotableSinglePhaseNotification
     {
         private static int _objectTypeCount;
         private readonly int _objectID = Interlocked.Increment(ref _objectTypeCount);
@@ -131,7 +135,7 @@ namespace System.Data.SqlClient
             }
         }
 
-        public Byte[] Promote()
+        public byte[] Promote()
         {
             // Operations that might be affected by multi-threaded use MUST be done inside the lock.
             //  Don't read values off of the connection outside the lock unless it doesn't really matter
@@ -397,7 +401,7 @@ namespace System.Data.SqlClient
 
         // Event notification that transaction ended. This comes from the subscription to the Transaction's
         //  ended event via the internal connection. If it occurs without a prior Rollback or SinglePhaseCommit call,
-        //  it indicates the transaction was ended externally (generally that one the the DTC participants aborted
+        //  it indicates the transaction was ended externally (generally that one of the DTC participants aborted
         //  the transaction).
         internal void TransactionEnded(Transaction transaction)
         {
@@ -451,16 +455,6 @@ namespace System.Data.SqlClient
 
                 throw ADP.InternalError(ADP.InternalErrorCode.UnpooledObjectHasWrongOwner);  //TODO: Create a new code
             }
-        }
-
-        // Get the server-side Global Transaction Id from the PromotedDTCToken
-        // Skip first 4 bytes since they contain the version
-        private Guid GetGlobalTxnIdentifierFromToken()
-        {
-            byte[] txnGuid = new byte[16];
-            Array.Copy(_connection.PromotedDTCToken, _globalTransactionsTokenVersionSizeInBytes, // Skip the version
-                txnGuid, 0, txnGuid.Length);
-            return new Guid(txnGuid);
         }
     }
 }

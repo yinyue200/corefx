@@ -1,11 +1,7 @@
-//------------------------------------------------------------------------------
-// <copyright file="RectangleConverter.cs" company="Microsoft">
-//     Copyright (c) Microsoft Corporation.  All rights reserved.
-// </copyright>                                                                
-//------------------------------------------------------------------------------
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
-/*
- */
 namespace System.Drawing {
     using System.Runtime.Serialization.Formatters;
     using System.Runtime.InteropServices;
@@ -109,7 +105,7 @@ namespace System.Drawing {
         /// </devdoc>
         public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType) {
             if (destinationType == null) {
-                throw new ArgumentNullException("destinationType");
+                throw new ArgumentNullException(nameof(destinationType));
             }
 
             if( value is Rectangle ){
@@ -157,7 +153,7 @@ namespace System.Drawing {
         [SuppressMessage("Microsoft.Security", "CA2102:CatchNonClsCompliantExceptionsInGeneralHandlers")]
         public override object CreateInstance(ITypeDescriptorContext context, IDictionary propertyValues) {
             if( propertyValues == null ){
-                throw new ArgumentNullException( "propertyValues" );
+                throw new ArgumentNullException( nameof(propertyValues) );
             }
 
             object x = propertyValues["X"];
@@ -167,7 +163,7 @@ namespace System.Drawing {
 
             if(x == null || y == null || width == null || height == null ||
                 !(x is int) || !(y is int) || !(width is int) || !(height is int) ) {
-                    throw new ArgumentException(SR.Format(SR.PropertyValueInvalidEntry));
+                    throw new ArgumentException(SR.PropertyValueInvalidEntry);
             }
             return new Rectangle((int)x,
                                      (int)y,

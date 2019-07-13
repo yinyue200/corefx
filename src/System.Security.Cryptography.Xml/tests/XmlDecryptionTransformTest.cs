@@ -1,3 +1,5 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// See the LICENSE file in the project root for more information
 //
 // Unit tests for XmlDecryptionTransform
 //
@@ -108,7 +110,7 @@ namespace System.Security.Cryptography.Xml.Tests
             XmlDocument doc = new XmlDocument();
             doc.LoadXml("<a />");
 
-            transform.LoadInnerXml(doc.ChildNodes);
+            Assert.Throws<CryptographicException>(() => transform.LoadInnerXml(doc.ChildNodes));
 
             Assert.Null(transform.UnprotectedGetInnerXml());
         }
@@ -134,7 +136,6 @@ namespace System.Security.Cryptography.Xml.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "https://github.com/dotnet/corefx/issues/16798")]
         public void LoadStreamInput_CorrectXml()
         {
             XmlDocument doc = new XmlDocument();
@@ -167,7 +168,6 @@ namespace System.Security.Cryptography.Xml.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "https://github.com/dotnet/corefx/issues/16798")]
         public void GetOutput_XmlNoEncryptedData()
         {
             XmlDocument doc = new XmlDocument();
@@ -181,7 +181,7 @@ namespace System.Security.Cryptography.Xml.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "https://github.com/dotnet/corefx/issues/16798")]
+
         public void GetOutput_XmlWithEncryptedData()
         {
             XmlDocument doc = new XmlDocument();
@@ -195,7 +195,6 @@ namespace System.Security.Cryptography.Xml.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "https://github.com/dotnet/corefx/issues/16798")]
         public void GetOutput_XmlWithEncryptedDataInRoot()
         {
             XmlDocument doc = new XmlDocument();
@@ -209,7 +208,6 @@ namespace System.Security.Cryptography.Xml.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "https://github.com/dotnet/corefx/issues/16798")]
         public void GetOutput_XmlWithEncryptedDataAndExcept()
         {
             XmlDocument doc = new XmlDocument();

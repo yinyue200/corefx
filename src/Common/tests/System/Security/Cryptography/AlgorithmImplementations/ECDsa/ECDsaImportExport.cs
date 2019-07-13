@@ -3,6 +3,8 @@
 // See the LICENSE file in the project root for more information.
 
 using Xunit;
+using System.Security.Cryptography.Tests;
+using Test.Cryptography;
 
 namespace System.Security.Cryptography.EcDsa.Tests
 {
@@ -12,7 +14,7 @@ namespace System.Security.Cryptography.EcDsa.Tests
         [Fact]
         public static void DiminishedCoordsRoundtrip()
         {
-            ECParameters toImport = ECDsaTestData.GetNistP521DiminishedCoordsParameters();
+            ECParameters toImport = EccTestData.GetNistP521DiminishedCoordsParameters();
             ECParameters privateParams;
             ECParameters publicParams;
 
@@ -27,6 +29,30 @@ namespace System.Security.Cryptography.EcDsa.Tests
             ComparePrivateKey(toImport, privateParams);
             ComparePublicKey(toImport.Q, publicParams.Q);
             Assert.Null(publicParams.D);
+        }
+        
+        [Fact]
+        [PlatformSpecific(TestPlatforms.Windows/* "parameters.Curve.Hash doesn't round trip on Unix." */)]
+        public static void ImportExplicitWithHashButNoSeed()
+        {
+            if (!ECDsaFactory.ExplicitCurvesSupported)
+            {
+                return;
+            }
+
+            using (ECDsa ec = ECDsaFactory.Create())
+            {
+                ECCurve curve = EccTestData.GetNistP256ExplicitCurve();
+                Assert.NotNull(curve.Hash);
+                ec.GenerateKey(curve);
+
+                ECParameters parameters = ec.ExportExplicitParameters(true);
+                Assert.NotNull(parameters.Curve.Hash);
+                parameters.Curve.Seed = null;
+
+                ec.ImportParameters(parameters);
+                ec.Exercise();
+            }
         }
 
         [Theory]
@@ -165,7 +191,7 @@ namespace System.Security.Cryptography.EcDsa.Tests
             {
                 using (ECDsa ec = ECDsaFactory.Create())
                 {
-                    ECParameters p = ECDsaTestData.GetNistP256ExplicitTestData();
+                    ECParameters p = EccTestData.GetNistP256ExplicitTestData();
                     Assert.True(p.Curve.IsPrime);
                     ec.ImportParameters(p);
 
@@ -213,7 +239,7 @@ namespace System.Security.Cryptography.EcDsa.Tests
             {
                 using(ECDsa ec = ECDsaFactory.Create())
                 {
-                    ECParameters p = ECDsaTestData.GetNistP224KeyTestData();
+                    ECParameters p = EccTestData.GetNistP224KeyTestData();
                     Assert.True(p.Curve.IsNamed);
                     var q = p.Q;
                     var c = p.Curve;
@@ -241,7 +267,7 @@ namespace System.Security.Cryptography.EcDsa.Tests
         {
             using (ECDsa ecdsa = ECDsaFactory.Create())
             {
-                ECParameters param = ECDsaTestData.GetNistP256ExplicitTestData();
+                ECParameters param = EccTestData.GetNistP256ExplicitTestData();
                 param.Validate();
                 ecdsa.ImportParameters(param);
                 Assert.True(param.Curve.IsExplicit);
@@ -259,9 +285,38 @@ namespace System.Security.Cryptography.EcDsa.Tests
         {
             using (ECDsa ec = ECDsaFactory.Create())
             {
-                ECParameters parameters = ECDsaTestData.GetNistP224KeyTestData();
+                ECParameters parameters = EccTestData.GetNistP224KeyTestData();
                 ec.ImportParameters(parameters);
                 VerifyNamedCurve(parameters, ec, 224, true);
+            }
+        }
+
+        [Fact]
+        public static void ExportIncludingPrivateOnPublicOnlyKey()
+        {
+            ECParameters iutParameters = new ECParameters
+            {
+                Curve = ECCurve.NamedCurves.nistP521,
+                Q =
+                {
+                    X = "00d45615ed5d37fde699610a62cd43ba76bedd8f85ed31005fe00d6450fbbd101291abd96d4945a8b57bc73b3fe9f4671105309ec9b6879d0551d930dac8ba45d255".HexToByteArray(),
+                    Y = "01425332844e592b440c0027972ad1526431c06732df19cd46a242172d4dd67c2c8c99dfc22e49949a56cf90c6473635ce82f25b33682fb19bc33bd910ed8ce3a7fa".HexToByteArray(),
+                },
+                D = "00816f19c1fb10ef94d4a1d81c156ec3d1de08b66761f03f06ee4bb9dcebbbfe1eaa1ed49a6a990838d8ed318c14d74cc872f95d05d07ad50f621ceb620cd905cfb8".HexToByteArray(),
+            };
+
+            using (ECDsa iut = ECDsaFactory.Create())
+            using (ECDsa cavs = ECDsaFactory.Create())
+            {
+                iut.ImportParameters(iutParameters);
+                cavs.ImportParameters(iut.ExportParameters(false));
+
+                Assert.ThrowsAny<CryptographicException>(() => cavs.ExportParameters(true));
+
+                if (ECExplicitCurvesSupported)
+                {
+                    Assert.ThrowsAny<CryptographicException>(() => cavs.ExportExplicitParameters(true));
+                }
             }
         }
 

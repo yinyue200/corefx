@@ -16,6 +16,7 @@ namespace System.Net.Http
         // TODO: Issue #2165. Merge with similar code used in System.Net.Security move to Common/src//System/Net.
         public static void BuildChain(
             X509Certificate2 certificate,
+            X509Certificate2Collection remoteCertificateStore,
             string hostName,
             bool checkCertificateRevocationList,
             out X509Chain chain,
@@ -32,6 +33,19 @@ namespace System.Net.Http
             // Authenticate the remote party: (e.g. when operating in client mode, authenticate the server).
             chain.ChainPolicy.ApplicationPolicy.Add(s_serverAuthOid);
 
+            if (remoteCertificateStore.Count > 0)
+            {
+                if (NetEventSource.IsEnabled)
+                {
+                    foreach (X509Certificate cert in remoteCertificateStore)
+                    {
+                        NetEventSource.Info(remoteCertificateStore, $"Adding cert to ExtraStore: {cert.Subject}");
+                    }
+                }
+
+                chain.ChainPolicy.ExtraStore.AddRange(remoteCertificateStore);
+            }
+
             if (!chain.Build(certificate))
             {
                 sslPolicyErrors |= SslPolicyErrors.RemoteCertificateChainErrors;
@@ -41,11 +55,11 @@ namespace System.Net.Http
             unsafe
             {
                 var cppStruct = new Interop.Crypt32.CERT_CHAIN_POLICY_PARA();
-                cppStruct.cbSize = (uint)Marshal.SizeOf<Interop.Crypt32.CERT_CHAIN_POLICY_PARA>();
+                cppStruct.cbSize = (uint)sizeof(Interop.Crypt32.CERT_CHAIN_POLICY_PARA);
                 cppStruct.dwFlags = 0;
 
                 var eppStruct = new Interop.Crypt32.SSL_EXTRA_CERT_CHAIN_POLICY_PARA();
-                eppStruct.cbSize = (uint)Marshal.SizeOf<Interop.Crypt32.SSL_EXTRA_CERT_CHAIN_POLICY_PARA>();
+                eppStruct.cbSize = (uint)sizeof(Interop.Crypt32.SSL_EXTRA_CERT_CHAIN_POLICY_PARA);
                 eppStruct.dwAuthType = Interop.Crypt32.AuthType.AUTHTYPE_SERVER;
                 
                 cppStruct.pvExtraPolicyPara = &eppStruct;
@@ -67,6 +81,7 @@ namespace System.Net.Http
                     {
                         if (status.dwError == Interop.Crypt32.CertChainPolicyErrors.CERT_E_CN_NO_MATCH)
                         {
+                            if (NetEventSource.IsEnabled) NetEventSource.Error(certificate, nameof(Interop.Crypt32.CertChainPolicyErrors.CERT_E_CN_NO_MATCH));
                             sslPolicyErrors |= SslPolicyErrors.RemoteCertificateNameMismatch;
                         }
                     }
@@ -74,6 +89,7 @@ namespace System.Net.Http
                     {
                         // Failure checking the policy. This is a rare error. We will assume the name check failed.
                         // TODO: Issue #2165. Log this error or perhaps throw an exception instead.
+                        if (NetEventSource.IsEnabled) NetEventSource.Error(certificate, "Failure calling {nameof(Interop.Crypt32.CertVerifyCertificateChainPolicy)}");
                         sslPolicyErrors |= SslPolicyErrors.RemoteCertificateNameMismatch;
                     }
                 }

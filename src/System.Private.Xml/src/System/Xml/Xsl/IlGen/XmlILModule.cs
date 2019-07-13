@@ -27,7 +27,7 @@ namespace System.Xml.Xsl.IlGen
         private static ModuleBuilder s_LREModule;                             // Module used to emit dynamic lightweight-reflection-emit (LRE) methods
 
         private TypeBuilder _typeBldr;
-        private Hashtable _methods, _urlToSymWriter;
+        private Hashtable _methods;
         private bool _useLRE, _emitSymbols;
 
         private static readonly Guid s_languageGuid = new Guid(0x462d4a3e, 0xb257, 0x4aee, 0x97, 0xcd, 0x59, 0x18, 0xc7, 0x53, 0x17, 0x58);
@@ -51,7 +51,7 @@ namespace System.Xml.Xsl.IlGen
             {
                 // Add custom attribute to assembly marking it as security transparent so that Assert will not be allowed
                 // and link demands will be converted to full demands.
-                asmBldr.SetCustomAttribute(new CustomAttributeBuilder(XmlILConstructors.Transparent, new object[] { }));
+                asmBldr.SetCustomAttribute(new CustomAttributeBuilder(XmlILConstructors.Transparent, Array.Empty<object>()));
 
                 // Store LREModule once.  If multiple threads are doing this, then some threads might get different
                 // modules.  This is OK, since it's not mandatory to share, just preferable.
@@ -68,15 +68,8 @@ namespace System.Xml.Xsl.IlGen
 
             _emitSymbols = false;
             _useLRE = false;
-
             // Index all methods added to this module by unique name
             _methods = new Hashtable();
-
-            if (_emitSymbols)
-            {
-                // Create mapping from source document to symbol writer
-                _urlToSymWriter = new Hashtable();
-            }
         }
 
         public bool EmitSymbols
@@ -116,13 +109,10 @@ namespace System.Xml.Xsl.IlGen
 
                 // Add custom attribute to assembly marking it as security transparent so that Assert will not be allowed
                 // and link demands will be converted to full demands.
-                asmBldr.SetCustomAttribute(new CustomAttributeBuilder(XmlILConstructors.Transparent, new object[] { }));
+                asmBldr.SetCustomAttribute(new CustomAttributeBuilder(XmlILConstructors.Transparent, Array.Empty<object>()));
 
                 if (emitSymbols)
                 {
-                    // Create mapping from source document to symbol writer
-                    _urlToSymWriter = new Hashtable();
-
                     // Add DebuggableAttribute to assembly so that debugging is a better experience
                     DebuggingModes debuggingModes = DebuggingModes.Default | DebuggingModes.IgnoreSymbolStoreSequencePoints | DebuggingModes.DisableOptimizations;
                     asmBldr.SetCustomAttribute(new CustomAttributeBuilder(XmlILConstructors.Debuggable, new object[] { debuggingModes }));
@@ -176,8 +166,8 @@ namespace System.Xml.Xsl.IlGen
                 if (_emitSymbols && (xmlAttrs & XmlILMethodAttributes.NonUser) != 0)
                 {
                     // Add DebuggerStepThroughAttribute and DebuggerNonUserCodeAttribute to non-user methods so that debugging is a better experience
-                    methBldr.SetCustomAttribute(new CustomAttributeBuilder(XmlILConstructors.StepThrough, new object[] { }));
-                    methBldr.SetCustomAttribute(new CustomAttributeBuilder(XmlILConstructors.NonUserCode, new object[] { }));
+                    methBldr.SetCustomAttribute(new CustomAttributeBuilder(XmlILConstructors.StepThrough, Array.Empty<object>()));
+                    methBldr.SetCustomAttribute(new CustomAttributeBuilder(XmlILConstructors.NonUserCode, Array.Empty<object>()));
                 }
 
                 if (!isRaw)
@@ -278,7 +268,6 @@ namespace System.Xml.Xsl.IlGen
 
                 // Release TypeBuilder and symbol writer resources
                 _typeBldr = null;
-                _urlToSymWriter = null;
             }
         }
 

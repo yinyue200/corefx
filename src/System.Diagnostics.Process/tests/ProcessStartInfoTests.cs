@@ -2,8 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Microsoft.Win32;
-using Microsoft.Win32.SafeHandles;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -11,14 +9,18 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
-using Xunit;
 using System.Text;
 using System.ComponentModel;
 using System.Security;
 using System.Threading;
+using Microsoft.DotNet.RemoteExecutor;
+using Microsoft.Win32;
+using Microsoft.Win32.SafeHandles;
+using Xunit;
 
 namespace System.Diagnostics.Tests
 {
+    [ActiveIssue(31908, TargetFrameworkMonikers.Uap)]
     public partial class ProcessStartInfoTests : ProcessTestBase
     {
         [Fact]
@@ -196,7 +198,28 @@ namespace System.Diagnostics.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.UapNotUapAot, "Retrieving information about local processes is not supported on uap")]
+        [ActiveIssue(29865, TargetFrameworkMonikers.Uap)]
+        public void TestSetEnvironmentOnChildProcess()
+        {
+            const string name = "b5a715d3-d74f-465d-abb7-2abe844750c9";
+            Environment.SetEnvironmentVariable(name, "parent-process-value");
+
+            Process p = CreateProcess(() =>
+            {
+                if (Environment.GetEnvironmentVariable(name) != "child-process-value") 
+                    return 1;
+
+                return RemoteExecutor.SuccessExitCode;
+            });
+            p.StartInfo.Environment.Add(name, "child-process-value");
+            p.Start();
+
+            Assert.True(p.WaitForExit(WaitInMS));
+            Assert.Equal(RemoteExecutor.SuccessExitCode, p.ExitCode);
+        }
+
+        [Fact]
+        [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Retrieving information about local processes is not supported on uap")]
         public void TestEnvironmentOfChildProcess()
         {
             const string ItemSeparator = "CAFF9451396B4EEF8A5155A15BDC2080"; // random string that shouldn't be in any env vars; used instead of newline to separate env var strings
@@ -209,7 +232,7 @@ namespace System.Diagnostics.Tests
                 Process p = CreateProcess(() =>
                 {
                     Console.Write(string.Join(ItemSeparator, Environment.GetEnvironmentVariables().Cast<DictionaryEntry>().Select(e => Convert.ToBase64String(Encoding.UTF8.GetBytes(e.Key + "=" + e.Value)))));
-                    return SuccessExitCode;
+                    return RemoteExecutor.SuccessExitCode;
                 });
                 p.StartInfo.StandardOutputEncoding = Encoding.UTF8;
                 p.StartInfo.RedirectStandardOutput = true;
@@ -260,23 +283,8 @@ namespace System.Diagnostics.Tests
             Assert.False(psi.UseShellExecute, "UseShellExecute=true is not supported on onecore.");
         }
 
-        [PlatformSpecific(TestPlatforms.Windows)]
         [Fact]
-        [SkipOnTargetFramework(~TargetFrameworkMonikers.NetFramework, "Desktop UseShellExecute is set to true by default")]
-        public void UseShellExecute_GetSetWindows_Success_Netfx()
-        {
-            ProcessStartInfo psi = new ProcessStartInfo();
-            Assert.True(psi.UseShellExecute);
-
-            psi.UseShellExecute = false;
-            Assert.False(psi.UseShellExecute);
-
-            psi.UseShellExecute = true;
-            Assert.True(psi.UseShellExecute);
-        }
-
-        [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.Uap | TargetFrameworkMonikers.NetFramework)]
+        [SkipOnTargetFramework(TargetFrameworkMonikers.Uap)]
         public void TestUseShellExecuteProperty_SetAndGet_NotUapOrNetFX()
         {
             ProcessStartInfo psi = new ProcessStartInfo();
@@ -335,36 +343,32 @@ namespace System.Diagnostics.Tests
             }
             finally
             {
-                if (!testProcess.HasExited)
-                    testProcess.Kill();
+                testProcess.Kill();
 
                 Assert.True(testProcess.WaitForExit(WaitInMS));
             }
         }
 
         [Fact]
-        public void TestWorkingDirectoryProperty()
+        public void TestWorkingDirectoryPropertyDefaultCase()
         {
             CreateDefaultProcess();
-            
+
             // check defaults
             Assert.Equal(string.Empty, _process.StartInfo.WorkingDirectory);
+        }
 
-            Process p = CreateProcessLong();
-            p.StartInfo.WorkingDirectory = Directory.GetCurrentDirectory();
-
-            try
+        [Fact]
+        public void TestWorkingDirectoryPropertyInChildProcess()
+        {
+            string workingDirectory = string.IsNullOrEmpty(Environment.SystemDirectory) ? TestDirectory : Environment.SystemDirectory ;
+            Assert.NotEqual(workingDirectory, Directory.GetCurrentDirectory());
+            var psi = new ProcessStartInfo { WorkingDirectory = workingDirectory };
+            RemoteExecutor.Invoke(wd =>
             {
-                p.Start();
-                Assert.Equal(Directory.GetCurrentDirectory(), p.StartInfo.WorkingDirectory);
-            }
-            finally
-            {
-                if (!p.HasExited)
-                    p.Kill();
-
-                Assert.True(p.WaitForExit(WaitInMS));
-            }
+                Assert.Equal(wd, Directory.GetCurrentDirectory());
+                return RemoteExecutor.SuccessExitCode;
+            }, workingDirectory, new RemoteInvokeOptions { StartInfo = psi }).Dispose();
         }
 
         [ActiveIssue(12696)]
@@ -423,8 +427,7 @@ namespace System.Diagnostics.Tests
 
                 if (hasStarted)
                 {
-                    if (!p.HasExited)
-                        p.Kill();
+                    p.Kill();
 
                     Assert.True(p.WaitForExit(WaitInMS));
                 }
@@ -498,29 +501,19 @@ namespace System.Diagnostics.Tests
             Assert.Equal("NewValue", kvpaOrdered[2].Value);
 
             psi.EnvironmentVariables.Remove("NewKey3");
-            Assert.False(psi.Environment.Contains(new KeyValuePair<string,string>("NewKey3", "NewValue3")));
+            Assert.False(psi.Environment.Contains(new KeyValuePair<string, string>("NewKey3", "NewValue3")));
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer))] // Nano does not support these verbs
         [PlatformSpecific(TestPlatforms.Windows)]  // Test case is specific to Windows
         [SkipOnTargetFramework(TargetFrameworkMonikers.Uap, "Retrieving information about local processes is not supported on uap")]
         public void Verbs_GetWithExeExtension_ReturnsExpected()
         {
             var psi = new ProcessStartInfo { FileName = $"{Process.GetCurrentProcess().ProcessName}.exe" };
 
-            if (PlatformDetection.IsNetNative)
-            {
-                // UapAot doesn't have RegistryKey apis available so ProcessStartInfo.Verbs returns Array<string>.Empty().
-                Assert.Equal(0, psi.Verbs.Length);
-                return;
-            }
-
             Assert.Contains("open", psi.Verbs, StringComparer.OrdinalIgnoreCase);
-            if (PlatformDetection.IsNotWindowsNanoServer)
-            {
-                Assert.Contains("runas", psi.Verbs, StringComparer.OrdinalIgnoreCase);
-                Assert.Contains("runasuser", psi.Verbs, StringComparer.OrdinalIgnoreCase);
-            }
+            Assert.Contains("runas", psi.Verbs, StringComparer.OrdinalIgnoreCase);
+            Assert.Contains("runasuser", psi.Verbs, StringComparer.OrdinalIgnoreCase);
             Assert.DoesNotContain("printto", psi.Verbs, StringComparer.OrdinalIgnoreCase);
             Assert.DoesNotContain("closed", psi.Verbs, StringComparer.OrdinalIgnoreCase);
         }
@@ -588,7 +581,6 @@ namespace System.Diagnostics.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "The full .NET Framework throws an InvalidCastException for non-string keys. See https://github.com/dotnet/corefx/issues/18187.")]
         [PlatformSpecific(TestPlatforms.Windows)]
         public void Verbs_GetWithNonStringValue_ReturnsEmpty()
         {
@@ -603,7 +595,7 @@ namespace System.Diagnostics.Tests
                     // modify the registry.
                     return;
                 }
-                
+
                 tempKey.Key.SetValue("", 123);
 
                 var info = new ProcessStartInfo { FileName = FileName };
@@ -626,7 +618,7 @@ namespace System.Diagnostics.Tests
                     // modify the registry.
                     return;
                 }
-                
+
                 tempKey.Key.SetValue("", "nosuchshell");
 
                 var info = new ProcessStartInfo { FileName = FileName };
@@ -653,7 +645,7 @@ namespace System.Diagnostics.Tests
                 }
 
                 extensionKey.Key.SetValue("", SubKeyValue);
-                
+
                 shellKey.Key.CreateSubKey("verb1");
                 shellKey.Key.CreateSubKey("NEW");
                 shellKey.Key.CreateSubKey("new");
@@ -746,7 +738,7 @@ namespace System.Diagnostics.Tests
             Assert.Throws<KeyNotFoundException>(() =>
             {
                 string stringout = environmentVariables["NewKey99"];
-            });            
+            });
 
             //Exception not thrown with invalid key
             Assert.Throws<ArgumentNullException>(() =>
@@ -887,20 +879,10 @@ namespace System.Diagnostics.Tests
         [InlineData(null)]
         [InlineData("")]
         [InlineData("domain")]
-        [PlatformSpecific(TestPlatforms.Windows)]
-        public void UserName_SetWindows_GetReturnsExpected(string userName)
+        public void UserName_Set_GetReturnsExpected(string userName)
         {
             var info = new ProcessStartInfo { UserName = userName };
             Assert.Equal(userName ?? string.Empty, info.UserName);
-        }
-
-        [Fact]
-        [PlatformSpecific(TestPlatforms.AnyUnix)]
-        public void UserName_GetSetUnix_ThrowsPlatformNotSupportedException()
-        {
-            var info = new ProcessStartInfo();
-            Assert.Throws<PlatformNotSupportedException>(() => info.UserName);
-            Assert.Throws<PlatformNotSupportedException>(() => info.UserName = "username");
         }
 
         [Theory]
@@ -954,10 +936,13 @@ namespace System.Diagnostics.Tests
                 FileName = @"http://www.microsoft.com"
             };
 
-            Process.Start(info); // Returns null after navigating browser
+            using (var p = Process.Start(info))
+            {
+                Assert.NotNull(p);
+            }
         }
 
-        [ConditionalTheory(nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsNotWindowsNanoServer))] // No Notepad on Nano
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer))] // No Notepad on Nano
         [MemberData(nameof(UseShellExecute))]
         [OuterLoop("Launches notepad")]
         [PlatformSpecific(TestPlatforms.Windows)]
@@ -989,22 +974,22 @@ namespace System.Diagnostics.Tests
                 }
                 finally
                 {
-                    if (process != null && !process.HasExited)
-                        process.Kill();
+                    process?.Kill();
                 }
             }
         }
 
-        [ConditionalFact(nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsNotWindowsNanoServer),  // Nano does not support UseShellExecute
-                         nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsNotWindows8x))]   // https://github.com/dotnet/corefx/issues/20388
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer), // Nano does not support UseShellExecute
+                                                    nameof(PlatformDetection.IsNotWindows8x))] // https://github.com/dotnet/corefx/issues/20388
         [OuterLoop("Launches notepad")]
         [PlatformSpecific(TestPlatforms.Windows)]
-        // Re-enabling with extra diagnostic info
-        // [ActiveIssue("https://github.com/dotnet/corefx/issues/20388")]
         // We don't have the ability yet for UseShellExecute in UAP
-        [ActiveIssue("https://github.com/dotnet/corefx/issues/20204", TargetFrameworkMonikers.Uap | TargetFrameworkMonikers.UapAot)]
+        [ActiveIssue("https://github.com/dotnet/corefx/issues/20204", TargetFrameworkMonikers.Uap)]
         public void StartInfo_TextFile_ShellExecute()
         {
+            if (Thread.CurrentThread.CurrentCulture.ToString() != "en-US")
+                return; // [ActiveIssue(https://github.com/dotnet/corefx/issues/28953)]
+
             string tempFile = GetTestFilePath() + ".txt";
             File.WriteAllText(tempFile, $"StartInfo_TextFile_ShellExecute");
 
@@ -1036,8 +1021,7 @@ namespace System.Diagnostics.Tests
                 }
                 finally
                 {
-                    if (process != null && !process.HasExited)
-                        process.Kill();
+                    process?.Kill();
                 }
             }
         }
@@ -1086,8 +1070,7 @@ namespace System.Diagnostics.Tests
             return sb.ToString();
         }
 
-
-        [ConditionalFact(nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsWindowsNanoServer))]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsWindowsNanoServer))] 
         public void ShellExecute_Nano_Fails_Start()
         {
             string tempFile = GetTestFilePath() + ".txt";
@@ -1099,7 +1082,10 @@ namespace System.Diagnostics.Tests
                 FileName = tempFile
             };
 
-            Assert.Throws<PlatformNotSupportedException>(() => Process.Start(info));
+            // Nano does not support either the STA apartment or ShellExecute.
+            // Since we try to start an STA thread for ShellExecute, we hit a ThreadStartException
+            // before we get to the PlatformNotSupportedException.
+            Assert.Throws<ThreadStartException>(() => Process.Start(info));
         }
 
         public static TheoryData<bool> UseShellExecute
@@ -1109,7 +1095,8 @@ namespace System.Diagnostics.Tests
                 TheoryData<bool> data = new TheoryData<bool> { false };
 
                 if (   !PlatformDetection.IsUap // https://github.com/dotnet/corefx/issues/20204
-                    && !PlatformDetection.IsWindowsNanoServer) // By design
+                    && !PlatformDetection.IsWindowsNanoServer // By design
+                    && !PlatformDetection.IsWindowsIoTCore)
                     data.Add(true);
                 return data;
             }
@@ -1119,6 +1106,7 @@ namespace System.Diagnostics.Tests
         private const int ERROR_FILE_NOT_FOUND = 0x2;
         private const int ERROR_BAD_EXE_FORMAT = 0xC1;
 
+        [Theory]
         [MemberData(nameof(UseShellExecute))]
         [PlatformSpecific(TestPlatforms.Windows)]
         public void StartInfo_BadVerb(bool useShellExecute)
@@ -1133,6 +1121,7 @@ namespace System.Diagnostics.Tests
             Assert.Equal(ERROR_FILE_NOT_FOUND, Assert.Throws<Win32Exception>(() => Process.Start(info)).NativeErrorCode);
         }
 
+        [Theory]
         [MemberData(nameof(UseShellExecute))]
         [PlatformSpecific(TestPlatforms.Windows)]
         public void StartInfo_BadExe(bool useShellExecute)

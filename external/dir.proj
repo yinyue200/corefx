@@ -1,5 +1,5 @@
-<Project ToolsVersion="14.0" DefaultTargets="BuildAndTest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="../dir.props" />
+<Project InitialTargets="IncludeProjectReferences">
+  <Import Sdk="Microsoft.NET.Sdk" Project="Sdk.props" />
 
   <PropertyGroup>
     <AdditionalBuildConfigurations>$(AdditionalBuildConfigurations);netstandard-$(OSGroup)-$(ConfigurationGroup)-$(ArchGroup)</AdditionalBuildConfigurations>
@@ -7,17 +7,34 @@
 
   <!-- Build for all configurations -->
   <ItemGroup>
-    <Project Include="netcoreapp/netcoreapp.depproj" />
+    <Project Condition="'$(BuildAllConfigurations)' == 'true'" Include="netcoreapp/netcoreapp.depproj" />
+    <Project Condition="'$(BuildAllConfigurations)' == 'true'" Include="uap/uap.depproj" />
     <Project Include="netstandard/netstandard.depproj" />
     <Project Include="netfx/netfx.depproj" />
     <Project Include="runtime/runtime.depproj" />
-    <Project Include="test-runtime/XUnit.Runtime.depproj" />
+    <Project Include="tools/tools.depproj" />
     <Project Include="harvestPackages/harvestPackages.depproj" />
-    <Project Include="portable\portable.depproj" />
-    <Project Include="ilasm/ilasm.depproj" />
-    <Project Include="docs/docs.depproj" />
-    <Project Condition="'$(ILLinkTrimAssembly)' != 'false'" Include="ILLink/ILLink.depproj" />
+    <Project Include="binplacePackages/binplacePackages.depproj" />
   </ItemGroup>
 
-  <Import Project="../dir.traversal.targets" />
+  <!-- Set up project references to use the sdk restore target. -->
+  <Target Name="IncludeProjectReferences" DependsOnTargets="FilterProjects">
+    <ItemGroup>
+      <ProjectReference Include="@(Project)" />
+    </ItemGroup>
+  </Target>
+
+  <Import Sdk="Microsoft.NET.Sdk" Project="Sdk.targets" />
+
+  <!-- Overwrite the SDK build target. -->
+  <Target Name="Build" DependsOnTargets="FilterProjects">
+    <MSBuild Targets="Build"
+             Projects="@(Project)"
+             Properties="BuildConfiguration=$(BuildConfiguration);%(Project.AdditionalProperties)"
+             BuildInParallel="true"
+             ContinueOnError="ErrorAndStop" />
+
+    <!-- Given we ErrorAndContinue we need to propagate the error if the overall task failed -->
+    <Error Condition="'$(MSBuildLastTaskResult)'=='false'" />
+  </Target>
 </Project>

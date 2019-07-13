@@ -2,6 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+#if FEATURE_APPX
+using Internal.Resources;
+#endif
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -18,7 +21,6 @@ using Windows.Storage;
 namespace System.Resources
 {
 #if FEATURE_APPX
-    [FriendAccessAllowed]
     // Please see the comments regarding thread safety preceding the implementations
     // of Initialize() and GetString() below.
     internal sealed class WindowsRuntimeResourceManager : WindowsRuntimeResourceManagerBase
@@ -135,22 +137,23 @@ namespace System.Resources
 
         // Returns the CultureInfo representing the first language in the list that we can construct a CultureInfo for or null if
         // no such culture exists.
-        private static CultureInfo GetBestFitCultureFromLanguageList(List<string> languages)
+        private static unsafe CultureInfo GetBestFitCultureFromLanguageList(List<string> languages)
         {
-            StringBuilder localeNameBuffer = new StringBuilder(Interop.Kernel32.LOCALE_NAME_MAX_LENGTH);
+            char* localeNameBuffer = stackalloc char[Interop.Kernel32.LOCALE_NAME_MAX_LENGTH]; // LOCALE_NAME_MAX_LENGTH includes null terminator
 
             for (int i = 0; i < languages.Count; i++)
             {
-                if (CultureData.GetCultureData(languages[i], true) != null)
+                if (WindowsRuntimeResourceManagerBase.IsValidCulture(languages[i]))
                 {
                     return new CultureInfo(languages[i]);
                 }
 
-                if (Interop.Kernel32.ResolveLocaleName(languages[i], localeNameBuffer, localeNameBuffer.MaxCapacity) != 0)
+                int result = Interop.Kernel32.ResolveLocaleName(languages[i], localeNameBuffer, Interop.Kernel32.LOCALE_NAME_MAX_LENGTH); 
+                if (result != 0)
                 {
-                    string localeName = localeNameBuffer.ToString();
+                    string localeName = new string(localeNameBuffer, 0, result - 1); // result length includes null terminator
 
-                    if (CultureData.GetCultureData(localeName, true) != null)
+                    if (WindowsRuntimeResourceManagerBase.IsValidCulture(localeName))
                     {
                         return new CultureInfo(localeName);
                     }
@@ -394,8 +397,8 @@ namespace System.Resources
                                 if (_resourceMap == null)
                                 {
                                     exceptionInfo = new PRIExceptionInfo();
-                                    exceptionInfo._PackageSimpleName = packageSimpleName;
-                                    exceptionInfo._ResWFile = reswFilename;
+                                    exceptionInfo.PackageSimpleName = packageSimpleName;
+                                    exceptionInfo.ResWFile = reswFilename;
                                 }
                                 else
                                 {

@@ -19,7 +19,8 @@ namespace System.Net.Sockets.Tests
             _log = TestLogging.GetInstance();
             Assert.True(Capability.IPv4Support() || Capability.IPv6Support());
         }
-        public void OnCompleted(object sender, SocketAsyncEventArgs args)
+
+        private static void OnCompleted(object sender, SocketAsyncEventArgs args)
         {
             EventWaitHandle handle = (EventWaitHandle)args.UserToken;
             handle.Set();
@@ -69,6 +70,8 @@ namespace System.Net.Sockets.Tests
 
                     client.Disconnect(reuseSocket);
 
+                    Assert.False(client.Connected);
+
                     args.RemoteEndPoint = server2.EndPoint;
 
                     if (client.ConnectAsync(args))
@@ -114,6 +117,7 @@ namespace System.Net.Sockets.Tests
                     }
 
                     Assert.Equal(SocketError.Success, args.SocketError);
+                    Assert.False(client.Connected);
 
                     args.RemoteEndPoint = server2.EndPoint;
 
@@ -155,6 +159,9 @@ namespace System.Net.Sockets.Tests
 
                     IAsyncResult ar = client.BeginDisconnect(reuseSocket, null, null);
                     client.EndDisconnect(ar);
+
+                    Assert.False(client.Connected);
+
                     Assert.Throws<InvalidOperationException>(() => client.EndDisconnect(ar));
 
                     args.RemoteEndPoint = server2.EndPoint;

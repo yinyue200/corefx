@@ -652,27 +652,6 @@ namespace System.Xml.Xsl
                 get { return this; }
             }
 
-            /// <summary>
-            /// Return the item's converter.
-            /// </summary>
-            public override XmlValueConverter ClrMapping
-            {
-                get
-                {
-                    // Return value converter from XmlSchemaType if type is atomic
-                    if (IsAtomicValue)
-                        return SchemaType.ValueConverter;
-
-                    // Return node converter if item must be a node
-                    if (IsNode)
-                        return XmlNodeConverter.Node;
-
-                    // Otherwise return item converter
-                    return XmlAnyConverter.Item;
-                }
-            }
-
-
             //-----------------------------------------------
             // ListBase implementation
             //-----------------------------------------------
@@ -940,23 +919,6 @@ namespace System.Xml.Xsl
                 get { return this; }
             }
 
-            /// <summary>
-            /// Always return the item converter.
-            /// </summary>
-            public override XmlValueConverter ClrMapping
-            {
-                get
-                {
-                    if (_code == XmlTypeCode.None || _code == XmlTypeCode.Item)
-                        return XmlAnyConverter.Item;
-
-                    if (IsAtomicValue)
-                        return SchemaType.ValueConverter;
-
-                    return XmlNodeConverter.Node;
-                }
-            }
-
             //-----------------------------------------------
             // ListBase implementation
             //-----------------------------------------------
@@ -1146,21 +1108,6 @@ namespace System.Xml.Xsl
                 get { return _prime; }
             }
 
-            /// <summary>
-            /// Return the prime's converter wrapped in a list converter.
-            /// </summary>
-            public override XmlValueConverter ClrMapping
-            {
-                get
-                {
-                    if (_converter == null)
-                        _converter = XmlListConverter.Create(_prime.ClrMapping);
-
-                    return _converter;
-                }
-            }
-
-
             //-----------------------------------------------
             // ListBase implementation
             //-----------------------------------------------
@@ -1186,7 +1133,7 @@ namespace System.Xml.Xsl
         /// <summary>
         /// Create a Node XmlQueryType having an XSD content type.
         /// </summary>
-        /// <param name="code">unless kind is Root, Element, or Attribute, "contentType" is ignored</param>
+        /// <param name="kind">unless kind is Root, Element, or Attribute, "contentType" is ignored</param>
         /// <param name="contentType">content type of the node</param>
         /// <returns>the node type</returns>
         public static XmlQueryType Type(XPathNodeType kind, XmlQualifiedNameTest nameTest, XmlSchemaType contentType, bool isNillable)
@@ -1346,7 +1293,7 @@ namespace System.Xml.Xsl
         }
 
         /// <summary>
-        /// Converts type of sequence of items to type of sequnce of atomic value
+        /// Converts type of sequence of items to type of sequence of atomic value
         //  See http://www.w3.org/TR/2004/xquery-semantics/#jd_data for the detailed description
         /// </summary>
         /// <param name="source">source type</param>
@@ -1529,7 +1476,7 @@ namespace System.Xml.Xsl
                 case XmlTypeCode.Element:
                     XmlSchemaType sourceSchemaType = sourceItem.SchemaType;
                     if (sourceSchemaType == XmlSchemaComplexType.UntypedAnyType) {
-                        // attfibutes of of xdt:untypedAny are attribute(*, xdt:untypedAtomic)*
+                        // attributes of xdt:untypedAny are attribute(*, xdt:untypedAtomic)*
                         card |= AddFilteredPrime(list, UntypedAttribute, filter) * XmlQueryCardinality.ZeroOrOne;
                     }
                     else {
@@ -1917,7 +1864,7 @@ namespace System.Xml.Xsl
                 return XmlQueryCardinality.ZeroOrMore;
 
             default:
-                Debug.Assert(false);
+                Debug.Fail($"Unexpected type code {typeCode}");
                 return XmlQueryCardinality.None;
             }
         }

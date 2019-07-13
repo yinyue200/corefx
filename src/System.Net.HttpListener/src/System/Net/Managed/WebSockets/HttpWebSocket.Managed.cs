@@ -58,7 +58,7 @@ namespace System.Net.WebSockets
             // Send websocket handshake headers
             await responseStream.WriteWebSocketHandshakeHeadersAsync().ConfigureAwait(false);
 
-            WebSocket webSocket = ManagedWebSocket.CreateFromConnectedStream(context.Connection.ConnectedStream, true, subProtocol, keepAliveInterval, receiveBufferSize, internalBuffer);
+            WebSocket webSocket = WebSocket.CreateFromStream(context.Connection.ConnectedStream, isServer:true, subProtocol, keepAliveInterval);
 
             HttpListenerWebSocketContext webSocketContext = new HttpListenerWebSocketContext(
                                                                 request.Url,

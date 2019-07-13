@@ -85,7 +85,7 @@ namespace System.Transactions
             LazyInitializer.EnsureInitialized(ref s_transactionStateAborted, ref s_classSyncObject, () => new TransactionStateAborted());
 
         protected static TransactionStateCommitted TransactionStateCommitted =>
-            LazyInitializer.EnsureInitialized(ref s_transactionStateCommitted, ref s_classSyncObject, () =>  new TransactionStateCommitted());
+            LazyInitializer.EnsureInitialized(ref s_transactionStateCommitted, ref s_classSyncObject, () => new TransactionStateCommitted());
 
         protected static TransactionStateInDoubt TransactionStateInDoubt =>
             LazyInitializer.EnsureInitialized(ref s_transactionStateInDoubt, ref s_classSyncObject, () => new TransactionStateInDoubt());
@@ -183,7 +183,7 @@ namespace System.Transactions
 
         internal virtual void EndCommit(InternalTransaction tx)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
 
             throw TransactionException.CreateTransactionStateException(tx._innerException, tx.DistributedTxId);
         }
@@ -297,14 +297,11 @@ namespace System.Transactions
 
         internal virtual void ChangeStateTransactionAborted(InternalTransaction tx, Exception e)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
             TransactionsEtwProvider etwLog = TransactionsEtwProvider.Log;
             if (etwLog.IsEnabled())
             {
-                if (tx != null && tx.TransactionTraceId != null && tx.TransactionTraceId.TransactionIdentifier != null)
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx.TransactionTraceId.TransactionIdentifier.ToString(), e.ToString());
-                else
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, string.Empty, e.ToString());
+                etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx?.TransactionTraceId.TransactionIdentifier ?? string.Empty, e.ToString());
             }
 
             throw new InvalidOperationException();
@@ -312,14 +309,11 @@ namespace System.Transactions
 
         internal virtual void ChangeStateTransactionCommitted(InternalTransaction tx)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
             TransactionsEtwProvider etwLog = TransactionsEtwProvider.Log;
             if (etwLog.IsEnabled())
             {
-                if (tx != null && tx.TransactionTraceId != null && tx.TransactionTraceId.TransactionIdentifier != null)
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx.TransactionTraceId.TransactionIdentifier.ToString(), string.Empty);
-                else
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, string.Empty, string.Empty);
+                etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx?.TransactionTraceId.TransactionIdentifier ?? string.Empty, string.Empty);
             }
 
             throw new InvalidOperationException();
@@ -327,14 +321,11 @@ namespace System.Transactions
 
         internal virtual void InDoubtFromEnlistment(InternalTransaction tx)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
             TransactionsEtwProvider etwLog = TransactionsEtwProvider.Log;
             if (etwLog.IsEnabled())
             {
-                if (tx != null && tx.TransactionTraceId != null && tx.TransactionTraceId.TransactionIdentifier != null)
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx.TransactionTraceId.TransactionIdentifier.ToString(), string.Empty);
-                else
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, string.Empty, string.Empty);
+                etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx?.TransactionTraceId.TransactionIdentifier ?? string.Empty, string.Empty);
             }
 
             throw new InvalidOperationException();
@@ -342,14 +333,11 @@ namespace System.Transactions
 
         internal virtual void ChangeStatePromotedAborted(InternalTransaction tx)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
             TransactionsEtwProvider etwLog = TransactionsEtwProvider.Log;
             if (etwLog.IsEnabled())
             {
-                if (tx != null && tx.TransactionTraceId != null && tx.TransactionTraceId.TransactionIdentifier != null)
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx.TransactionTraceId.TransactionIdentifier.ToString(), string.Empty);
-                else
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, string.Empty, string.Empty);
+                etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx?.TransactionTraceId.TransactionIdentifier ?? string.Empty, string.Empty);
             }
 
             throw new InvalidOperationException();
@@ -357,14 +345,11 @@ namespace System.Transactions
 
         internal virtual void ChangeStatePromotedCommitted(InternalTransaction tx)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
             TransactionsEtwProvider etwLog = TransactionsEtwProvider.Log;
             if (etwLog.IsEnabled())
             {
-                if (tx != null && tx.TransactionTraceId != null && tx.TransactionTraceId.TransactionIdentifier != null)
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx.TransactionTraceId.TransactionIdentifier.ToString(), string.Empty);
-                else
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, string.Empty, string.Empty);
+                etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx?.TransactionTraceId.TransactionIdentifier ?? string.Empty, string.Empty);
             }
 
             throw new InvalidOperationException();
@@ -372,14 +357,11 @@ namespace System.Transactions
 
         internal virtual void InDoubtFromDtc(InternalTransaction tx)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
             TransactionsEtwProvider etwLog = TransactionsEtwProvider.Log;
             if (etwLog.IsEnabled())
             {
-                if (tx != null && tx.TransactionTraceId != null && tx.TransactionTraceId.TransactionIdentifier != null)
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx.TransactionTraceId.TransactionIdentifier.ToString(), string.Empty);
-                else
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, string.Empty, string.Empty);
+                etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx?.TransactionTraceId.TransactionIdentifier ?? string.Empty, string.Empty);
             }
 
             throw new InvalidOperationException();
@@ -387,14 +369,11 @@ namespace System.Transactions
 
         internal virtual void ChangeStatePromotedPhase0(InternalTransaction tx)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
             TransactionsEtwProvider etwLog = TransactionsEtwProvider.Log;
             if (etwLog.IsEnabled())
             {
-                if (tx != null && tx.TransactionTraceId != null && tx.TransactionTraceId.TransactionIdentifier != null)
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx.TransactionTraceId.TransactionIdentifier.ToString(), string.Empty);
-                else
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, string.Empty, string.Empty);
+                etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx?.TransactionTraceId.TransactionIdentifier ?? string.Empty, string.Empty);
             }
 
             throw new InvalidOperationException();
@@ -402,14 +381,11 @@ namespace System.Transactions
 
         internal virtual void ChangeStatePromotedPhase1(InternalTransaction tx)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
             TransactionsEtwProvider etwLog = TransactionsEtwProvider.Log;
             if (etwLog.IsEnabled())
             {
-                if (tx != null && tx.TransactionTraceId != null && tx.TransactionTraceId.TransactionIdentifier != null)
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx.TransactionTraceId.TransactionIdentifier.ToString(), string.Empty);
-                else
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, string.Empty, string.Empty);
+                etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx?.TransactionTraceId.TransactionIdentifier ?? string.Empty, string.Empty);
             }
 
             throw new InvalidOperationException();
@@ -417,14 +393,11 @@ namespace System.Transactions
 
         internal virtual void ChangeStateAbortedDuringPromotion(InternalTransaction tx)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
             TransactionsEtwProvider etwLog = TransactionsEtwProvider.Log;
             if (etwLog.IsEnabled())
             {
-                if (tx != null && tx.TransactionTraceId != null && tx.TransactionTraceId.TransactionIdentifier != null)
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx.TransactionTraceId.TransactionIdentifier.ToString(), string.Empty);
-                else
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, string.Empty, string.Empty);
+                etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx?.TransactionTraceId.TransactionIdentifier ?? string.Empty, string.Empty);
             }
 
             throw new InvalidOperationException();
@@ -436,26 +409,23 @@ namespace System.Transactions
 
         internal virtual void Phase0VolatilePrepareDone(InternalTransaction tx)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
             throw TransactionException.CreateTransactionStateException(tx._innerException, tx.DistributedTxId);
         }
 
         internal virtual void Phase1VolatilePrepareDone(InternalTransaction tx)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
             throw TransactionException.CreateTransactionStateException(tx._innerException, tx.DistributedTxId);
         }
 
         internal virtual void RestartCommitIfNeeded(InternalTransaction tx)
         {
-            Debug.Assert(false, string.Format(null, "Invalid Event for State; Current State: {0}", GetType()));
+            Debug.Fail($"Invalid Event for State; Current State: {GetType()}");
             TransactionsEtwProvider etwLog = TransactionsEtwProvider.Log;
             if (etwLog.IsEnabled())
             {
-                if (tx != null && tx.TransactionTraceId != null && tx.TransactionTraceId.TransactionIdentifier != null)
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx.TransactionTraceId.TransactionIdentifier.ToString(), string.Empty);
-                else
-                    etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, string.Empty, string.Empty);
+                etwLog.TransactionExceptionTrace(TransactionExceptionType.InvalidOperationException, tx?.TransactionTraceId.TransactionIdentifier ?? string.Empty, string.Empty);
             }
 
             throw new InvalidOperationException();
@@ -522,7 +492,9 @@ namespace System.Transactions
                 {
                     Array.Copy(
                         enlistments._volatileEnlistments,
+                        0,
                         newEnlistments,
+                        0,
                         enlistments._volatileEnlistmentSize
                         );
                 }
@@ -2115,7 +2087,8 @@ namespace System.Transactions
             {
                 if (tx._innerException == null)
                 {
-                    tx._innerException = new TimeoutException(SR.TraceTransactionTimeout); ;
+                    tx._innerException = new TimeoutException(SR.TraceTransactionTimeout);
+                    ;
                 }
                 tx.PromotedTransaction.Rollback();
 
@@ -4329,8 +4302,8 @@ namespace System.Transactions
 
 
                 distributedTx = TransactionStatePSPEOperation.PSPEPromote(tx);
-                Debug.Assert((distributedTx == null), string.Format(null, "PSPEPromote for non-MSDTC promotion returned a distributed transaction."));
-                Debug.Assert((tx.promotedToken != null), string.Format(null, "PSPEPromote for non-MSDTC promotion did not set InternalTransaction.PromotedToken."));
+                Debug.Assert((distributedTx == null), "PSPEPromote for non-MSDTC promotion returned a distributed transaction.");
+                Debug.Assert((tx.promotedToken != null), "PSPEPromote for non-MSDTC promotion did not set InternalTransaction.PromotedToken.");
             }
             catch (TransactionPromotionException e)
             {
@@ -4547,7 +4520,7 @@ namespace System.Transactions
                     {
                         // The PSPE has returned an invalid promoted transaction.
                         throw TransactionException.CreateInvalidOperationException(
-                                TraceSourceType.TraceSourceLtm,             
+                                TraceSourceType.TraceSourceLtm,
                                 SR.PromotedReturnedInvalidValue,
                                 e,
                                 tx.DistributedTxId

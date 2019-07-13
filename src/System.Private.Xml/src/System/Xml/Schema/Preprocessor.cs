@@ -128,7 +128,7 @@ namespace System.Xml.Schema
             XmlSchema listSchema;
             try
             {
-                //Accquire locks on all schema objects; Need to lock only on pre-created schemas and not parsed schemas
+                //Acquire locks on all schema objects; Need to lock only on pre-created schemas and not parsed schemas
                 for (schemaIndex = 0; schemaIndex < _lockList.Count; schemaIndex++)
                 {
                     listSchema = (XmlSchema)_lockList.GetByIndex(schemaIndex);
@@ -718,7 +718,7 @@ namespace System.Xml.Schema
                             break;
 
                         default:
-                            Debug.Assert(false);
+                            Debug.Fail($"Unexpected compositor {external.Compositor}");
                             break;
                     }
                 }

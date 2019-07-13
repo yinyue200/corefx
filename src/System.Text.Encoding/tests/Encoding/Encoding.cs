@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -45,7 +45,6 @@ namespace System.Text.Encodings.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Full framework uses system ACP and not UTF8")]
         public static void DefaultEncodingBOMTest()
         {
             UTF8Encoding defaultEncoding = Encoding.Default as UTF8Encoding;
@@ -62,7 +61,7 @@ namespace System.Text.Encodings.Tests
                 Encoding encoding = Encoding.GetEncoding(info.CodePage);
                 Assert.Equal(encoding, info.GetEncoding());
                 Assert.Equal(encoding.WebName, info.Name);
-                Assert.False(String.IsNullOrEmpty(info.DisplayName));
+                Assert.False(string.IsNullOrEmpty(info.DisplayName));
             }
         }
 

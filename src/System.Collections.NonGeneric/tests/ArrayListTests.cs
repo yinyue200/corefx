@@ -80,7 +80,6 @@ namespace System.Collections.Tests
         }
 
         [Fact]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.UapAot, "Cannot do DebuggerAttribute testing on UapAot: requires internal Reflection on framework types.")]
         public static void DebuggerAttribute()
         {
             DebuggerAttributes.ValidateDebuggerDisplayReferences(new ArrayList());
@@ -230,7 +229,7 @@ namespace System.Collections.Tests
         [Fact]
         public static void Adapter_InsertRange()
         {
-            // Test too see if listAdapator modified using InsertRange works
+            // Test to see if listAdaptor modified using InsertRange works
             // Populate the list
             ArrayList arrList = Helpers.CreateIntArrayList(10);
             ArrayList adapter = ArrayList.Adapter(arrList);
@@ -2576,12 +2575,12 @@ namespace System.Collections.Tests
                 _arrGrandDaughter = ArrayList.Synchronized(arrMother2);
                 _arrDaughter = ArrayList.Synchronized(arrMother2);
 
-                Assert.False(arrMother2.SyncRoot is ArrayList);
-                Assert.False(arrSon1.SyncRoot is ArrayList);
-                Assert.False(arrSon2.SyncRoot is ArrayList);
-                Assert.False(_arrDaughter.SyncRoot is ArrayList);
+                Assert.True(arrMother2.SyncRoot is ArrayList);
+                Assert.True(arrSon1.SyncRoot is ArrayList);
+                Assert.True(arrSon2.SyncRoot is ArrayList);
+                Assert.True(_arrDaughter.SyncRoot is ArrayList);
                 Assert.Equal(arrSon1.SyncRoot, arrMother2.SyncRoot);
-                Assert.False(_arrGrandDaughter.SyncRoot is ArrayList);
+                Assert.True(_arrGrandDaughter.SyncRoot is ArrayList);
 
                 arrMother2 = new ArrayList();
                 for (int i = 0; i < NumberOfElements; i++)
@@ -2910,7 +2909,7 @@ namespace System.Collections.Tests
             Assert.Equal(0, _iList.Count);
         }
 
-        public void AddElems(string currThreadName)
+        private void AddElems(string currThreadName)
         {
             int iNumTimesThreadUsed = 0;
 

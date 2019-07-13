@@ -1,3 +1,5 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// See the LICENSE file in the project root for more information
 //
 // KeyInfoNodeTest.cs - Test Cases for KeyInfoNode
 //
@@ -59,7 +61,7 @@ namespace System.Security.Cryptography.Xml.Tests
             doc.LoadXml(bad);
 
             KeyInfoNode node1 = new KeyInfoNode();
-            // LAMESPEC: No ArgumentNullException is thrown if value == null
+            // No ArgumentNullException is thrown if value == null
             node1.LoadXml(null);
             Assert.Null(node1.Value);
         }

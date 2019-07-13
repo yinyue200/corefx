@@ -49,7 +49,7 @@ namespace System.ComponentModel.DataAnnotations
         /// </summary>
         public string Value
         {
-            get { return _propertyValue; }
+            get => _propertyValue;
             set
             {
                 if (_propertyValue != value)
@@ -65,7 +65,7 @@ namespace System.ComponentModel.DataAnnotations
         /// </summary>
         public Type ResourceType
         {
-            get { return _resourceType; }
+            get => _resourceType;
             set
             {
                 if (_resourceType != value)
@@ -148,9 +148,7 @@ namespace System.ComponentModel.DataAnnotations
                     // If the property is not configured properly, then throw a missing member exception
                     if (badlyConfigured)
                     {
-                        string exceptionMessage = string.Format(CultureInfo.CurrentCulture,
-                            SR.LocalizableString_LocalizationFailed,
-                            _propertyName, _resourceType.FullName, _propertyValue);
+                        string exceptionMessage = SR.Format(SR.LocalizableString_LocalizationFailed, _propertyName, _resourceType.FullName, _propertyValue);
                         _cachedResult = () => { throw new InvalidOperationException(exceptionMessage); };
                     }
                     else

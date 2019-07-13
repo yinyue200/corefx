@@ -20,13 +20,15 @@ namespace System.Threading
     /// <summary>
     /// The exception that is thrown when the post-phase action of a <see cref="Barrier"/> fails.
     /// </summary>
+    [Serializable]
+    [System.Runtime.CompilerServices.TypeForwardedFrom("System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089")]
     public class BarrierPostPhaseException : Exception
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="BarrierPostPhaseException"/> class.
         /// </summary>
         public BarrierPostPhaseException()
-            : this((string)null)
+            : this((string?)null)
         {
         }
 
@@ -34,7 +36,7 @@ namespace System.Threading
         /// Initializes a new instance of the <see cref="BarrierPostPhaseException"/> class with the specified inner exception.
         /// </summary>
         /// <param name="innerException">The exception that is the cause of the current exception.</param>
-        public BarrierPostPhaseException(Exception innerException)
+        public BarrierPostPhaseException(Exception? innerException)
             : this(null, innerException)
         {
         }
@@ -43,7 +45,7 @@ namespace System.Threading
         /// Initializes a new instance of the <see cref="BarrierPostPhaseException"/> class with a specified error message.
         /// </summary>
         /// <param name="message">A string that describes the exception.</param>
-        public BarrierPostPhaseException(string message)
+        public BarrierPostPhaseException(string? message)
             : this(message, null)
         {
         }
@@ -53,7 +55,7 @@ namespace System.Threading
         /// </summary>
         /// <param name="message">A string that describes the exception.</param>
         /// <param name="innerException">The exception that is the cause of the current exception.</param>
-        public BarrierPostPhaseException(string message, Exception innerException)
+        public BarrierPostPhaseException(string? message, Exception? innerException)
             : base(message == null ? SR.BarrierPostPhaseException : message, innerException)
         {
         }
@@ -66,7 +68,6 @@ namespace System.Threading
         protected BarrierPostPhaseException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            throw new PlatformNotSupportedException();
         }
     }
 
@@ -129,17 +130,16 @@ namespace System.Threading
         private ManualResetEventSlim _evenEvent;
 
         // The execution context of the creator thread
-        private ExecutionContext _ownerThreadContext;
+        private ExecutionContext? _ownerThreadContext;
 
         // The EC callback that invokes the post phase action
-        [SecurityCritical]
-        private static ContextCallback s_invokePostPhaseAction;
+        private static ContextCallback? s_invokePostPhaseAction;
 
         // Post phase action after each phase
-        private Action<Barrier> _postPhaseAction;
+        private Action<Barrier>? _postPhaseAction;
 
         // In case the post phase action throws an exception, wraps it in BarrierPostPhaseException
-        private Exception _exception;
+        private Exception? _exception;
 
         // This is the ManagedThreadID of the postPhaseAction caller thread, this is used to determine if the SignalAndWait, Dispose or Add/RemoveParticipant caller thread is
         // the same thread as the postPhaseAction thread which means this method was called from the postPhaseAction which is illegal.
@@ -213,7 +213,7 @@ namespace System.Threading
         /// will not be released to the next phase until the postPhaseAction delegate
         /// has completed execution.
         /// </remarks>
-        public Barrier(int participantCount, Action<Barrier> postPhaseAction)
+        public Barrier(int participantCount, Action<Barrier>? postPhaseAction)
         {
             // the count must be non negative value
             if (participantCount < 0 || participantCount > MAX_PARTICIPANTS)
@@ -267,9 +267,7 @@ namespace System.Threading
                 newCurrentTotal |= SENSE_MASK;
             }
 
-#pragma warning disable 0420
             return Interlocked.CompareExchange(ref _currentTotalCount, newCurrentTotal, currentTotal) == currentTotal;
-#pragma warning restore 0420
         }
 
         /// <summary>
@@ -387,7 +385,7 @@ namespace System.Threading
                     }
                     break;
                 }
-                spinner.SpinOnce();
+                spinner.SpinOnce(sleep1Threshold: -1);
             }
             return newPhase;
         }
@@ -472,7 +470,7 @@ namespace System.Threading
                         break;
                     }
                 }
-                spinner.SpinOnce();
+                spinner.SpinOnce(sleep1Threshold: -1);
             }
         }
 
@@ -535,7 +533,7 @@ namespace System.Threading
         /// </exception>
         /// <exception cref="T:System.ObjectDisposedException">The current instance has already been
         /// disposed.</exception>
-        public Boolean SignalAndWait(TimeSpan timeout)
+        public bool SignalAndWait(TimeSpan timeout)
         {
             return SignalAndWait(timeout, new CancellationToken());
         }
@@ -562,9 +560,9 @@ namespace System.Threading
         /// canceled.</exception>
         /// <exception cref="T:System.ObjectDisposedException">The current instance has already been
         /// disposed.</exception>
-        public Boolean SignalAndWait(TimeSpan timeout, CancellationToken cancellationToken)
+        public bool SignalAndWait(TimeSpan timeout, CancellationToken cancellationToken)
         {
-            Int64 totalMilliseconds = (Int64)timeout.TotalMilliseconds;
+            long totalMilliseconds = (long)timeout.TotalMilliseconds;
             if (totalMilliseconds < -1 || totalMilliseconds > int.MaxValue)
             {
                 throw new System.ArgumentOutOfRangeException(nameof(timeout), timeout,
@@ -674,7 +672,7 @@ namespace System.Threading
                     break;
                 }
 
-                spinner.SpinOnce();
+                spinner.SpinOnce(sleep1Threshold: -1);
             }
 
             // ** Perform the real wait **
@@ -740,7 +738,7 @@ namespace System.Threading
                         else
                             return false;
                     }
-                    spinner.SpinOnce();
+                    spinner.SpinOnce(sleep1Threshold: -1);
                 }
             }
 
@@ -755,7 +753,6 @@ namespace System.Threading
         /// last arrival thread
         /// </summary>
         /// <param name="observedSense">The current phase sense</param>
-        [SecuritySafeCritical]
         private void FinishPhase(bool observedSense)
         {
             // Execute the PHA in try/finally block to reset the variables back in case of it threw an exception
@@ -769,7 +766,7 @@ namespace System.Threading
                     {
                         var currentContext = _ownerThreadContext;
 
-                        ContextCallback handler = s_invokePostPhaseAction;
+                        ContextCallback? handler = s_invokePostPhaseAction;
                         if (handler == null)
                         {
                             s_invokePostPhaseAction = handler = InvokePostPhaseAction;
@@ -805,11 +802,10 @@ namespace System.Threading
         /// Helper method to call the post phase action
         /// </summary>
         /// <param name="obj"></param>
-        [SecurityCritical]
-        private static void InvokePostPhaseAction(object obj)
+        private static void InvokePostPhaseAction(object? obj)
         {
-            var thisBarrier = (Barrier)obj;
-            thisBarrier._postPhaseAction(thisBarrier);
+            var thisBarrier = (Barrier)obj!;
+            thisBarrier._postPhaseAction!(thisBarrier);
         }
 
         /// <summary>

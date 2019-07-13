@@ -9,13 +9,13 @@ namespace System.Net.Sockets
     {
         private EndPoint _endPoint;
 
-        internal ConnectOverlappedAsyncResult(Socket socket, EndPoint endPoint, Object asyncState, AsyncCallback asyncCallback) :
+        internal ConnectOverlappedAsyncResult(Socket socket, EndPoint endPoint, object asyncState, AsyncCallback asyncCallback) :
             base(socket, asyncState, asyncCallback)
         {
             _endPoint = endPoint;
         }
 
-        internal EndPoint RemoteEndPoint
+        internal override EndPoint RemoteEndPoint
         {
             get { return _endPoint; }
         }

@@ -63,7 +63,7 @@ namespace System.Data.Odbc
         {
             get
             {
-                ADP.CheckArgumentNull(keyword, "keyword");
+                ADP.CheckArgumentNull(keyword, nameof(keyword));
                 Keywords index;
                 if (s_keywords.TryGetValue(keyword, out index))
                 {
@@ -76,7 +76,7 @@ namespace System.Data.Odbc
             }
             set
             {
-                ADP.CheckArgumentNull(keyword, "keyword");
+                ADP.CheckArgumentNull(keyword, nameof(keyword));
                 if (null != value)
                 {
                     Keywords index;
@@ -88,7 +88,7 @@ namespace System.Data.Odbc
                             case Keywords.Dsn: Dsn = ConvertToString(value); break;
                             //                      case Keywords.NamedConnection: NamedConnection = ConvertToString(value); break;
                             default:
-                                Debug.Assert(false, "unexpected keyword");
+                                Debug.Fail("unexpected keyword");
                                 throw ADP.KeywordNotSupported(keyword);
                         }
                     }
@@ -209,7 +209,7 @@ namespace System.Data.Odbc
 
         public override bool ContainsKey(string keyword)
         {
-            ADP.CheckArgumentNull(keyword, "keyword");
+            ADP.CheckArgumentNull(keyword, nameof(keyword));
             return s_keywords.ContainsKey(keyword) || base.ContainsKey(keyword);
         }
 
@@ -226,7 +226,7 @@ namespace System.Data.Odbc
                 case Keywords.Dsn: return Dsn;
                 //          case Keywords.NamedConnection: return NamedConnection;
                 default:
-                    Debug.Assert(false, "unexpected keyword");
+                    Debug.Fail("unexpected keyword");
                     throw ADP.KeywordNotSupported(s_validKeywords[(int)index]);
             }
         }
@@ -272,7 +272,7 @@ namespace System.Data.Odbc
 
         public override bool Remove(string keyword)
         {
-            ADP.CheckArgumentNull(keyword, "keyword");
+            ADP.CheckArgumentNull(keyword, nameof(keyword));
             if (base.Remove(keyword))
             {
                 Keywords index;
@@ -303,7 +303,7 @@ namespace System.Data.Odbc
                 //               _namedConnection = DbConnectionStringDefaults.NamedConnection;
                 //                break;
                 default:
-                    Debug.Assert(false, "unexpected keyword");
+                    Debug.Fail("unexpected keyword");
                     throw ADP.KeywordNotSupported(s_validKeywords[(int)index]);
             }
         }
@@ -316,7 +316,7 @@ namespace System.Data.Odbc
 
         public override bool TryGetValue(string keyword, out object value)
         {
-            ADP.CheckArgumentNull(keyword, "keyword");
+            ADP.CheckArgumentNull(keyword, nameof(keyword));
             Keywords index;
             if (s_keywords.TryGetValue(keyword, out index))
             {

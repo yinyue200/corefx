@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
+using System.Numerics.Hashing;
 using Microsoft.CSharp.RuntimeBinder.Semantics;
 
 namespace Microsoft.CSharp.RuntimeBinder
@@ -16,24 +17,20 @@ namespace Microsoft.CSharp.RuntimeBinder
         public Expr DispatchPayload(RuntimeBinder runtimeBinder, ArgumentObject[] arguments, LocalVariableSymbol[] locals)
             => runtimeBinder.DispatchPayload(this, arguments, locals);
 
-        public void PopulateSymbolTableWithName(SymbolTable symbolTable, Type callingType, ArgumentObject[] arguments)
-            => RuntimeBinder.PopulateSymbolTableWithPayloadInformation(symbolTable, this, callingType, arguments);
+        public void PopulateSymbolTableWithName(Type callingType, ArgumentObject[] arguments)
+            => RuntimeBinder.PopulateSymbolTableWithPayloadInformation(this, callingType, arguments);
 
         public bool IsBinderThatCanHaveRefReceiver => true;
 
         public CSharpCallFlags Flags { get; }
 
-        public Type CallingContext { get; }
-
-        public bool IsChecked => false;
-
-        private readonly List<CSharpArgumentInfo> _argumentInfo;
+        private readonly CSharpArgumentInfo[] _argumentInfo;
 
         CSharpArgumentInfo ICSharpBinder.GetArgumentInfo(int index) => _argumentInfo[index];
 
         public bool StaticCall => true;
 
-        public IList<Type> TypeArguments => Array.Empty<Type>();
+        public Type[] TypeArguments => Array.Empty<Type>();
 
         public string Name => ".ctor";
 
@@ -41,19 +38,54 @@ namespace Microsoft.CSharp.RuntimeBinder
 
         private readonly RuntimeBinder _binder;
 
+        private readonly Type _callingContext;
+
         public CSharpInvokeConstructorBinder(
             CSharpCallFlags flags,
             Type callingContext,
             IEnumerable<CSharpArgumentInfo> argumentInfo)
         {
             Flags = flags;
-            CallingContext = callingContext;
-            _argumentInfo = BinderHelper.ToList(argumentInfo);
-            _binder = RuntimeBinder.GetInstance();
+            _callingContext = callingContext;
+            _argumentInfo = BinderHelper.ToArray(argumentInfo);
+            _binder = new RuntimeBinder(callingContext);
+        }
+
+        public int GetGetBinderEquivalenceHash()
+        {
+            int hash = _callingContext?.GetHashCode() ?? 0;
+            hash = HashHelpers.Combine(hash, (int)Flags);
+            hash = HashHelpers.Combine(hash, Name.GetHashCode());
+
+            hash = BinderHelper.AddArgHashes(hash, TypeArguments, _argumentInfo);
+
+            return hash;
+        }
+
+        public bool IsEquivalentTo(ICSharpBinder other)
+        {
+            var otherBinder = other as CSharpInvokeConstructorBinder;
+            if (otherBinder == null)
+            {
+                return false;
+            }
+
+            if (Flags != otherBinder.Flags ||
+                _callingContext != otherBinder._callingContext ||
+                Name != otherBinder.Name ||
+                TypeArguments.Length != otherBinder.TypeArguments.Length ||
+                _argumentInfo.Length != otherBinder._argumentInfo.Length)
+            {
+                return false;
+            }
+
+            return BinderHelper.CompareArgInfos(TypeArguments, otherBinder.TypeArguments, _argumentInfo, otherBinder._argumentInfo);
         }
 
         public override DynamicMetaObject Bind(DynamicMetaObject target, DynamicMetaObject[] args)
         {
+            BinderHelper.ValidateBindArgument(target, nameof(target));
+            BinderHelper.ValidateBindArgument(args, nameof(args));
             return BinderHelper.Bind(this, _binder, BinderHelper.Cons(target, args), _argumentInfo, null);
         }
     }

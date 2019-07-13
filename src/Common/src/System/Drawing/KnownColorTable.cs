@@ -3,15 +3,13 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Diagnostics;
+using System.Reflection;
 
 namespace System.Drawing
 {
-#if FEATURE_SYSTEM_EVENTS
-    using System.Drawing.Internal;
-#endif
-
     static internal class KnownColorTable
     {
+        private static MethodInfo s_categoryGetter;
         private static int[] s_colorTable;
         private static string[] s_colorNameTable;
 
@@ -58,9 +56,39 @@ namespace System.Drawing
         {
             int[] values = new int[(unchecked((int)KnownColor.MenuHighlight)) + 1];
 
-#if FEATURE_SYSTEM_EVENTS
-            SystemEvents.UserPreferenceChanging += new UserPreferenceChangingEventHandler(OnUserPreferenceChanging);
-#endif
+            // When Microsoft.Win32.SystemEvents is available, we can react to the UserPreferenceChanging events by updating
+            // SystemColors. In order to avoid a static dependency on SystemEvents since it is not available on all platforms 
+            // and as such we don't want to bring it into the shared framework. We use the desktop identity for SystemEvents
+            // since it is stable and will remain stable for compatibility whereas the core identity could change.
+            Type systemEventsType = Type.GetType("Microsoft.Win32.SystemEvents, Microsoft.Win32.SystemEvents", throwOnError: false);
+            EventInfo upEventInfo = systemEventsType?.GetEvent("UserPreferenceChanging", BindingFlags.Public | BindingFlags.Static);
+
+            if (upEventInfo != null)
+            {
+                // Delegate TargetType
+                Type userPrefChangingDelegateType = Type.GetType("Microsoft.Win32.UserPreferenceChangingEventHandler, Microsoft.Win32.SystemEvents", throwOnError: false);
+                Debug.Assert(userPrefChangingDelegateType != null);
+
+                if (userPrefChangingDelegateType != null)
+                {
+                    // we are using MethodInfo overload because it allows relaxed signature binding i.e. the types dont need to be exact match. It allows base classes as well.
+                    MethodInfo mi = typeof(KnownColorTable).GetMethod(nameof(OnUserPreferenceChanging), BindingFlags.NonPublic | BindingFlags.Static);
+                    Debug.Assert(mi != null);
+
+                    if (mi != null)
+                    {
+                        // Creating a delegate to use it as event handler.
+                        Delegate handler = Delegate.CreateDelegate(userPrefChangingDelegateType, mi);
+                        upEventInfo.AddEventHandler(null, handler);
+                    }
+
+                    // Retrieving getter of the category property of the UserPreferenceChangingEventArgs.
+                    Type argsType = Type.GetType("Microsoft.Win32.UserPreferenceChangingEventArgs, Microsoft.Win32.SystemEvents", throwOnError: false);
+                    s_categoryGetter = argsType?.GetMethod("get_Category", BindingFlags.Instance | BindingFlags.Public);
+                    Debug.Assert(s_categoryGetter != null);
+                }
+            }
+
             UpdateSystemColors(values);
 
             // just consts...
@@ -437,15 +465,15 @@ namespace System.Drawing
         }
 #endif
 
-#if FEATURE_SYSTEM_EVENTS
-        private static void OnUserPreferenceChanging(object sender, UserPreferenceChangingEventArgs e)
+        private static void OnUserPreferenceChanging(object sender, EventArgs args)
         {
-            if (e.Category == UserPreferenceCategory.Color && colorTable != null)
+            Debug.Assert(s_categoryGetter != null);
+            // Access UserPreferenceChangingEventArgs.Category value through cached MethodInfo.
+            if (s_colorTable != null && s_categoryGetter != null && (int)s_categoryGetter.Invoke(args, Array.Empty<object>()) == 2) // UserPreferenceCategory.Color = 2
             {
-                UpdateSystemColors(colorTable);
+                UpdateSystemColors(s_colorTable);
             }
         }
-#endif
 
         private static void UpdateSystemColors(int[] colorTable)
         {

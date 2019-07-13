@@ -1,11 +1,7 @@
-//------------------------------------------------------------------------------
-// <copyright file="ColorConverter.cs" company="Microsoft">
-//     Copyright (c) Microsoft Corporation.  All rights reserved.
-// </copyright>                                                                
-//------------------------------------------------------------------------------
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
-/*
- */
 namespace System.Drawing {
     using System.Runtime.Serialization.Formatters;
     using System.Runtime.InteropServices;
@@ -237,7 +233,7 @@ namespace System.Drawing {
         /// </devdoc>
         public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType) {
             if (destinationType == null) {
-                throw new ArgumentNullException("destinationType");
+                throw new ArgumentNullException(nameof(destinationType));
             }
 
             if( value is Color ){

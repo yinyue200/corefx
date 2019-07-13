@@ -13,25 +13,25 @@ namespace System.Data.SqlClient.ManualTesting.Tests
         // Shrink the packet size - this should make timeouts more likely
         private static readonly string s_connStr = (new SqlConnectionStringBuilder(DataTestUtility.TcpConnStr) { PacketSize = 512 }).ConnectionString;
 
-        [CheckConnStrSetupFact]
+        [ConditionalFact(typeof(DataTestUtility),nameof(DataTestUtility.AreConnStringsSetup))]
         public static void PlainCancelTest()
         {
             PlainCancel(s_connStr);
         }
 
-        [CheckConnStrSetupFact]
+        [ConditionalFact(typeof(DataTestUtility),nameof(DataTestUtility.AreConnStringsSetup))]
         public static void PlainMARSCancelTest()
         {
             PlainCancel((new SqlConnectionStringBuilder(s_connStr) { MultipleActiveResultSets = true }).ConnectionString);
         }
 
-        [CheckConnStrSetupFact]
+        [ConditionalFact(typeof(DataTestUtility),nameof(DataTestUtility.AreConnStringsSetup))]
         public static void PlainCancelTestAsync()
         {
             PlainCancelAsync(s_connStr);
         }
 
-        [CheckConnStrSetupFact]
+        [ConditionalFact(typeof(DataTestUtility),nameof(DataTestUtility.AreConnStringsSetup))]
         public static void PlainMARSCancelTestAsync()
         {
             PlainCancelAsync((new SqlConnectionStringBuilder(s_connStr) { MultipleActiveResultSets = true }).ConnectionString);
@@ -87,31 +87,31 @@ namespace System.Data.SqlClient.ManualTesting.Tests
             }
         }
 
-        [CheckConnStrSetupFact]
+        [ConditionalFact(typeof(DataTestUtility),nameof(DataTestUtility.AreConnStringsSetup))]
         public static void MultiThreadedCancel_NonAsync()
         {
             MultiThreadedCancel(s_connStr, false);
         }
 
-        [CheckConnStrSetupFact]
+        [ConditionalFact(typeof(DataTestUtility),nameof(DataTestUtility.AreConnStringsSetup))]
         public static void MultiThreadedCancel_Async()
         {
             MultiThreadedCancel(s_connStr, true);
         }
 
-        [CheckConnStrSetupFact]
+        [ConditionalFact(typeof(DataTestUtility),nameof(DataTestUtility.AreConnStringsSetup))]
         public static void TimeoutCancel()
         {
             TimeoutCancel(s_connStr);
         }
 
-        [CheckConnStrSetupFact]
+        [ConditionalFact(typeof(DataTestUtility),nameof(DataTestUtility.AreConnStringsSetup))]
         public static void CancelAndDisposePreparedCommand()
         {
             CancelAndDisposePreparedCommand(s_connStr);
         }
 
-        [CheckConnStrSetupFact]
+        [ConditionalFact(typeof(DataTestUtility),nameof(DataTestUtility.AreConnStringsSetup))]
         public static void TimeOutDuringRead()
         {
             TimeOutDuringRead(s_connStr);
@@ -125,16 +125,17 @@ namespace System.Data.SqlClient.ManualTesting.Tests
                 var command = con.CreateCommand();
                 command.CommandText = "select * from orders; waitfor delay '00:00:08'; select * from customers";
 
-                Thread rThread1 = new Thread(ExecuteCommandCancelExpected);
-                Thread rThread2 = new Thread(CancelSharedCommand);
                 Barrier threadsReady = new Barrier(2);
                 object state = new Tuple<bool, SqlCommand, Barrier>(async, command, threadsReady);
 
-                rThread1.Start(state);
-                rThread2.Start(state);
-                rThread1.Join();
-                rThread2.Join();
+                Task[] tasks = new Task[2];
+                tasks[0] = new Task(ExecuteCommandCancelExpected, state);
+                tasks[1] = new Task(CancelSharedCommand, state);
+                tasks[0].Start();
+                tasks[1].Start();
 
+                Task.WaitAll(tasks, 15 * 1000);
+                
                 CommandCancelTest.VerifyConnection(command);
             }
         }
@@ -149,7 +150,7 @@ namespace System.Data.SqlClient.ManualTesting.Tests
                 cmd.CommandText = "WAITFOR DELAY '00:00:30';select * from Customers";
 
                 string errorMessage = SystemDataResourceManager.Instance.SQL_Timeout;
-                DataTestUtility.ExpectFailure<SqlException>(() => cmd.ExecuteReader(), errorMessage);
+                DataTestUtility.ExpectFailure<SqlException>(() => cmd.ExecuteReader(), new string[] { errorMessage });
 
                 VerifyConnection(cmd);
             }
@@ -208,6 +209,8 @@ namespace System.Data.SqlClient.ManualTesting.Tests
             Barrier threadsReady = stateTuple.Item3;
 
             string errorMessage = SystemDataResourceManager.Instance.SQL_OperationCancelled;
+            string errorMessageSevereFailure = SystemDataResourceManager.Instance.SQL_SevereError;
+
             DataTestUtility.ExpectFailure<SqlException>(() =>
             {
                 threadsReady.SignalAndWait();
@@ -220,7 +223,8 @@ namespace System.Data.SqlClient.ManualTesting.Tests
                         }
                     } while (r.NextResult());
                 }
-            }, errorMessage);
+            }, new string[] { errorMessage, errorMessageSevereFailure });
+            
         }
 
         private static void CancelSharedCommand(object state)

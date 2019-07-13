@@ -39,7 +39,7 @@ namespace System.DirectoryServices.AccountManagement
 
             // Make a copy of the SID, since a byte[] is mutable
             _sid = new byte[sid.Length];
-            Array.Copy(sid, _sid, sid.Length);
+            Array.Copy(sid, 0, _sid, 0, sid.Length);
 
             _domainName = domainName;
             _wellKnownSid = true;
@@ -69,7 +69,7 @@ namespace System.DirectoryServices.AccountManagement
             }
             else
             {
-                if ((String.Compare(_domainName, that._domainName, StringComparison.OrdinalIgnoreCase) == 0) &&
+                if ((string.Equals(_domainName, that._domainName, StringComparison.OrdinalIgnoreCase)) &&
                      (Utils.AreBytesEqual(_sid, that._sid)))
                     return true;
             }

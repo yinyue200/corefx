@@ -224,21 +224,6 @@ namespace System.Linq.Expressions.Tests
         }
 
         [Theory, ClassData(typeof(CompilationTypes))]
-        public void StaticReadonlyField(bool useInterpreter)
-        {
-            MemberInfo member = typeof(PropertyAndFields).GetMember(nameof(PropertyAndFields.StaticReadonlyStringField))[0];
-            Expression<Func<PropertyAndFields>> assignToReadonly = Expression.Lambda<Func<PropertyAndFields>>(
-                Expression.MemberInit(
-                    Expression.New(typeof(PropertyAndFields)),
-                    Expression.Bind(member, Expression.Constant("ABC" + useInterpreter))
-                    )
-                );
-            Func<PropertyAndFields> func = assignToReadonly.Compile(useInterpreter);
-            func();
-            Assert.Equal("ABC" + useInterpreter, PropertyAndFields.StaticReadonlyStringField);
-        }
-
-        [Theory, ClassData(typeof(CompilationTypes))]
         public void StaticProperty(bool useInterpreter)
         {
             MemberInfo member = typeof(PropertyAndFields).GetMember(nameof(PropertyAndFields.StaticStringProperty))[0];
@@ -284,7 +269,7 @@ namespace System.Linq.Expressions.Tests
             public override string ToString() => ""; // Called internal to test framework and default would throw.
         }
 
-        private static IEnumerable<object[]> BogusBindings()
+        public static IEnumerable<object[]> BogusBindings()
         {
             MemberInfo member = typeof(PropertyAndFields).GetMember(nameof(PropertyAndFields.StaticReadonlyStringField))[0];
             foreach (MemberBindingType type in new[] {MemberBindingType.Assignment, MemberBindingType.ListBinding, MemberBindingType.MemberBinding, (MemberBindingType)(-1)})
@@ -303,7 +288,7 @@ namespace System.Linq.Expressions.Tests
         [Fact]
         public void GlobalMethod()
         {
-            ModuleBuilder module = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("Name"), AssemblyBuilderAccess.Run).DefineDynamicModule("Module");
+            ModuleBuilder module = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("Name"), AssemblyBuilderAccess.RunAndCollect).DefineDynamicModule("Module");
             MethodBuilder globalMethod = module.DefineGlobalMethod("GlobalMethod", MethodAttributes.Public | MethodAttributes.Static, typeof(int), new [] {typeof(int)});
             globalMethod.GetILGenerator().Emit(OpCodes.Ret);
             module.CreateGlobalFunctions();
@@ -314,7 +299,7 @@ namespace System.Linq.Expressions.Tests
         [Fact]
         public void GlobalField()
         {
-            ModuleBuilder module = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("Name"), AssemblyBuilderAccess.Run).DefineDynamicModule("Module");
+            ModuleBuilder module = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("Name"), AssemblyBuilderAccess.RunAndCollect).DefineDynamicModule("Module");
             FieldBuilder fieldBuilder = module.DefineInitializedData("GlobalField", new byte[4], FieldAttributes.Public);
             module.CreateGlobalFunctions();
             FieldInfo globalField = module.GetField(fieldBuilder.Name);

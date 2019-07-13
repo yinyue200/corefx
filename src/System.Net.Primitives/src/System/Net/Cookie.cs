@@ -41,7 +41,8 @@ namespace System.Net
         internal const string SpecialAttributeLiteral = "$";
 
         internal static readonly char[] PortSplitDelimiters = new char[] { ' ', ',', '\"' };
-        internal static readonly char[] ReservedToName = new char[] { ' ', '\t', '\r', '\n', '=', ';', ',' };
+        // Space (' ') should be reserved as well per RFCs, but major web browsers support it and some web sites use it - so we support it too
+        internal static readonly char[] ReservedToName = new char[] { '\t', '\r', '\n', '=', ';', ',' };
         internal static readonly char[] ReservedToValue = new char[] { ';', ',' };
 
         private string m_comment = string.Empty; // Do not rename (binary serialization)
@@ -66,30 +67,30 @@ namespace System.Net
 
         private string m_domainKey = string.Empty; // Do not rename (binary serialization)
 
-/* 
+/*
     TODO: #13607
     VSO 449560
     Reflecting on internal method won't work on AOT without rd.xml and DisableReflection
     block in toolchain.Networking team will be working on exposing methods from S.Net.Primitive
-    public, this is a temporary workaround till that happens. 
+    public, this is a temporary workaround till that happens.
 */
-#if uap 
+#if uap
         public
-#else 
+#else
         internal
 #endif
         bool IsQuotedVersion = false;
 
-/* 
+/*
     TODO: #13607
     VSO 449560
     Reflecting on internal method won't work on AOT without rd.xml and DisableReflection
     block in toolchain.Networking team will be working on exposing methods from S.Net.Primitive
-    public, this is a temporary workaround till that happens. 
+    public, this is a temporary workaround till that happens.
 */
-#if uap 
+#if uap
         public
-#else 
+#else
         internal
 #endif
         bool IsQuotedDomain = false;
@@ -234,28 +235,28 @@ namespace System.Net
             }
             set
             {
-                if (String.IsNullOrEmpty(value) || !InternalSetName(value))
+                if (string.IsNullOrEmpty(value) || !InternalSetName(value))
                 {
                     throw new CookieException(SR.Format(SR.net_cookie_attribute, "Name", value == null ? "<null>" : value));
                 }
             }
         }
 
-/* 
+/*
     TODO: #13607
     VSO 449560
     Reflecting on internal method won't work on AOT without rd.xml and DisableReflection
     block in toolchain.Networking team will be working on exposing methods from S.Net.Primitive
-    public, this is a temporary workaround till that happens. 
+    public, this is a temporary workaround till that happens.
 */
-#if uap 
+#if uap
         public
-#else 
+#else
         internal
 #endif
         bool InternalSetName(string value)
         {
-            if (String.IsNullOrEmpty(value) || value[0] == '$' || value.IndexOfAny(ReservedToName) != -1)
+            if (string.IsNullOrEmpty(value) || value[0] == '$' || value.IndexOfAny(ReservedToName) != -1 || value[0] == ' ' || value[value.Length - 1] == ' ')
             {
                 m_name = string.Empty;
                 return false;
@@ -285,16 +286,16 @@ namespace System.Net
             }
         }
 
-/* 
+/*
     TODO: #13607
     VSO 449560
     Reflecting on internal method won't work on AOT without rd.xml and DisableReflection
     block in toolchain.Networking team will be working on exposing methods from S.Net.Primitive
-    public, this is a temporary workaround till that happens. 
+    public, this is a temporary workaround till that happens.
 */
-#if uap 
+#if uap
         public
-#else 
+#else
         internal
 #endif
         Cookie Clone()
@@ -323,8 +324,8 @@ namespace System.Net
             clonedCookie.Version = m_version;
             clonedCookie.Secure = m_secure;
 
-            // The variant is set when we set properties like port/version. So, 
-            // we should copy over the variant from the original cookie after 
+            // The variant is set when we set properties like port/version. So,
+            // we should copy over the variant from the original cookie after
             // we set all other properties
             clonedCookie.m_cookieVariant = m_cookieVariant;
 
@@ -370,7 +371,7 @@ namespace System.Net
             }
 
             // Check the name
-            if (m_name == null || m_name.Length == 0 || m_name[0] == '$' || m_name.IndexOfAny(ReservedToName) != -1)
+            if (string.IsNullOrEmpty(m_name) || m_name[0] == '$' || m_name.IndexOfAny(ReservedToName) != -1 || m_name[0] == ' ' || m_name[m_name.Length - 1] == ' ')
             {
                 if (shouldThrow)
                 {
@@ -638,7 +639,7 @@ namespace System.Net
                         // Skip spaces
                         if (ports[i] != string.Empty)
                         {
-                            if (!Int32.TryParse(ports[i], out port))
+                            if (!int.TryParse(ports[i], out port))
                             {
                                 throw new CookieException(SR.Format(SR.net_cookie_attribute, CookieFields.PortAttributeName, value));
                             }
@@ -702,16 +703,16 @@ namespace System.Net
             }
         }
 
-/* 
+/*
     TODO: #13607
     VSO 449560
     Reflecting on internal method won't work on AOT without rd.xml and DisableReflection
     block in toolchain.Networking team will be working on exposing methods from S.Net.Primitive
-    public, this is a temporary workaround till that happens. 
+    public, this is a temporary workaround till that happens.
 */
-#if uap 
+#if uap
         public
-#else 
+#else
         internal
 #endif
         CookieVariant Variant
@@ -843,16 +844,16 @@ namespace System.Net
             }
         }
 
-/* 
+/*
     TODO: #13607
     VSO 449560
     Reflecting on internal method won't work on AOT without rd.xml and DisableReflection
     block in toolchain.Networking team will be working on exposing methods from S.Net.Primitive
-    public, this is a temporary workaround till that happens. 
+    public, this is a temporary workaround till that happens.
 */
-#if uap 
+#if uap
         public
-#else 
+#else
         internal
 #endif
         string ToServerString()
@@ -900,32 +901,5 @@ namespace System.Net
             }
             return result == EqualsLiteral ? null : result;
         }
-
-#if DEBUG
-        internal void Dump()
-        {
-            if (NetEventSource.IsEnabled)
-            {
-                if (NetEventSource.IsEnabled) NetEventSource.Info(this, 
-                                  "Cookie: "        + ToString() + "->\n"
-                                + "\tComment    = " + Comment + "\n"
-                                + "\tCommentUri = " + CommentUri + "\n"
-                                + "\tDiscard    = " + Discard + "\n"
-                                + "\tDomain     = " + Domain + "\n"
-                                + "\tExpired    = " + Expired + "\n"
-                                + "\tExpires    = " + Expires + "\n"
-                                + "\tName       = " + Name + "\n"
-                                + "\tPath       = " + Path + "\n"
-                                + "\tPort       = " + Port + "\n"
-                                + "\tSecure     = " + Secure + "\n"
-                                + "\tTimeStamp  = " + TimeStamp + "\n"
-                                + "\tValue      = " + Value + "\n"
-                                + "\tVariant    = " + Variant + "\n"
-                                + "\tVersion    = " + Version + "\n"
-                                + "\tHttpOnly    = " + HttpOnly + "\n"
-                                );
-            }
-        }
-#endif
     }
 }

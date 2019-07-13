@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-#if FEATURE_SYSTEM_EVENTS
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -13,7 +12,7 @@ namespace System.Drawing.Internal
 {
     // Keeps track of objects that need to be notified of system color change events.
     // Mostly this means maintaining a list of weak references.
-    internal class SystemColorTracker
+    internal static class SystemColorTracker
     {
         // when I tried the self host, it went over 500 but never over 1000.
         private static int INITIAL_SIZE = 200;
@@ -25,16 +24,11 @@ namespace System.Drawing.Internal
         private static WeakReference[] list = new WeakReference[INITIAL_SIZE];
         private static int count = 0;
         private static bool addedTracker;
-
-        // There's no such thing as a delegate to a static method,
-        // so we need to create an instance of something.
-        private SystemColorTracker()
-        {
-        }
+        private static object lockObject = new object();
 
         internal static void Add(ISystemColorTracker obj)
         {
-            lock (typeof(SystemColorTracker))
+            lock (lockObject)
             {
                 Debug.Assert(list != null, "List is null");
                 Debug.Assert(list.Length > 0, "INITIAL_SIZE was initialized after list");
@@ -132,10 +126,7 @@ namespace System.Drawing.Internal
                 list.CopyTo(newList, 0);
                 list = newList;
 
-                if (list.Length >= WARNING_SIZE)
-                {
-                    Debug.Fail("SystemColorTracker is using way more memory than expected.");
-                }
+                Debug.Assert(list.Length < WARNING_SIZE, "SystemColorTracker is using way more memory than expected.");
             }
         }
 
@@ -159,4 +150,3 @@ namespace System.Drawing.Internal
         }
     }
 }
-#endif

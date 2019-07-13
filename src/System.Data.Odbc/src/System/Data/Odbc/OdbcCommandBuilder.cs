@@ -105,7 +105,7 @@ namespace System.Data.Odbc
 
             if (null == command)
             {
-                throw ADP.ArgumentNull("command");
+                throw ADP.ArgumentNull(nameof(command));
             }
             switch (command.CommandType)
             {
@@ -227,7 +227,7 @@ namespace System.Data.Odbc
                             parameter.Direction = ParameterDirection.ReturnValue;
                             break;
                         default:
-                            Debug.Assert(false, "Unexpected Parametertype while DeriveParamters");
+                            Debug.Fail("Unexpected Parametertype while DeriveParamters");
                             break;
                     }
                     parameter.OdbcType = TypeMap.FromSqlType((ODBC32.SQL_TYPE)reader.GetInt16(ODBC32.DATA_TYPE - 1))._odbcType;
@@ -236,24 +236,57 @@ namespace System.Data.Odbc
                     {
                         case OdbcType.Decimal:
                         case OdbcType.Numeric:
-                            parameter.ScaleInternal = (Byte)reader.GetInt16(ODBC32.DECIMAL_DIGITS - 1);
-                            parameter.PrecisionInternal = (Byte)reader.GetInt16(ODBC32.NUM_PREC_RADIX - 1);
+                            parameter.ScaleInternal = (byte)reader.GetInt16(ODBC32.DECIMAL_DIGITS - 1);
+                            parameter.PrecisionInternal = (byte)reader.GetInt16(ODBC32.NUM_PREC_RADIX - 1);
                             break;
                     }
                     rParams.Add(parameter);
                 }
             }
             retcode = hstmt.CloseCursor();
-            return rParams.ToArray(); ;
+            return rParams.ToArray();
         }
 
         public override string QuoteIdentifier(string unquotedIdentifier)
         {
             return QuoteIdentifier(unquotedIdentifier, null /* use DataAdapter.SelectCommand.Connection if available */);
         }
+
         public string QuoteIdentifier(string unquotedIdentifier, OdbcConnection connection)
         {
-            throw ADP.NotSupported();
+            ADP.CheckArgumentNull(unquotedIdentifier, nameof(unquotedIdentifier));
+
+            // if the user has specificed a prefix use the user specified  prefix and suffix
+            // otherwise get them from the provider
+            string quotePrefix = QuotePrefix;
+            string quoteSuffix = QuoteSuffix;
+            if (string.IsNullOrEmpty(quotePrefix))
+            {
+                if (connection == null)
+                {
+                    // Use the adapter's connection if QuoteIdentifier was called from 
+                    // DbCommandBuilder instance (which does not have an overload that gets connection object)
+                    connection = DataAdapter?.SelectCommand?.Connection;
+                    if (connection == null)
+                    {
+                        throw ADP.QuotePrefixNotSet(ADP.QuoteIdentifier);
+                    }
+                }
+                quotePrefix = connection.QuoteChar(ADP.QuoteIdentifier);
+                quoteSuffix = quotePrefix;
+            }
+
+            // by the ODBC spec "If the data source does not support quoted identifiers, a blank is returned."
+            // So if a blank is returned the string is returned unchanged. Otherwise the returned string is used
+            // to quote the string
+            if (!string.IsNullOrEmpty(quotePrefix) && quotePrefix != " ")
+            {
+                return ADP.BuildQuotedString(quotePrefix, quoteSuffix, unquotedIdentifier);
+            }
+            else
+            {
+                return unquotedIdentifier;
+            }
         }
 
         protected override void SetRowUpdatingHandler(DbDataAdapter adapter)
@@ -273,9 +306,46 @@ namespace System.Data.Odbc
         {
             return UnquoteIdentifier(quotedIdentifier, null /* use DataAdapter.SelectCommand.Connection if available */);
         }
+
         public string UnquoteIdentifier(string quotedIdentifier, OdbcConnection connection)
         {
-            throw ADP.NotSupported();
+            ADP.CheckArgumentNull(quotedIdentifier, nameof(quotedIdentifier));
+
+            // if the user has specificed a prefix use the user specified  prefix and suffix
+            // otherwise get them from the provider
+            string quotePrefix = QuotePrefix;
+            string quoteSuffix = QuoteSuffix;
+            if (string.IsNullOrEmpty(quotePrefix))
+            {
+                if (connection == null)
+                {
+                    // Use the adapter's connection if UnquoteIdentifier was called from 
+                    // DbCommandBuilder instance (which does not have an overload that gets connection object)
+                    connection = DataAdapter?.SelectCommand?.Connection;
+                    if (connection == null)
+                    {
+                        throw ADP.QuotePrefixNotSet(ADP.UnquoteIdentifier);
+                    }
+                }
+                quotePrefix = connection.QuoteChar(ADP.UnquoteIdentifier);
+                quoteSuffix = quotePrefix;
+            }
+
+            string unquotedIdentifier;
+            // by the ODBC spec "If the data source does not support quoted identifiers, a blank is returned."
+            // So if a blank is returned the string is returned unchanged. Otherwise the returned string is used
+            // to unquote the string
+            if (!string.IsNullOrEmpty(quotePrefix) || quotePrefix != " ")
+            {
+                // ignoring the return value because it is acceptable for the quotedString to not be quoted in this
+                // context.
+                ADP.RemoveStringQuotes(quotePrefix, quoteSuffix, quotedIdentifier, out unquotedIdentifier);
+            }
+            else
+            {
+                unquotedIdentifier = quotedIdentifier;
+            }
+            return unquotedIdentifier;
         }
     }
 }

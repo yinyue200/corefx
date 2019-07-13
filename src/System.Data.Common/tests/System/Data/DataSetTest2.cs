@@ -24,14 +24,15 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using Xunit;
 using System.Text;
 using System.IO;
-
+using System.Diagnostics;
 using System.Xml;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.Serialization.Formatters.Tests;
 using System.Globalization;
+using Microsoft.DotNet.RemoteExecutor;
+using Xunit;
 
 namespace System.Data.Tests
 {
@@ -682,15 +683,15 @@ namespace System.Data.Tests
         }
         #endregion
 
-        #region inferingTables
+        #region inferringTables
         [Fact]
-        public void InferXmlSchema_inferingTables1()
+        public void InferXmlSchema_inferringTables1()
         {
-            //Acroding to the msdn documantaion :
+            //According to the msdn documantaion :
             //ms-help://MS.MSDNQTR.2003FEB.1033/cpguide/html/cpconinferringtables.htm
             //Elements that have attributes specified in them will result in inferred tables
 
-            // inferingTables1
+            // inferringTables1
             StringBuilder sb = new StringBuilder();
 
             sb.Append("<DocumentElement>");
@@ -708,13 +709,13 @@ namespace System.Data.Tests
         }
 
         [Fact]
-        public void InferXmlSchema_inferingTables2()
+        public void InferXmlSchema_inferringTables2()
         {
-            //Acroding to the msdn documantaion :
+            //According to the msdn documantaion :
             //ms-help://MS.MSDNQTR.2003FEB.1033/cpguide/html/cpconinferringtables.htm
             //Elements that have child elements will result in inferred tables
 
-            // inferingTables2
+            // inferringTables2
             StringBuilder sb = new StringBuilder();
 
             sb.Append("<DocumentElement>");
@@ -732,15 +733,15 @@ namespace System.Data.Tests
         }
 
         [Fact]
-        public void InferXmlSchema_inferingTables3()
+        public void InferXmlSchema_inferringTables3()
         {
-            //Acroding to the msdn documantaion :
+            //According to the msdn documantaion :
             //ms-help://MS.MSDNQTR.2003FEB.1033/cpguide/html/cpconinferringtables.htm
             //The document, or root, element will result in an inferred table if it has attributes
             //or child elements that will be inferred as columns.
             //If the document element has no attributes and no child elements that would be inferred as columns, the element will be inferred as a DataSet
 
-            // inferingTables3
+            // inferringTables3
             StringBuilder sb = new StringBuilder();
 
             sb.Append("<DocumentElement>");
@@ -758,15 +759,15 @@ namespace System.Data.Tests
         }
 
         [Fact]
-        public void InferXmlSchema_inferingTables4()
+        public void InferXmlSchema_inferringTables4()
         {
-            //Acroding to the msdn documantaion :
+            //According to the msdn documantaion :
             //ms-help://MS.MSDNQTR.2003FEB.1033/cpguide/html/cpconinferringtables.htm
             //The document, or root, element will result in an inferred table if it has attributes
             //or child elements that will be inferred as columns.
             //If the document element has no attributes and no child elements that would be inferred as columns, the element will be inferred as a DataSet
 
-            // inferingTables4
+            // inferringTables4
             StringBuilder sb = new StringBuilder();
 
             sb.Append("<DocumentElement>");
@@ -783,13 +784,13 @@ namespace System.Data.Tests
         }
 
         [Fact]
-        public void InferXmlSchema_inferingTables5()
+        public void InferXmlSchema_inferringTables5()
         {
-            //Acroding to the msdn documantaion :
+            //According to the msdn documantaion :
             //ms-help://MS.MSDNQTR.2003FEB.1033/cpguide/html/cpconinferringtables.htm
             //Elements that repeat will result in a single inferred table
 
-            // inferingTables5
+            // inferringTables5
             StringBuilder sb = new StringBuilder();
 
             sb.Append("<DocumentElement>");
@@ -1007,20 +1008,18 @@ namespace System.Data.Tests
         [Fact]
         public void DataSetSpecificCulture()
         {
-            CultureInfo orig = CultureInfo.CurrentCulture;
-            try
+            RemoteExecutor.Invoke(() =>
             {
                 CultureInfo.CurrentCulture = new CultureInfo("cs-CZ");
+
                 var ds = new DataSet();
                 ds.Locale = CultureInfo.GetCultureInfo(1033);
                 var dt = ds.Tables.Add("machine");
                 dt.Locale = ds.Locale;
                 Assert.Same(dt, ds.Tables["MACHINE"]);
-            }
-            finally
-            {
-                CultureInfo.CurrentCulture = orig;
-            }
+
+                return RemoteExecutor.SuccessExitCode;
+            }).Dispose();
         }
 
         [Fact]

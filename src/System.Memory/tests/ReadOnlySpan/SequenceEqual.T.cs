@@ -64,7 +64,7 @@ namespace System.SpanTests
                 foreach (TInt elem in first)
                 {
                     int numCompares = log.CountCompares(elem.Value, elem.Value);
-                    Assert.True(numCompares == 1);
+                    Assert.True(numCompares == 1, $"Expected {numCompares} == 1 for element {elem.Value}.");
                 }
             }
         }
@@ -129,6 +129,15 @@ namespace System.SpanTests
                 bool b = firstSpan.SequenceEqual(secondSpan);
                 Assert.True(b);
             }
+        }
+
+        [Theory]
+        [MemberData(nameof(TestHelpers.SequenceEqualsNullData), MemberType = typeof(TestHelpers))]
+        public static void SequenceEqualsNullData_String(string[] firstInput, string[] secondInput, bool expected)
+        {
+            ReadOnlySpan<string> theStrings = firstInput;
+            Assert.Equal(expected, theStrings.SequenceEqual(secondInput));
+            Assert.Equal(expected, theStrings.SequenceEqual((ReadOnlySpan<string>)secondInput));
         }
     }
 }

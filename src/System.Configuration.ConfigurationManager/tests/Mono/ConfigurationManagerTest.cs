@@ -66,7 +66,7 @@ namespace MonoTests.System.Configuration
             Assert.Equal("user.config", fi.Name);
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer))] // ActiveIssue: https://github.com/dotnet/corefx/issues/29752
         [ActiveIssue(15065, TestPlatforms.AnyUnix)]
         public void OpenExeConfiguration1_UserLevel_PerUserRoamingAndLocal()
         {
@@ -155,7 +155,7 @@ namespace MonoTests.System.Configuration
             Assert.Equal("user.config", Path.GetFileName(filePath));
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer))] // ActiveIssue: https://github.com/dotnet/corefx/issues/29752
         [ActiveIssue(15066, TestPlatforms.AnyUnix)]
         public void exePath_UserLevelPerRoamingAndLocal()
         {
@@ -287,7 +287,7 @@ namespace MonoTests.System.Configuration
             Assert.True(ConfigurationManager.GetSection("appSettings") is NameValueCollection);
         }
 
-        [Fact]  // Test for bug #3412
+        [Fact] // Test for bug #3412
         // Doesn't pass on Mono
         // [Category("NotWorking")]
         public void TestAddRemoveSection()

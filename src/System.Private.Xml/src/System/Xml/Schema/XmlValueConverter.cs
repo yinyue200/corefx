@@ -265,7 +265,7 @@ namespace System.Xml.Schema
                     break;
 
                 default:
-                    Debug.Assert(false, "Type code " + typeCode + " is not supported.");
+                    Debug.Fail("Type code " + typeCode + " is not supported.");
                     break;
             }
 
@@ -312,7 +312,7 @@ namespace System.Xml.Schema
         protected static readonly Type DateTimeType = typeof(DateTime);
         protected static readonly Type DateTimeOffsetType = typeof(DateTimeOffset);
         protected static readonly Type BooleanType = typeof(bool);
-        protected static readonly Type ByteArrayType = typeof(Byte[]);
+        protected static readonly Type ByteArrayType = typeof(byte[]);
         protected static readonly Type XmlQualifiedNameType = typeof(XmlQualifiedName);
         protected static readonly Type UriType = typeof(Uri);
         protected static readonly Type TimeSpanType = typeof(TimeSpan);
@@ -490,7 +490,7 @@ namespace System.Xml.Schema
 
         /// <summary>
         /// This method is called when a valid conversion cannot be found.  By default, this method throws an error.  It can
-        /// be overriden in derived classes to support list conversions.
+        /// be overridden in derived classes to support list conversions.
         /// </summary>
         protected virtual object ChangeListType(object value, Type destinationType, IXmlNamespaceResolver nsResolver)
         {
@@ -749,7 +749,7 @@ namespace System.Xml.Schema
 
             prefix = nsResolver.LookupPrefix(qname.Namespace);
             if (prefix == null)
-                throw new InvalidCastException(SR.Format(SR.XmlConvert_TypeNoPrefix, qname.ToString(), qname.Namespace));
+                throw new InvalidCastException(SR.Format(SR.XmlConvert_TypeNoPrefix, qname, qname.Namespace));
 
             return (prefix.Length != 0) ? string.Concat(prefix, ":", qname.Name) : qname.Name;
         }
@@ -781,7 +781,7 @@ namespace System.Xml.Schema
 
         internal static int DecimalToInt32(decimal value)
         {
-            if (value < (decimal)Int32.MinValue || value > (decimal)Int32.MaxValue)
+            if (value < (decimal)int.MinValue || value > (decimal)int.MaxValue)
                 throw new OverflowException(SR.Format(SR.XmlConvert_Overflow, new string[] { XmlConvert.ToString(value), "Int32" }));
 
             return (int)value;
@@ -789,7 +789,7 @@ namespace System.Xml.Schema
 
         protected static long DecimalToInt64(decimal value)
         {
-            if (value < (decimal)Int64.MinValue || value > (decimal)Int64.MaxValue)
+            if (value < (decimal)long.MinValue || value > (decimal)long.MaxValue)
                 throw new OverflowException(SR.Format(SR.XmlConvert_Overflow, new string[] { XmlConvert.ToString(value), "Int64" }));
 
             return (long)value;
@@ -797,7 +797,7 @@ namespace System.Xml.Schema
 
         protected static ulong DecimalToUInt64(decimal value)
         {
-            if (value < (decimal)UInt64.MinValue || value > (decimal)UInt64.MaxValue)
+            if (value < (decimal)ulong.MinValue || value > (decimal)ulong.MaxValue)
                 throw new OverflowException(SR.Format(SR.XmlConvert_Overflow, new string[] { XmlConvert.ToString(value), "UInt64" }));
 
             return (ulong)value;
@@ -805,7 +805,7 @@ namespace System.Xml.Schema
 
         protected static byte Int32ToByte(int value)
         {
-            if (value < (int)Byte.MinValue || value > (int)Byte.MaxValue)
+            if (value < (int)byte.MinValue || value > (int)byte.MaxValue)
                 throw new OverflowException(SR.Format(SR.XmlConvert_Overflow, new string[] { XmlConvert.ToString(value), "Byte" }));
 
             return (byte)value;
@@ -813,7 +813,7 @@ namespace System.Xml.Schema
 
         protected static short Int32ToInt16(int value)
         {
-            if (value < (int)Int16.MinValue || value > (int)Int16.MaxValue)
+            if (value < (int)short.MinValue || value > (int)short.MaxValue)
                 throw new OverflowException(SR.Format(SR.XmlConvert_Overflow, new string[] { XmlConvert.ToString(value), "Int16" }));
 
             return (short)value;
@@ -821,7 +821,7 @@ namespace System.Xml.Schema
 
         protected static sbyte Int32ToSByte(int value)
         {
-            if (value < (int)SByte.MinValue || value > (int)SByte.MaxValue)
+            if (value < (int)sbyte.MinValue || value > (int)sbyte.MaxValue)
                 throw new OverflowException(SR.Format(SR.XmlConvert_Overflow, new string[] { XmlConvert.ToString(value), "SByte" }));
 
             return (sbyte)value;
@@ -829,7 +829,7 @@ namespace System.Xml.Schema
 
         protected static ushort Int32ToUInt16(int value)
         {
-            if (value < (int)UInt16.MinValue || value > (int)UInt16.MaxValue)
+            if (value < (int)ushort.MinValue || value > (int)ushort.MaxValue)
                 throw new OverflowException(SR.Format(SR.XmlConvert_Overflow, new string[] { XmlConvert.ToString(value), "UInt16" }));
 
             return (ushort)value;
@@ -837,7 +837,7 @@ namespace System.Xml.Schema
 
         protected static int Int64ToInt32(long value)
         {
-            if (value < (long)Int32.MinValue || value > (long)Int32.MaxValue)
+            if (value < (long)int.MinValue || value > (long)int.MaxValue)
                 throw new OverflowException(SR.Format(SR.XmlConvert_Overflow, new string[] { XmlConvert.ToString(value), "Int32" }));
 
             return (int)value;
@@ -845,7 +845,7 @@ namespace System.Xml.Schema
 
         protected static uint Int64ToUInt32(long value)
         {
-            if (value < (long)UInt32.MinValue || value > (long)UInt32.MaxValue)
+            if (value < (long)uint.MinValue || value > (long)uint.MaxValue)
                 throw new OverflowException(SR.Format(SR.XmlConvert_Overflow, new string[] { XmlConvert.ToString(value), "UInt32" }));
 
             return (uint)value;
@@ -2508,98 +2508,6 @@ namespace System.Xml.Schema
 
             return false;
         }
-    }
-
-    internal class XmlNodeConverter : XmlBaseConverter
-    {
-        protected XmlNodeConverter() : base(XmlTypeCode.Node)
-        {
-        }
-
-        public static readonly XmlValueConverter Node = new XmlNodeConverter();
-
-        #region AUTOGENERATED_XMLNODECONVERTER
-
-        //-----------------------------------------------
-        // ToBoolean
-        //-----------------------------------------------
-
-        // This converter does not support conversions to Boolean.
-
-
-        //-----------------------------------------------
-        // ToDateTime
-        //-----------------------------------------------
-
-        // This converter does not support conversions to DateTime.
-
-
-        //-----------------------------------------------
-        // ToDecimal
-        //-----------------------------------------------
-
-        // This converter does not support conversions to Decimal.
-
-
-        //-----------------------------------------------
-        // ToDouble
-        //-----------------------------------------------
-
-        // This converter does not support conversions to Double.
-
-
-        //-----------------------------------------------
-        // ToInt32
-        //-----------------------------------------------
-
-        // This converter does not support conversions to Int32.
-
-
-        //-----------------------------------------------
-        // ToInt64
-        //-----------------------------------------------
-
-        // This converter does not support conversions to Int64.
-
-
-        //-----------------------------------------------
-        // ToSingle
-        //-----------------------------------------------
-
-        // This converter does not support conversions to Single.
-
-
-        //-----------------------------------------------
-        // ToString
-        //-----------------------------------------------
-
-        // This converter does not support conversions to String.
-
-
-        //-----------------------------------------------
-        // ChangeType
-        //-----------------------------------------------
-
-        public override object ChangeType(object value, Type destinationType, IXmlNamespaceResolver nsResolver)
-        {
-            if (value == null) throw new ArgumentNullException(nameof(value));
-            if (destinationType == null) throw new ArgumentNullException(nameof(destinationType));
-
-            Type sourceType = value.GetType();
-
-            if (destinationType == ObjectType) destinationType = DefaultClrType;
-            if (destinationType == XPathNavigatorType)
-            {
-                if (IsDerivedFrom(sourceType, XPathNavigatorType)) return ((XPathNavigator)value);
-            }
-            if (destinationType == XPathItemType)
-            {
-                if (IsDerivedFrom(sourceType, XPathNavigatorType)) return ((XPathItem)value);
-            }
-
-            return ChangeListType(value, destinationType, nsResolver);
-        }
-        #endregion
     }
 
     internal class XmlAnyConverter : XmlBaseConverter

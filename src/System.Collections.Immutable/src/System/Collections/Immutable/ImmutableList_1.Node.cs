@@ -69,8 +69,8 @@ namespace System.Collections.Immutable
             /// </summary>
             private Node()
             {
-                Contract.Ensures(this.IsEmpty);
                 _frozen = true; // the empty node is *always* frozen.
+                Debug.Assert(this.IsEmpty);
             }
 
             /// <summary>
@@ -86,7 +86,6 @@ namespace System.Collections.Immutable
                 Requires.NotNull(left, nameof(left));
                 Requires.NotNull(right, nameof(right));
                 Debug.Assert(!frozen || (left._frozen && right._frozen));
-                Contract.Ensures(!this.IsEmpty);
 
                 _key = key;
                 _left = left;
@@ -94,6 +93,8 @@ namespace System.Collections.Immutable
                 _height = ParentHeight(left, right);
                 _count = ParentCount(left, right);
                 _frozen = frozen;
+
+                Debug.Assert(!this.IsEmpty);
             }
 
             /// <summary>
@@ -106,7 +107,6 @@ namespace System.Collections.Immutable
             {
                 get
                 {
-                    Contract.Ensures(Contract.Result<bool>() == (_left == null));
                     Debug.Assert(!(_left == null ^ _right == null));
                     return _left == null;
                 }
@@ -187,6 +187,30 @@ namespace System.Collections.Immutable
                 }
             }
 
+#if !NETSTANDARD10
+            /// <summary>
+            /// Gets a read-only reference to the element of the set at the given index.
+            /// </summary>
+            /// <param name="index">The 0-based index of the element in the set to return.</param>
+            /// <returns>A read-only reference to the element at the given position.</returns>
+            internal ref readonly T ItemRef(int index)
+            {
+                Requires.Range(index >= 0 && index < this.Count, nameof(index));
+
+                if (index < _left._count)
+                {
+                    return ref _left.ItemRef(index);
+                }
+
+                if (index > _left._count)
+                {
+                    return ref _right.ItemRef(index - _left._count - 1);
+                }
+
+                return ref _key;
+            }
+#endif
+
             #region IEnumerable<T> Members
 
             /// <summary>
@@ -195,10 +219,7 @@ namespace System.Collections.Immutable
             /// <returns>
             /// A <see cref="IEnumerator{T}"/> that can be used to iterate through the collection.
             /// </returns>
-            public Enumerator GetEnumerator()
-            {
-                return new Enumerator(this);
-            }
+            public Enumerator GetEnumerator() => new Enumerator(this);
 
             /// <summary>
             /// Returns an enumerator that iterates through the collection.
@@ -207,10 +228,7 @@ namespace System.Collections.Immutable
             /// A <see cref="IEnumerator{T}"/> that can be used to iterate through the collection.
             /// </returns>
             [ExcludeFromCodeCoverage] // internal, never called, but here for interface implementation
-            IEnumerator<T> IEnumerable<T>.GetEnumerator()
-            {
-                return this.GetEnumerator();
-            }
+            IEnumerator<T> IEnumerable<T>.GetEnumerator() => this.GetEnumerator();
 
             /// <summary>
             /// Returns an enumerator that iterates through the collection.
@@ -219,10 +237,7 @@ namespace System.Collections.Immutable
             /// A <see cref="IEnumerator{T}"/> that can be used to iterate through the collection.
             /// </returns>
             [ExcludeFromCodeCoverage] // internal, never called, but here for interface implementation
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return this.GetEnumerator();
-            }
+            IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
 
             #endregion
 
@@ -233,10 +248,7 @@ namespace System.Collections.Immutable
             /// <returns>
             /// A <see cref="IEnumerator{T}"/> that can be used to iterate through the collection.
             /// </returns>
-            internal Enumerator GetEnumerator(Builder builder)
-            {
-                return new Enumerator(this, builder);
-            }
+            internal Enumerator GetEnumerator(Builder builder) => new Enumerator(this, builder);
 
             /// <summary>
             /// Creates a node tree that contains the contents of a list.
@@ -429,7 +441,6 @@ namespace System.Collections.Immutable
             internal Node RemoveAll(Predicate<T> match)
             {
                 Requires.NotNull(match, nameof(match));
-                Contract.Ensures(Contract.Result<Node>() != null);
 
                 var result = this;
                 var enumerator = new Enumerator(result);
@@ -455,6 +466,7 @@ namespace System.Collections.Immutable
                     enumerator.Dispose();
                 }
 
+                Debug.Assert(result != null);
                 return result;
             }
 
@@ -493,11 +505,7 @@ namespace System.Collections.Immutable
             /// Reverses the order of the elements in the entire <see cref="ImmutableList{T}"/>.
             /// </summary>
             /// <returns>The reversed list.</returns>
-            internal Node Reverse()
-            {
-                Contract.Ensures(Contract.Result<Node>() != null);
-                return this.Reverse(0, this.Count);
-            }
+            internal Node Reverse() => this.Reverse(0, this.Count);
 
             /// <summary>
             /// Reverses the order of the elements in the specified range.
@@ -516,8 +524,13 @@ namespace System.Collections.Immutable
                 int end = index + count - 1;
                 while (start < end)
                 {
+#if !NETSTANDARD10
+                    T a = result.ItemRef(start);
+                    T b = result.ItemRef(end);
+#else
                     T a = result[start];
                     T b = result[end];
+#endif
                     result = result
                         .ReplaceAt(end, a)
                         .ReplaceAt(start, b);
@@ -532,11 +545,7 @@ namespace System.Collections.Immutable
             /// Sorts the elements in the entire <see cref="ImmutableList{T}"/> using
             /// the default comparer.
             /// </summary>
-            internal Node Sort()
-            {
-                Contract.Ensures(Contract.Result<Node>() != null);
-                return this.Sort(Comparer<T>.Default);
-            }
+            internal Node Sort() => this.Sort(Comparer<T>.Default);
 
             /// <summary>
             /// Sorts the elements in the entire <see cref="ImmutableList{T}"/> using
@@ -549,7 +558,6 @@ namespace System.Collections.Immutable
             internal Node Sort(Comparison<T> comparison)
             {
                 Requires.NotNull(comparison, nameof(comparison));
-                Contract.Ensures(Contract.Result<Node>() != null);
 
                 // PERF: Eventually this might be reimplemented in a way that does not require allocating an array.
                 var array = new T[this.Count];
@@ -567,11 +575,7 @@ namespace System.Collections.Immutable
             /// elements, or null to use the default comparer <see cref="Comparer{T}.Default"/>.
             /// </param>
             /// <returns>The sorted list.</returns>
-            internal Node Sort(IComparer<T> comparer)
-            {
-                Contract.Ensures(Contract.Result<Node>() != null);
-                return this.Sort(0, this.Count, comparer);
-            }
+            internal Node Sort(IComparer<T> comparer) => this.Sort(0, this.Count, comparer);
 
             /// <summary>
             /// Sorts the elements in a range of elements in <see cref="ImmutableList{T}"/>
@@ -698,10 +702,7 @@ namespace System.Collections.Immutable
             /// <see cref="ImmutableList{T}"/>, if found; otherwise, -1.
             /// </returns>
             [Pure]
-            internal int IndexOf(T item, IEqualityComparer<T> equalityComparer)
-            {
-                return this.IndexOf(item, 0, this.Count, equalityComparer);
-            }
+            internal int IndexOf(T item, IEqualityComparer<T> equalityComparer) => this.IndexOf(item, 0, this.Count, equalityComparer);
 
             /// <summary>
             /// Searches for the specified object and returns the zero-based index of the
@@ -807,7 +808,7 @@ namespace System.Collections.Immutable
             internal void CopyTo(T[] array)
             {
                 Requires.NotNull(array, nameof(array));
-                Requires.Argument(array.Length >= this.Count);
+                Requires.Range(array.Length >= this.Count, nameof(array));
 
                 int index = 0;
                 foreach (var element in this)
@@ -832,8 +833,7 @@ namespace System.Collections.Immutable
             {
                 Requires.NotNull(array, nameof(array));
                 Requires.Range(arrayIndex >= 0, nameof(arrayIndex));
-                Requires.Range(arrayIndex <= array.Length, nameof(arrayIndex));
-                Requires.Argument(arrayIndex + this.Count <= array.Length);
+                Requires.Range(array.Length >= arrayIndex + this.Count, nameof(arrayIndex));
 
                 foreach (var element in this)
                 {
@@ -933,6 +933,8 @@ namespace System.Collections.Immutable
             /// </returns>
             internal bool TrueForAll(Predicate<T> match)
             {
+                Requires.NotNull(match, nameof(match));
+
                 foreach (var item in this)
                 {
                     if (!match(item))
@@ -1015,7 +1017,6 @@ namespace System.Collections.Immutable
             internal ImmutableList<T> FindAll(Predicate<T> match)
             {
                 Requires.NotNull(match, nameof(match));
-                Contract.Ensures(Contract.Result<ImmutableList<T>>() != null);
 
                 if (this.IsEmpty)
                 {
@@ -1057,7 +1058,6 @@ namespace System.Collections.Immutable
             internal int FindIndex(Predicate<T> match)
             {
                 Requires.NotNull(match, nameof(match));
-                Contract.Ensures(Contract.Result<int>() >= -1);
 
                 return this.FindIndex(0, _count, match);
             }
@@ -1076,9 +1076,8 @@ namespace System.Collections.Immutable
             /// </returns>
             internal int FindIndex(int startIndex, Predicate<T> match)
             {
-                Requires.Range(startIndex >= 0, nameof(startIndex));
-                Requires.Range(startIndex <= this.Count, nameof(startIndex));
                 Requires.NotNull(match, nameof(match));
+                Requires.Range(startIndex >= 0 && startIndex <= this.Count, nameof(startIndex));
 
                 return this.FindIndex(startIndex, this.Count - startIndex, match);
             }
@@ -1098,10 +1097,10 @@ namespace System.Collections.Immutable
             /// </returns>
             internal int FindIndex(int startIndex, int count, Predicate<T> match)
             {
+                Requires.NotNull(match, nameof(match));
                 Requires.Range(startIndex >= 0, nameof(startIndex));
                 Requires.Range(count >= 0, nameof(count));
-                Requires.Argument(startIndex + count <= this.Count);
-                Requires.NotNull(match, nameof(match));
+                Requires.Range(startIndex + count <= this.Count, nameof(count));
 
                 using (var enumerator = new Enumerator(this, startIndex: startIndex, count: count))
                 {
@@ -1166,14 +1165,8 @@ namespace System.Collections.Immutable
             internal int FindLastIndex(Predicate<T> match)
             {
                 Requires.NotNull(match, nameof(match));
-                Contract.Ensures(Contract.Result<int>() >= -1);
 
-                if (this.IsEmpty)
-                {
-                    return -1;
-                }
-
-                return this.FindLastIndex(this.Count - 1, this.Count, match);
+                return this.IsEmpty ? -1 : this.FindLastIndex(this.Count - 1, this.Count, match);
             }
 
             /// <summary>
@@ -1195,12 +1188,7 @@ namespace System.Collections.Immutable
                 Requires.Range(startIndex >= 0, nameof(startIndex));
                 Requires.Range(startIndex == 0 || startIndex < this.Count, nameof(startIndex));
 
-                if (this.IsEmpty)
-                {
-                    return -1;
-                }
-
-                return this.FindLastIndex(startIndex, startIndex + 1, match);
+                return this.IsEmpty ? -1 : this.FindLastIndex(startIndex, startIndex + 1, match);
             }
 
             /// <summary>
@@ -1224,7 +1212,7 @@ namespace System.Collections.Immutable
                 Requires.NotNull(match, nameof(match));
                 Requires.Range(startIndex >= 0, nameof(startIndex));
                 Requires.Range(count <= this.Count, nameof(count));
-                Requires.Argument(startIndex - count + 1 >= 0);
+                Requires.Range(startIndex - count + 1 >= 0, nameof(startIndex));
 
                 using (var enumerator = new Enumerator(this, startIndex: startIndex, count: count, reversed: true))
                 {
@@ -1267,7 +1255,6 @@ namespace System.Collections.Immutable
             {
                 Debug.Assert(!this.IsEmpty);
                 Debug.Assert(!_right.IsEmpty);
-                Contract.Ensures(Contract.Result<Node>() != null);
 
                 return _right.MutateLeft(this.MutateRight(_right._left));
             }
@@ -1280,7 +1267,6 @@ namespace System.Collections.Immutable
             {
                 Debug.Assert(!this.IsEmpty);
                 Debug.Assert(!_left.IsEmpty);
-                Contract.Ensures(Contract.Result<Node>() != null);
 
                 return _left.MutateRight(this.MutateLeft(_left._right));
             }
@@ -1294,7 +1280,6 @@ namespace System.Collections.Immutable
                 Debug.Assert(!this.IsEmpty);
                 Debug.Assert(!_right.IsEmpty);
                 Debug.Assert(!_right._left.IsEmpty);
-                Contract.Ensures(Contract.Result<Node>() != null);
 
                 // The following is an optimized version of rotating the right child right, then rotating the parent left.
                 Node right = _right;
@@ -1313,7 +1298,6 @@ namespace System.Collections.Immutable
                 Debug.Assert(!this.IsEmpty);
                 Debug.Assert(!_left.IsEmpty);
                 Debug.Assert(!_left._right.IsEmpty);
-                Contract.Ensures(Contract.Result<Node>() != null);
 
                 // The following is an optimized version of rotating the left child left, then rotating the parent right.
                 Node left = _left;

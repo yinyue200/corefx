@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using System.Net.Http.Headers;
-using System.Diagnostics.Contracts;
 
 namespace System.Net.Http
 {
@@ -25,7 +24,6 @@ namespace System.Net.Http
             {
                 throw new ArgumentNullException(nameof(nameValueCollection));
             }
-            Contract.EndContractBlock();
 
             // Encode and concatenate data
             StringBuilder builder = new StringBuilder();
@@ -46,9 +44,9 @@ namespace System.Net.Http
 
         private static string Encode(string data)
         {
-            if (String.IsNullOrEmpty(data))
+            if (string.IsNullOrEmpty(data))
             {
-                return String.Empty;
+                return string.Empty;
             }
             // Escape spaces as '+'.
             return Uri.EscapeDataString(data).Replace("%20", "+");

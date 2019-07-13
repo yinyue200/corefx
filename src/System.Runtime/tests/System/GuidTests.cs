@@ -161,25 +161,6 @@ namespace System.Tests
         }
 
         [Theory]
-        [SkipOnTargetFramework(~TargetFrameworkMonikers.NetFramework, "The coreclr fixed a bug where Guid.TryParse throws a format or overflow exception (https://github.com/dotnet/corefx/issues/6316)")]
-        [MemberData(nameof(GuidStrings_TryParseThrows_TestData))]
-        public static void Parse_Invalid_Netfx(string input, Type exceptionType)
-        {
-            Guid result = default(Guid);
-            Assert.Throws(exceptionType, () => Guid.TryParse(input, out result));
-            Assert.Equal(default(Guid), result);
-
-            Assert.Throws(exceptionType, () => Guid.Parse(input));
-        }
-
-        [Theory]
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "The full .NET framework has a bug where Guid.TryParse throws a format or overflow exception")]
-        public static void Parse_Invalid_NetcoreApp(string input, Type exceptionType)
-        {
-            Parse_Invalid(input, exceptionType);
-        }
-
-        [Theory]
         [MemberData(nameof(GuidStrings_Invalid_TestData))]
         public static void Parse_Invalid(string input, Type exceptionType)
         {
@@ -336,6 +317,7 @@ namespace System.Tests
                 Assert.Equal(expected, guid1.Equals(guid2));
                 Assert.Equal(expected, guid1 == guid2);
                 Assert.Equal(!expected, guid1 != guid2);
+                Assert.Equal(expected, guid1.GetHashCode().Equals(guid2.GetHashCode()));
             }
             Assert.Equal(expected, guid1.Equals(obj));
         }
@@ -348,14 +330,14 @@ namespace System.Tests
 
         public static IEnumerable<object[]> ToString_TestData()
         {
-            yield return new object[] { s_testGuid, "N", "a8a110d5fc4943c5bf46802db8f843ff" };
-            yield return new object[] { s_testGuid, "D", "a8a110d5-fc49-43c5-bf46-802db8f843ff" };
-            yield return new object[] { s_testGuid, "B", "{a8a110d5-fc49-43c5-bf46-802db8f843ff}" };
-            yield return new object[] { s_testGuid, "P", "(a8a110d5-fc49-43c5-bf46-802db8f843ff)" };
-            yield return new object[] { s_testGuid, "X", "{0xa8a110d5,0xfc49,0x43c5,{0xbf,0x46,0x80,0x2d,0xb8,0xf8,0x43,0xff}}" };
+            yield return new object[] { s_testGuid, "N", "a8a110d5fc4943c5bf46802db8f843ff"};
+            yield return new object[] { s_testGuid, "D", "a8a110d5-fc49-43c5-bf46-802db8f843ff"};
+            yield return new object[] { s_testGuid, "B", "{a8a110d5-fc49-43c5-bf46-802db8f843ff}"};
+            yield return new object[] { s_testGuid, "P", "(a8a110d5-fc49-43c5-bf46-802db8f843ff)"};
+            yield return new object[] { s_testGuid, "X", "{0xa8a110d5,0xfc49,0x43c5,{0xbf,0x46,0x80,0x2d,0xb8,0xf8,0x43,0xff}}"};
 
-            yield return new object[] { s_testGuid, null, "a8a110d5-fc49-43c5-bf46-802db8f843ff" };
-            yield return new object[] { s_testGuid, "", "a8a110d5-fc49-43c5-bf46-802db8f843ff" };
+            yield return new object[] { s_testGuid, null, "a8a110d5-fc49-43c5-bf46-802db8f843ff"};
+            yield return new object[] { s_testGuid, "", "a8a110d5-fc49-43c5-bf46-802db8f843ff"};
         }
 
         [Theory]
@@ -372,11 +354,25 @@ namespace System.Tests
             Assert.Equal(expected, formattable.ToString(format, null));
         }
 
-        [Fact]
-        public static void ToString_InvalidFormat_ThrowsFormatException()
+        public static IEnumerable<object[]> InvalidFormat_TestData()
         {
-            Assert.Throws<FormatException>(() => s_testGuid.ToString("Y")); // Invalid format
-            Assert.Throws<FormatException>(() => s_testGuid.ToString("XX")); // Invalid format
+            yield return new object[] { "a" };
+            yield return new object[] { "c" };
+            yield return new object[] { "e" };
+            yield return new object[] { "m" };
+            yield return new object[] { "o" };
+            yield return new object[] { "q" };
+            yield return new object[] { "w" };
+            yield return new object[] { "y" };
+            yield return new object[] { "xx" };
+        }
+
+        [Theory]
+        [MemberData(nameof(InvalidFormat_TestData))]
+        public static void ToString_InvalidFormat_ThrowsFormatException(string format)
+        {
+            Assert.Throws<FormatException>(() => s_testGuid.ToString(format));
+            Assert.Throws<FormatException>(() => s_testGuid.ToString(format.ToUpperInvariant()));
         }
 
         public static IEnumerable<object[]> GuidStrings_Valid_TestData()

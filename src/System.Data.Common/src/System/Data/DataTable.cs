@@ -179,7 +179,7 @@ namespace System.Data
         }
 
         /// <summary>
-        /// Intitalizes a new instance of the <see cref='System.Data.DataTable'/> class with the specified table
+        /// Initializes a new instance of the <see cref='System.Data.DataTable'/> class with the specified table
         ///    name.
         /// </summary>
         public DataTable(string tableName) : this()
@@ -372,8 +372,7 @@ namespace System.Data
                 info.AddValue(string.Format(formatProvider, "DataTable.DataColumn_{0}.DefaultValue", i), Columns[i].DefaultValue);
                 info.AddValue(string.Format(formatProvider, "DataTable.DataColumn_{0}.ReadOnly", i), Columns[i].ReadOnly);
                 info.AddValue(string.Format(formatProvider, "DataTable.DataColumn_{0}.MaxLength", i), Columns[i].MaxLength);
-                info.AddValue(string.Format(formatProvider, "DataTable.DataColumn_{0}.DataType", i), Columns[i].DataType);
-
+                info.AddValue(string.Format(formatProvider, "DataTable.DataColumn_{0}.DataType_AssemblyQualifiedName", i), Columns[i].DataType.AssemblyQualifiedName);
                 info.AddValue(string.Format(formatProvider, "DataTable.DataColumn_{0}.XmlDataType", i), Columns[i].XmlDataType);
                 info.AddValue(string.Format(formatProvider, "DataTable.DataColumn_{0}.SimpleType", i), Columns[i].SimpleType);
 
@@ -442,7 +441,8 @@ namespace System.Data
                 dc._columnUri = info.GetString(string.Format(formatProvider, "DataTable.DataColumn_{0}.Namespace", i));
                 dc.Prefix = info.GetString(string.Format(formatProvider, "DataTable.DataColumn_{0}.Prefix", i));
 
-                dc.DataType = (Type)info.GetValue(string.Format(formatProvider, "DataTable.DataColumn_{0}.DataType", i), typeof(Type));
+                string typeName = (string)info.GetValue(string.Format(formatProvider, "DataTable.DataColumn_{0}.DataType_AssemblyQualifiedName", i), typeof(string));
+                dc.DataType = Type.GetType(typeName, throwOnError: true);
                 dc.XmlDataType = (string)info.GetValue(string.Format(formatProvider, "DataTable.DataColumn_{0}.XmlDataType", i), typeof(string));
                 dc.SimpleType = (SimpleType)info.GetValue(string.Format(formatProvider, "DataTable.DataColumn_{0}.SimpleType", i), typeof(SimpleType));
 
@@ -1225,7 +1225,6 @@ namespace System.Data
                         view.SetIndex2("", DataViewRowState.CurrentRows, null, true);
                     }
 
-                    // avoid HostProtectionAttribute(Synchronization=true) by not calling virtual methods from inside a lock
                     view = Interlocked.CompareExchange<DataView>(ref _defaultView, view, null);
                     if (null == view)
                     {
@@ -1329,7 +1328,7 @@ namespace System.Data
             get
             {
                 // used for Formating/Parsing
-                // http://msdn.microsoft.com/library/default.asp?url=/library/en-us/cpref/html/frlrfsystemglobalizationcultureinfoclassisneutralculturetopic.asp
+                // https://docs.microsoft.com/en-us/dotnet/api/system.globalization.cultureinfo.isneutralculture
                 if (null == _formatProvider)
                 {
                     CultureInfo culture = Locale;
@@ -1823,7 +1822,7 @@ namespace System.Data
         }
         private string GetInheritedNamespace(List<DataTable> visitedTables)
         {
-            // if there is nested relation: ie: this table is nested child of a another table and
+            // if there is nested relation: ie: this table is nested child of another table and
             // if it is not self nested, return parent tables NS: Meanwhile make sure
             DataRelation[] nestedRelations = NestedParentRelations;
             if (nestedRelations.Length > 0)
@@ -5151,7 +5150,7 @@ namespace System.Data
                             }
                             break;
                         case DataRowState.Deleted:
-                            Debug.Assert(false, "LoadOption.Upsert with deleted row, should not be here");
+                            Debug.Fail("LoadOption.Upsert with deleted row, should not be here");
                             break;
                         default:
                             action = DataRowAction.Change;

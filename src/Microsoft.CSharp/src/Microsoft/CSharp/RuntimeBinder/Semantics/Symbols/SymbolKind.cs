@@ -7,9 +7,7 @@ namespace Microsoft.CSharp.RuntimeBinder.Semantics
     internal enum SYMKIND
     {
         SK_NamespaceSymbol,
-        SK_AssemblyQualifiedNamespaceSymbol,
         SK_AggregateSymbol,
-        SK_AggregateDeclaration,
         SK_TypeParameterSymbol,
         SK_FieldSymbol,
         SK_LocalVariableSymbol,

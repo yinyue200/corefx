@@ -12,8 +12,10 @@ namespace System.IO.Pipes.Tests
     /// Tests that cover Write and WriteAsync behaviors that are shared between
     /// AnonymousPipes and NamedPipes
     /// </summary>
-    public abstract class PipeTest_Write : PipeTestBase
+    public abstract partial class PipeTest_Write : PipeTestBase
     {
+        public virtual bool SupportsBidirectionalReadingWriting => false;
+
         [Fact]
         public void WriteWithNullBuffer_Throws_ArgumentNullException()
         {
@@ -117,8 +119,13 @@ namespace System.IO.Pipes.Tests
         }
 
         [Fact]
-        public virtual void ReadOnWriteOnlyPipe_Throws_NotSupportedException()
+        public void ReadOnWriteOnlyPipe_Throws_NotSupportedException()
         {
+            if (SupportsBidirectionalReadingWriting)
+            {
+                return;
+            }
+
             using (ServerClientPair pair = CreateServerClientPair())
             {
                 PipeStream pipe = pair.writeablePipe;
@@ -212,7 +219,6 @@ namespace System.IO.Pipes.Tests
         }
 
         [Fact]
-        [ActiveIssue("dotnet/corefx #19287", TargetFrameworkMonikers.NetFramework)]
         public async Task ValidFlush_DoesntThrow()
         {
             using (ServerClientPair pair = CreateServerClientPair())

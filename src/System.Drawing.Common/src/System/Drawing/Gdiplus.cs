@@ -2,21 +2,16 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Internal;
-using System.Text;
 using System.Collections;
-using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Internal;
 using System.IO;
-using System.Drawing.Internal;
-using System.Drawing.Imaging;
-using System.Drawing.Text;
-using System.Drawing.Drawing2D;
-using System.Threading;
-using System.Security;
-using System.Runtime.ConstrainedExecution;
 using System.Runtime.CompilerServices;
+using System.Runtime.ConstrainedExecution;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
 
 [assembly: SuppressMessage("Microsoft.Reliability", "CA2006:UseSafeHandleToEncapsulateNativeResources", Scope = "member", Target = "System.Drawing.SafeNativeMethods+BITMAP.bmBits")]
 [assembly: SuppressMessage("Microsoft.Reliability", "CA2006:UseSafeHandleToEncapsulateNativeResources", Scope = "member", Target = "System.Drawing.SafeNativeMethods+DIBSECTION.dshSection")]
@@ -63,11 +58,9 @@ using System.Runtime.CompilerServices;
 
 namespace System.Drawing
 {
-    [SuppressUnmanagedCodeSecurity]
     internal partial class SafeNativeMethods
     {
         // We make this a nested class so that we don't have to initialize GDI+ to access SafeNativeMethods (mostly gdi/user32).
-        [SuppressUnmanagedCodeSecurityAttribute]
         internal partial class Gdip
         {
             private static readonly TraceSwitch s_gdiPlusInitialization = new TraceSwitch("GdiPlusInitialization", "Tracks GDI+ initialization and teardown");
@@ -83,14 +76,13 @@ namespace System.Drawing
 
                 s_gdipModule = LoadNativeLibrary();
                 LoadSharedFunctionPointers();
-                LoadPlatformFunctionPointers(); // This should be combined with the above call when Windows/Unix implementations are unified.
+                PlatformInitialize();
 
                 StartupInput input = StartupInput.GetDefault();
-                StartupOutput output;
 
                 // GDI+ ref counts multiple calls to Startup in the same process, so calls from multiple
                 // domains are ok, just make sure to pair each w/GdiplusShutdown
-                int status = GdiplusStartup(out s_initToken, ref input, out output);
+                int status = GdiplusStartup(out s_initToken, ref input, out StartupOutput output);
                 CheckStatus(status);
 
                 Debug.Unindent();
@@ -145,7 +137,7 @@ namespace System.Drawing
 
             /// <summary>
             /// Shutsdown GDI+
-            /// </summary>            
+            /// </summary>
             private static void Shutdown()
             {
                 Debug.WriteLineIf(s_gdiPlusInitialization.TraceVerbose, "Shutdown GDI+ [" + AppDomain.CurrentDomain.FriendlyName + "]");
@@ -206,7 +198,7 @@ namespace System.Drawing
             {
             }
 
-            //----------------------------------------------------------------------------------------                                                           
+            //----------------------------------------------------------------------------------------
             // Initialization methods (GdiplusInit.h)
             //----------------------------------------------------------------------------------------
 
@@ -235,7 +227,7 @@ namespace System.Drawing
             internal static int GdipDeleteFont(HandleRef font) => Initialized ? IntGdipDeleteFont(font) : Ok;
             internal static int GdipDeleteStringFormat(HandleRef format) => Initialized ? IntGdipDeleteStringFormat(format) : Ok;
 
-            //----------------------------------------------------------------------------------------                                                           
+            //----------------------------------------------------------------------------------------
             // Status codes
             //----------------------------------------------------------------------------------------
             internal const int Ok = 0;
@@ -263,9 +255,7 @@ namespace System.Drawing
             internal static void CheckStatus(int status)
             {
                 if (status != Ok)
-                {
                     throw StatusException(status);
-                }
             }
 
             internal static Exception StatusException(int status)
@@ -275,35 +265,35 @@ namespace System.Drawing
                 switch (status)
                 {
                     case GenericError:
-                        return new ExternalException(SR.Format(SR.GdiplusGenericError), E_FAIL);
+                        return new ExternalException(SR.GdiplusGenericError, E_FAIL);
                     case InvalidParameter:
-                        return new ArgumentException(SR.Format(SR.GdiplusInvalidParameter));
+                        return new ArgumentException(SR.GdiplusInvalidParameter);
                     case OutOfMemory:
-                        return new OutOfMemoryException(SR.Format(SR.GdiplusOutOfMemory));
+                        return new OutOfMemoryException(SR.GdiplusOutOfMemory);
                     case ObjectBusy:
-                        return new InvalidOperationException(SR.Format(SR.GdiplusObjectBusy));
+                        return new InvalidOperationException(SR.GdiplusObjectBusy);
                     case InsufficientBuffer:
-                        return new OutOfMemoryException(SR.Format(SR.GdiplusInsufficientBuffer));
+                        return new OutOfMemoryException(SR.GdiplusInsufficientBuffer);
                     case NotImplemented:
-                        return new NotImplementedException(SR.Format(SR.GdiplusNotImplemented));
+                        return new NotImplementedException(SR.GdiplusNotImplemented);
                     case Win32Error:
-                        return new ExternalException(SR.Format(SR.GdiplusGenericError), E_FAIL);
+                        return new ExternalException(SR.GdiplusGenericError, E_FAIL);
                     case WrongState:
-                        return new InvalidOperationException(SR.Format(SR.GdiplusWrongState));
+                        return new InvalidOperationException(SR.GdiplusWrongState);
                     case Aborted:
-                        return new ExternalException(SR.Format(SR.GdiplusAborted), E_ABORT);
+                        return new ExternalException(SR.GdiplusAborted, E_ABORT);
                     case FileNotFound:
-                        return new FileNotFoundException(SR.Format(SR.GdiplusFileNotFound));
+                        return new FileNotFoundException(SR.GdiplusFileNotFound);
                     case ValueOverflow:
-                        return new OverflowException(SR.Format(SR.GdiplusOverflow));
+                        return new OverflowException(SR.GdiplusOverflow);
                     case AccessDenied:
-                        return new ExternalException(SR.Format(SR.GdiplusAccessDenied), E_ACCESSDENIED);
+                        return new ExternalException(SR.GdiplusAccessDenied, E_ACCESSDENIED);
                     case UnknownImageFormat:
-                        return new ArgumentException(SR.Format(SR.GdiplusUnknownImageFormat));
+                        return new ArgumentException(SR.GdiplusUnknownImageFormat);
                     case PropertyNotFound:
-                        return new ArgumentException(SR.Format(SR.GdiplusPropertyNotFoundError));
+                        return new ArgumentException(SR.GdiplusPropertyNotFoundError);
                     case PropertyNotSupported:
-                        return new ArgumentException(SR.Format(SR.GdiplusPropertyNotSupportedError));
+                        return new ArgumentException(SR.GdiplusPropertyNotSupportedError);
 
                     case FontFamilyNotFound:
                         Debug.Fail("We should be special casing FontFamilyNotFound so we can provide the font name");
@@ -315,151 +305,16 @@ namespace System.Drawing
 
                     case NotTrueTypeFont:
                         Debug.Fail("We should be special casing NotTrueTypeFont so we can provide the font name");
-                        return new ArgumentException(SR.Format(SR.GdiplusNotTrueTypeFont_NoName));
+                        return new ArgumentException(SR.GdiplusNotTrueTypeFont_NoName);
 
                     case UnsupportedGdiplusVersion:
-                        return new ExternalException(SR.Format(SR.GdiplusUnsupportedGdiplusVersion), E_FAIL);
+                        return new ExternalException(SR.GdiplusUnsupportedGdiplusVersion, E_FAIL);
 
                     case GdiplusNotInitialized:
-                        return new ExternalException(SR.Format(SR.GdiplusNotInitialized), E_FAIL);
+                        return new ExternalException(SR.GdiplusNotInitialized, E_FAIL);
                 }
 
-                return new ExternalException(SR.Format(SR.GdiplusUnknown), E_UNEXPECTED);
-            }
-
-            //----------------------------------------------------------------------------------------                                                           
-            // Helper function:  Convert GpPointF* memory block to PointF[]
-            //----------------------------------------------------------------------------------------
-            internal static PointF[] ConvertGPPOINTFArrayF(IntPtr memory, int count)
-            {
-                if (memory == IntPtr.Zero)
-                {
-                    throw new ArgumentNullException(nameof(memory));
-                }
-
-                var points = new PointF[count];
-                Type pointType = typeof(GPPOINTF);
-                int size = Marshal.SizeOf(pointType);
-
-                for (int index = 0; index < count; index++)
-                {
-                    var pt = (GPPOINTF)Marshal.PtrToStructure((IntPtr)((long)memory + index * size), pointType);
-                    points[index] = new PointF(pt.X, pt.Y);
-                }
-
-                return points;
-            }
-
-            //----------------------------------------------------------------------------------------                                                           
-            // Helper function:  Convert GpPoint* memory block to Point[]
-            //----------------------------------------------------------------------------------------
-            internal static Point[] ConvertGPPOINTArray(IntPtr memory, int count)
-            {
-                if (memory == IntPtr.Zero)
-                {
-                    throw new ArgumentNullException(nameof(memory));
-                }
-
-                var points = new Point[count];
-                Type pointType = typeof(GPPOINT);
-
-                int size = Marshal.SizeOf(pointType);
-
-                for (int index = 0; index < count; index++)
-                {
-                    var pt = (GPPOINT)Marshal.PtrToStructure((IntPtr)((long)memory + index * size), pointType);
-                    points[index] = new Point(pt.X, pt.Y);
-                }
-
-                return points;
-            }
-
-            //----------------------------------------------------------------------------------------                                                           
-            // Helper function:  Convert PointF[] to native memory block GpPointF*
-            //----------------------------------------------------------------------------------------
-            internal static IntPtr ConvertPointToMemory(PointF[] points)
-            {
-                if (points == null)
-                {
-                    throw new ArgumentNullException(nameof(points));
-                }
-
-                int size = (int)Marshal.SizeOf(typeof(GPPOINTF));
-                int count = points.Length;
-                IntPtr memory = Marshal.AllocHGlobal(checked(count * size));
-
-                for (int index = 0; index < count; index++)
-                {
-                    Marshal.StructureToPtr(new GPPOINTF(points[index]), (IntPtr)(checked((long)memory + index * size)), false);
-                }
-
-                return memory;
-            }
-
-            //----------------------------------------------------------------------------------------                                                           
-            // Helper function:  Convert Point[] to native memory block GpPoint*
-            //----------------------------------------------------------------------------------------
-            internal static IntPtr ConvertPointToMemory(Point[] points)
-            {
-                if (points == null)
-                {
-                    throw new ArgumentNullException(nameof(points));
-                }
-
-                int size = Marshal.SizeOf(typeof(GPPOINT));
-                int count = points.Length;
-                IntPtr memory = Marshal.AllocHGlobal(checked(count * size));
-
-                for (int index = 0; index < count; index++)
-                {
-                    Marshal.StructureToPtr(new GPPOINT(points[index]), (IntPtr)(checked((long)memory + index * size)), false);
-                }
-
-                return memory;
-            }
-
-            //----------------------------------------------------------------------------------------                                                           
-            // Helper function:  Convert RectangleF[] to native memory block GpRectF*
-            //----------------------------------------------------------------------------------------
-            internal static IntPtr ConvertRectangleToMemory(RectangleF[] rect)
-            {
-                if (rect == null)
-                {
-                    throw new ArgumentNullException(nameof(rect));
-                }
-
-                int size = Marshal.SizeOf(typeof(GPRECTF));
-                int count = rect.Length;
-                IntPtr memory = Marshal.AllocHGlobal(checked(count * size));
-
-                for (int index = 0; index < count; index++)
-                {
-                    Marshal.StructureToPtr(new GPRECTF(rect[index]), (IntPtr)(checked((long)memory + index * size)), false);
-                }
-
-                return memory;
-            }
-
-            //----------------------------------------------------------------------------------------                                                           
-            // Helper function:  Convert Rectangle[] to native memory block GpRect*
-            //----------------------------------------------------------------------------------------
-            internal static IntPtr ConvertRectangleToMemory(Rectangle[] rect)
-            {
-                if (rect == null)
-                {
-                    throw new ArgumentNullException(nameof(rect));
-                }
-
-                int size = (int)Marshal.SizeOf(typeof(GPRECT));
-                int count = rect.Length;
-                IntPtr memory = Marshal.AllocHGlobal(checked(count * size));
-
-                for (int index = 0; index < count; index++)
-                {
-                    Marshal.StructureToPtr(new GPRECT(rect[index]), (IntPtr)(checked((long)memory + index * size)), false);
-                }
-
-                return memory;
+                return new ExternalException($"{SR.GdiplusUnknown} [{status}]", E_UNEXPECTED);
             }
         }
 
@@ -853,8 +708,12 @@ namespace System.Drawing
             return IntGlobalAlloc(uFlags, new UIntPtr(dwBytes));
         }
 
-        [DllImport(ExternDll.Kernel32)]
-        static internal extern void ZeroMemory(IntPtr destination, UIntPtr length);
+        static internal unsafe void ZeroMemory(byte* ptr, ulong length)
+        {
+            byte* end = ptr + length;
+            while (ptr != end)
+                *ptr++ = 0;
+        }
 
         public const int ERROR_ACCESS_DENIED = 5;
         public const int ERROR_INVALID_PARAMETER = 87;
@@ -865,7 +724,7 @@ namespace System.Drawing
         public class ENHMETAHEADER
         {
             /// The ENHMETAHEADER structure is defined natively as a union with WmfHeader.  
-            /// Extreme care should be taken if changing the layout of the corresponding managaed 
+            /// Extreme care should be taken if changing the layout of the corresponding managed 
             /// structures to minimize the risk of buffer overruns.  The affected managed classes 
             /// are the following: ENHMETAHEADER, MetaHeader, MetafileHeaderWmf, MetafileHeaderEmf.
             public int iType;
@@ -1057,31 +916,6 @@ namespace System.Drawing
             public int dwImageOffset;
         }
 
-        public class Ole
-        {
-            public const int PICTYPE_ICON = 3;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public class PICTDESC
-        {
-            internal int cbSizeOfStruct;
-            public int picType;
-            internal IntPtr union1;
-            internal int union2;
-            internal int union3;
-
-            public static PICTDESC CreateIconPICTDESC(IntPtr hicon)
-            {
-                return new PICTDESC()
-                {
-                    cbSizeOfStruct = 12,
-                    picType = Ole.PICTYPE_ICON,
-                    union1 = hicon
-                };
-            }
-        }
-
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         public class DEVMODE
         {
@@ -1210,13 +1044,6 @@ namespace System.Drawing
 #endif
         }
 
-        public class StreamConsts
-        {
-            public const int STREAM_SEEK_SET = 0x0;
-            public const int STREAM_SEEK_CUR = 0x1;
-            public const int STREAM_SEEK_END = 0x2;
-        }
-
         [DllImport(ExternDll.Gdi32, SetLastError = true, ExactSpelling = true, EntryPoint = "DeleteObject", CharSet = CharSet.Auto)]
         internal static extern int IntDeleteObject(HandleRef hObject);
 
@@ -1307,65 +1134,5 @@ namespace System.Drawing
                                                         
                                                         
 #endif
-        [DllImport(ExternDll.Oleaut32, PreserveSig = false)]
-        public static extern IPicture OleCreatePictureIndirect(SafeNativeMethods.PICTDESC pictdesc, [In]ref Guid refiid, bool fOwn);
-
-        [ComImport()]
-        [Guid("7BF80980-BF32-101A-8BBB-00AA00300CAB")]
-        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-        public interface IPicture
-        {
-            [SuppressUnmanagedCodeSecurity]
-            IntPtr GetHandle();
-
-            [SuppressUnmanagedCodeSecurity]
-            IntPtr GetHPal();
-
-            [return: MarshalAs(UnmanagedType.I2)]
-            [SuppressUnmanagedCodeSecurity]
-            short GetPictureType();
-
-            [SuppressUnmanagedCodeSecurity]
-            int GetWidth();
-
-            [SuppressUnmanagedCodeSecurity]
-            int GetHeight();
-
-            [SuppressUnmanagedCodeSecurity]
-            void Render();
-
-            [SuppressUnmanagedCodeSecurity]
-            void SetHPal([In] IntPtr phpal);
-
-            [SuppressUnmanagedCodeSecurity]
-            IntPtr GetCurDC();
-
-            [SuppressUnmanagedCodeSecurity]
-            void SelectPicture([In] IntPtr hdcIn,
-                               [Out, MarshalAs(UnmanagedType.LPArray)] int[] phdcOut,
-                               [Out, MarshalAs(UnmanagedType.LPArray)] int[] phbmpOut);
-
-            [return: MarshalAs(UnmanagedType.Bool)]
-            [SuppressUnmanagedCodeSecurity]
-            bool GetKeepOriginalFormat();
-
-            [SuppressUnmanagedCodeSecurity]
-            void SetKeepOriginalFormat([In, MarshalAs(UnmanagedType.Bool)] bool pfkeep);
-
-            [SuppressUnmanagedCodeSecurity]
-            void PictureChanged();
-
-            [SuppressUnmanagedCodeSecurity]
-            [PreserveSig]
-            int SaveAsFile([In, MarshalAs(UnmanagedType.Interface)] UnsafeNativeMethods.IStream pstm,
-                           [In] int fSaveMemCopy,
-                           [Out] out int pcbSize);
-
-            [SuppressUnmanagedCodeSecurity]
-            int GetAttributes();
-
-            [SuppressUnmanagedCodeSecurity]
-            void SetHdc([In] IntPtr hdc);
-        }
     }
 }

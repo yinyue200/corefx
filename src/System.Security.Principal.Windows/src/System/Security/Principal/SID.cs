@@ -6,7 +6,6 @@ using Microsoft.Win32.SafeHandles;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -159,9 +158,9 @@ namespace System.Security.Principal
         DigestAuthenticationSid = 52,
         /// <summary>Indicates a SID present when the Secure Channel (SSL/TLS) authentication package authenticated the client.</summary>
         SChannelAuthenticationSid = 53,
-        /// <summary>Indicates a SID present when the user authenticated from within the forest or across a trust that does not have the selective authentication option enabled. If this SID is present, then <see cref="WinOtherOrganizationSid"/> cannot be present.</summary>
+        /// <summary>Indicates a SID present when the user authenticated from within the forest or across a trust that does not have the selective authentication option enabled. If this SID is present, then <see cref="OtherOrganizationSid"/> cannot be present.</summary>
         ThisOrganizationSid = 54,
-        /// <summary>Indicates a SID present when the user authenticated across a forest with the selective authentication option enabled. If this SID is present, then <see cref="WinThisOrganizationSid"/> cannot be present.</summary>
+        /// <summary>Indicates a SID present when the user authenticated across a forest with the selective authentication option enabled. If this SID is present, then <see cref="ThisOrganizationSid"/> cannot be present.</summary>
         OtherOrganizationSid = 55,
         /// <summary>Indicates a SID that allows a user to create incoming forest trusts. It is added to the token of users who are a member of the Incoming Forest Trust Builders built-in group in the root domain of the forest.</summary>
         BuiltinIncomingForestTrustBuildersSid = 56,
@@ -318,8 +317,6 @@ namespace System.Security.Principal
                 throw new ArgumentNullException(nameof(subAuthorities));
             }
 
-            Contract.EndContractBlock();
-
             //
             // Check the number of subauthorities passed in 
             //
@@ -430,7 +427,6 @@ nameof(offset),
 nameof(binaryForm),
                     SR.ArgumentOutOfRange_ArrayTooSmall);
             }
-            Contract.EndContractBlock();
 
             IdentifierAuthority Authority;
             int[] SubAuthorities;
@@ -527,7 +523,6 @@ nameof(binaryForm));
             {
                 throw new ArgumentNullException(nameof(sddlForm));
             }
-            Contract.EndContractBlock();
 
             //
             // Call into the underlying O/S conversion routine
@@ -545,7 +540,7 @@ nameof(binaryForm));
             }
             else if (Error != Interop.Errors.ERROR_SUCCESS)
             {
-                Debug.Assert(false, string.Format(CultureInfo.InvariantCulture, "Win32.CreateSidFromString returned unrecognized error {0}", Error));
+                Debug.Fail($"Win32.CreateSidFromString returned unrecognized error {Error}");
                 throw new Win32Exception(Error);
             }
 
@@ -595,7 +590,6 @@ nameof(binaryForm));
             {
                 throw new ArgumentException(SR.IdentityReference_CannotCreateLogonIdsSid, nameof(sidType));
             }
-            Contract.EndContractBlock();
 
             byte[] resultSid;
             int Error;
@@ -641,7 +635,7 @@ nameof(binaryForm));
                 }
                 else if (ErrorCode != Interop.Errors.ERROR_SUCCESS)
                 {
-                    Debug.Assert(false, string.Format(CultureInfo.InvariantCulture, "Win32.GetWindowsAccountDomainSid returned unrecognized error {0}", ErrorCode));
+                    Debug.Fail($"Win32.GetWindowsAccountDomainSid returned unrecognized error {ErrorCode}");
                     throw new Win32Exception(ErrorCode);
                 }
 
@@ -664,26 +658,11 @@ nameof(binaryForm));
             }
             else if (Error != Interop.Errors.ERROR_SUCCESS)
             {
-                Debug.Assert(false, string.Format(CultureInfo.InvariantCulture, "Win32.CreateWellKnownSid returned unrecognized error {0}", Error));
+                Debug.Fail($"Win32.CreateWellKnownSid returned unrecognized error {Error}");
                 throw new Win32Exception(Error);
             }
 
             CreateFromBinaryForm(resultSid, 0);
-        }
-
-        internal SecurityIdentifier(SecurityIdentifier domainSid, uint rid)
-        {
-            int i;
-            int[] SubAuthorities = new int[domainSid.SubAuthorityCount + 1];
-
-            for (i = 0; i < domainSid.SubAuthorityCount; i++)
-            {
-                SubAuthorities[i] = domainSid.GetSubAuthority(i);
-            }
-
-            SubAuthorities[i] = (int)rid;
-
-            CreateFromParts(domainSid.IdentifierAuthority, SubAuthorities);
         }
 
         internal SecurityIdentifier(IdentifierAuthority identifierAuthority, int[] subAuthorities)
@@ -798,21 +777,44 @@ nameof(binaryForm));
         {
             if (_sddlForm == null)
             {
-                StringBuilder result = new StringBuilder();
-
                 //
-                // Typecasting of _IdentifierAuthority to a long below is important, since
+                // Typecasting of _IdentifierAuthority to a ulong below is important, since
                 // otherwise you would see this: "S-1-NTAuthority-32-544"
                 //
 
-                result.AppendFormat("S-1-{0}", (long)_identifierAuthority);
-
+#if netcoreapp20
+                StringBuilder result = new StringBuilder();
+                result.Append("S-1-").Append((ulong)_identifierAuthority);
                 for (int i = 0; i < SubAuthorityCount; i++)
                 {
-                    result.AppendFormat("-{0}", (uint)(_subAuthorities[i]));
+                    result.Append('-').Append((uint)(_subAuthorities[i]));
                 }
-
                 _sddlForm = result.ToString();
+#else
+                // length of buffer calculation
+                // prefix = "S-1-".Length: 4;
+                // authority: ulong.MaxValue.ToString("D") : 20;
+                // subauth = MaxSubAuthorities * ( uint.MaxValue.ToString("D").Length + '-'.Length ): 15 * (10+1): 165;
+                // max possible length = 4 + 20 + 165: 189
+                Span<char> result = stackalloc char[189];
+                result[0] = 'S';
+                result[1] = '-';
+                result[2] = '1';
+                result[3] = '-';
+                int written;
+                int length = 4;
+                ((ulong)_identifierAuthority).TryFormat(result.Slice(length), out written);
+                length += written;
+                int[] values = _subAuthorities;
+                for (int index = 0; index < values.Length; index++)
+                {
+                    result[length] = '-';
+                    length += 1;
+                    ((uint)values[index]).TryFormat(result.Slice(length), out written);
+                    length += written;
+                }
+                _sddlForm = result.Slice(0, length).ToString();
+#endif
             }
 
             return _sddlForm;
@@ -865,7 +867,7 @@ nameof(binaryForm));
             }
             else if (Error != Interop.Errors.ERROR_SUCCESS)
             {
-                Debug.Assert(false, string.Format(CultureInfo.InvariantCulture, "Win32.GetWindowsAccountDomainSid returned unrecognized error {0}", Error));
+                Debug.Fail($"Win32.GetWindowsAccountDomainSid returned unrecognized error {Error}");
                 throw new Win32Exception(Error);
             }
             return ResultSid;
@@ -895,7 +897,6 @@ nameof(binaryForm));
             {
                 throw new ArgumentNullException(nameof(targetType));
             }
-            Contract.EndContractBlock();
 
             if (targetType == typeof(SecurityIdentifier))
             {
@@ -917,9 +918,9 @@ nameof(binaryForm));
             }
         }
 
-        #endregion
+#endregion
 
-        #region Operators
+#region Operators
 
         public static bool operator ==(SecurityIdentifier left, SecurityIdentifier right)
         {
@@ -945,9 +946,9 @@ nameof(binaryForm));
             return !(left == right);
         }
 
-        #endregion
+#endregion
 
-        #region IComparable implementation
+#region IComparable implementation
 
         public int CompareTo(SecurityIdentifier sid)
         {
@@ -955,7 +956,6 @@ nameof(binaryForm));
             {
                 throw new ArgumentNullException(nameof(sid));
             }
-            Contract.EndContractBlock();
 
             if (this.IdentifierAuthority < sid.IdentifierAuthority)
             {
@@ -990,9 +990,9 @@ nameof(binaryForm));
             return 0;
         }
 
-        #endregion
+#endregion
 
-        #region Public Methods
+#region Public Methods
 
         internal int GetSubAuthority(int index)
         {
@@ -1040,13 +1040,12 @@ nameof(binaryForm));
             {
                 throw new ArgumentException(SR.Arg_EmptyCollection, nameof(sourceSids));
             }
-            Contract.EndContractBlock();
 
             IntPtr[] SidArrayPtr = new IntPtr[sourceSids.Count];
             GCHandle[] HandleArray = new GCHandle[sourceSids.Count];
-            SafeLsaPolicyHandle LsaHandle = SafeLsaPolicyHandle.InvalidHandle;
-            SafeLsaMemoryHandle ReferencedDomainsPtr = SafeLsaMemoryHandle.InvalidHandle;
-            SafeLsaMemoryHandle NamesPtr = SafeLsaMemoryHandle.InvalidHandle;
+            SafeLsaPolicyHandle LsaHandle = null;
+            SafeLsaMemoryHandle ReferencedDomainsPtr = null;
+            SafeLsaMemoryHandle NamesPtr = null;
 
             try
             {
@@ -1081,7 +1080,7 @@ nameof(binaryForm));
 
                 someFailed = false;
                 uint ReturnCode;
-                ReturnCode = Interop.Advapi32.LsaLookupSids(LsaHandle, sourceSids.Count, SidArrayPtr, ref ReferencedDomainsPtr, ref NamesPtr);
+                ReturnCode = Interop.Advapi32.LsaLookupSids(LsaHandle, sourceSids.Count, SidArrayPtr, out ReferencedDomainsPtr, out NamesPtr);
 
                 //
                 // Make a decision regarding whether it makes sense to proceed
@@ -1106,7 +1105,7 @@ nameof(binaryForm));
                 {
                     uint win32ErrorCode = Interop.Advapi32.LsaNtStatusToWinError(ReturnCode);
 
-                    Debug.Assert(false, string.Format(CultureInfo.InvariantCulture, "Interop.LsaLookupSids returned {0}", win32ErrorCode));
+                    Debug.Fail($"Interop.LsaLookupSids returned {win32ErrorCode}");
                     throw new Win32Exception(unchecked((int)win32ErrorCode));
                 }
 
@@ -1181,9 +1180,9 @@ nameof(binaryForm));
                     }
                 }
 
-                LsaHandle.Dispose();
-                ReferencedDomainsPtr.Dispose();
-                NamesPtr.Dispose();
+                LsaHandle?.Dispose();
+                ReferencedDomainsPtr?.Dispose();
+                NamesPtr?.Dispose();
             }
         }
 
@@ -1221,7 +1220,6 @@ nameof(binaryForm));
             {
                 throw new ArgumentNullException(nameof(sourceSids));
             }
-            Contract.EndContractBlock();
 
             if (targetType == typeof(NTAccount))
             {
@@ -1230,6 +1228,6 @@ nameof(binaryForm));
 
             throw new ArgumentException(SR.IdentityReference_MustBeIdentityReference, nameof(targetType));
         }
-        #endregion
+#endregion
     }
 }

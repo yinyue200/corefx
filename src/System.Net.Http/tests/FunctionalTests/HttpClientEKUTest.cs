@@ -10,19 +10,20 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 using Xunit;
+using Xunit.Abstractions;
 
 namespace System.Net.Http.Functional.Tests
 {
     using Configuration = System.Net.Test.Common.Configuration;
 
-    public class HttpClientEKUTest
+    public abstract class HttpClientEKUTest : HttpClientHandlerTestBase
     {
         // Curl + OSX SecureTransport doesn't support the custom certificate callback.
         private static bool BackendSupportsCustomCertificateHandling =>
 #if TargetsWindows
             true;
 #else
-            CurlSslVersionDescription()?.StartsWith("OpenSSL") ?? false;
+            TestHelper.NativeHandlerSupportsSslConfiguration();
 #endif
 
         private static bool CanTestCertificates =>
@@ -32,11 +33,6 @@ namespace System.Net.Http.Functional.Tests
         private static bool CanTestClientCertificates =>
             CanTestCertificates && BackendSupportsCustomCertificateHandling;
 
-#if !TargetsWindows
-        [DllImport("System.Net.Http.Native", EntryPoint = "HttpNative_GetSslVersionDescription")]
-        private static extern string CurlSslVersionDescription();
-#endif
-        
         public const int TestTimeoutMilliseconds = 15 * 1000;
 
         public static X509Certificate2 serverCertificateServerEku = Configuration.Certificates.GetServerCertificate();
@@ -49,6 +45,8 @@ namespace System.Net.Http.Functional.Tests
 
         private VerboseTestLogging _log = VerboseTestLogging.GetInstance();
 
+        public HttpClientEKUTest(ITestOutputHelper output) : base(output) { }
+
         [ConditionalFact(nameof(CanTestCertificates))]
         public async Task HttpClient_NoEKUServerAuth_Ok()
         {
@@ -56,8 +54,8 @@ namespace System.Net.Http.Functional.Tests
             options.ServerCertificate = serverCertificateNoEku;
 
             using (var server = new HttpsTestServer(options))
-            using (var handler = new HttpClientHandler())
-            using (var client = new HttpClient(handler))
+            using (HttpClientHandler handler = CreateHttpClientHandler())
+            using (HttpClient client = CreateHttpClient(handler))
             {
                 server.Start();
 
@@ -67,7 +65,7 @@ namespace System.Net.Http.Functional.Tests
                 string requestUriString = GetUriStringAndConfigureHandler(options, server, handler);
                 tasks[1] = client.GetStringAsync(requestUriString);
 
-                await Task.WhenAll(tasks).TimeoutAfter(TestTimeoutMilliseconds);
+                await tasks.WhenAllOrAnyFailed(TestTimeoutMilliseconds);
             }
         }
 
@@ -78,8 +76,8 @@ namespace System.Net.Http.Functional.Tests
             options.ServerCertificate = serverCertificateWrongEku;
 
             using (var server = new HttpsTestServer(options))
-            using (var handler = new HttpClientHandler())
-            using (var client = new HttpClient(handler))
+            using (HttpClientHandler handler = CreateHttpClientHandler())
+            using (HttpClient client = CreateHttpClient(handler))
             {
                 server.Start();
 
@@ -101,8 +99,8 @@ namespace System.Net.Http.Functional.Tests
             options.RequireClientAuthentication = true;
 
             using (var server = new HttpsTestServer(options))
-            using (var handler = new HttpClientHandler())
-            using (var client = new HttpClient(handler))
+            using (HttpClientHandler handler = CreateHttpClientHandler())
+            using (HttpClient client = CreateHttpClient(handler))
             {
                 server.Start();
 
@@ -113,7 +111,7 @@ namespace System.Net.Http.Functional.Tests
                 handler.ClientCertificates.Add(clientCertificateNoEku);
                 tasks[1] = client.GetStringAsync(requestUriString);
 
-                await Task.WhenAll(tasks).TimeoutAfter(TestTimeoutMilliseconds);
+                await tasks.WhenAllOrAnyFailed(TestTimeoutMilliseconds);
             }
         }
 
@@ -125,8 +123,8 @@ namespace System.Net.Http.Functional.Tests
             options.RequireClientAuthentication = true;
 
             using (var server = new HttpsTestServer(options))
-            using (var handler = new HttpClientHandler())
-            using (var client = new HttpClient(handler))
+            using (HttpClientHandler handler = CreateHttpClientHandler())
+            using (HttpClient client = CreateHttpClient(handler))
             {
                 server.Start();
 

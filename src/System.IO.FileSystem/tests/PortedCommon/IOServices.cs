@@ -123,7 +123,7 @@ internal class IOServices
             else
             {
                 // Long paths can be over 32K characters. Given that a guid is just 36 chars, this
-                // can lead to crazy 800+ recursive call depths. We'll create large segments to
+                // can lead to 800+ recursive call depths. We'll create large segments to
                 // make tests more manageable.
 
                 path.Append(guid);
@@ -228,7 +228,7 @@ internal class IOServices
 
     public static bool IsDriveNTFS(string drive)
     {
-        if (PlatformDetection.IsWinRT)
+        if (PlatformDetection.IsInAppContainer)
         {
             // we cannot determine filesystem so assume NTFS
             return true;

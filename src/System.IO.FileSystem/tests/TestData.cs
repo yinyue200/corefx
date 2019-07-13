@@ -8,7 +8,7 @@ using Xunit;
 
 internal static class TestData
 {
-    // see: http://msdn.microsoft.com/en-us/library/aa365247.aspx
+    // see: https://docs.microsoft.com/en-us/windows/desktop/FileIO/naming-a-file
     private static readonly char[] s_invalidFileNameChars = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
         new char[]
         {
@@ -57,25 +57,12 @@ internal static class TestData
     {
         get
         {
-            TheoryData<string> data = new TheoryData<string>();
-
-            // NOTE: That I/O treats "file"/http" specially and throws ArgumentException.
-            // Otherwise, it treats all other urls as alternative data streams
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) // alternate data streams, drive labels, etc.
+            TheoryData<string> data = new TheoryData<string>
             {
-                data.Add("\0");
-                data.Add("middle\0path");
-                data.Add("trailing\0");
-                data.Add(@"\\?\");
-                data.Add(@"\\?\UNC\");
-                data.Add(@"\\?\UNC\LOCALHOST");
-            }
-            else
-            {
-                data.Add("\0");
-                data.Add("middle\0path");
-                data.Add("trailing\0");
-            }
+                "\0",
+                "middle\0path",
+                "trailing\0"
+            };
 
             foreach (char c in s_invalidFileNameChars)
             {

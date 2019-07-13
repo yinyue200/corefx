@@ -2,8 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Text;
 using System.Globalization;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace System.IO
@@ -12,7 +13,7 @@ namespace System.IO
     // the resulting sequence of characters to be presented as a string.
     public class StringWriter : TextWriter
     {
-        private static volatile UnicodeEncoding s_encoding = null;
+        private static volatile UnicodeEncoding? s_encoding = null;
 
         private StringBuilder _sb;
         private bool _isOpen;
@@ -24,7 +25,7 @@ namespace System.IO
         {
         }
 
-        public StringWriter(IFormatProvider formatProvider)
+        public StringWriter(IFormatProvider? formatProvider)
             : this(new StringBuilder(), formatProvider)
         {
         }
@@ -35,7 +36,7 @@ namespace System.IO
         {
         }
 
-        public StringWriter(StringBuilder sb, IFormatProvider formatProvider) : base(formatProvider)
+        public StringWriter(StringBuilder sb, IFormatProvider? formatProvider) : base(formatProvider)
         {
             if (sb == null)
             {
@@ -124,10 +125,28 @@ namespace System.IO
             _sb.Append(buffer, index, count);
         }
 
+        public override void Write(ReadOnlySpan<char> buffer)
+        {
+            if (GetType() != typeof(StringWriter))
+            {
+                // This overload was added after the Write(char[], ...) overload, and so in case
+                // a derived type may have overridden it, we need to delegate to it, which the base does.
+                base.Write(buffer);
+                return;
+            }
+
+            if (!_isOpen)
+            {
+                throw new ObjectDisposedException(null, SR.ObjectDisposed_WriterClosed);
+            }
+
+            _sb.Append(buffer);
+        }
+
         // Writes a string to the underlying string buffer. If the given string is
         // null, nothing is written.
         //
-        public override void Write(string value)
+        public override void Write(string? value)
         {
             if (!_isOpen)
             {
@@ -140,6 +159,62 @@ namespace System.IO
             }
         }
 
+        public override void Write(StringBuilder? value)
+        {
+            if (GetType() != typeof(StringWriter))
+            {
+                // This overload was added after the Write(char[], ...) overload, and so in case
+                // a derived type may have overridden it, we need to delegate to it, which the base does.
+                base.Write(value);
+                return;
+            }
+
+            if (!_isOpen)
+            {
+                throw new ObjectDisposedException(null, SR.ObjectDisposed_WriterClosed);
+            }
+
+            _sb.Append(value);
+        }
+
+        public override void WriteLine(ReadOnlySpan<char> buffer)
+        {
+            if (GetType() != typeof(StringWriter))
+            {
+                // This overload was added after the WriteLine(char[], ...) overload, and so in case
+                // a derived type may have overridden it, we need to delegate to it, which the base does.
+                base.WriteLine(buffer);
+                return;
+            }
+
+            if (!_isOpen)
+            {
+                throw new ObjectDisposedException(null, SR.ObjectDisposed_WriterClosed);
+            }
+
+            _sb.Append(buffer);
+            WriteLine();
+        }
+
+        public override void WriteLine(StringBuilder? value)
+        {
+            if (GetType() != typeof(StringWriter))
+            {
+                // This overload was added after the WriteLine(char[], ...) overload, and so in case
+                // a derived type may have overridden it, we need to delegate to it, which the base does.
+                base.WriteLine(value);
+                return;
+            }
+
+            if (!_isOpen)
+            {
+                throw new ObjectDisposedException(null, SR.ObjectDisposed_WriterClosed);
+            }
+
+            _sb.Append(value);
+            WriteLine();
+        }
+
         #region Task based Async APIs
         
         public override Task WriteAsync(char value)
@@ -148,7 +223,7 @@ namespace System.IO
             return Task.CompletedTask;
         }
 
-        public override Task WriteAsync(string value)
+        public override Task WriteAsync(string? value)
         {
             Write(value);
             return Task.CompletedTask;
@@ -160,15 +235,73 @@ namespace System.IO
             return Task.CompletedTask;
         }
 
+        public override Task WriteAsync(ReadOnlyMemory<char> buffer, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Task.FromCanceled(cancellationToken);
+            }
+
+            Write(buffer.Span);
+            return Task.CompletedTask;
+        }
+
+        public override Task WriteAsync(StringBuilder? value, CancellationToken cancellationToken = default)
+        {            
+            if (GetType() != typeof(StringWriter))
+            {
+                // This overload was added after the WriteAsync(char[], ...) overload, and so in case
+                // a derived type may have overridden it, we need to delegate to it, which the base does.
+                return base.WriteAsync(value, cancellationToken);
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Task.FromCanceled(cancellationToken);
+            }
+
+            if (!_isOpen)
+            {
+                throw new ObjectDisposedException(null, SR.ObjectDisposed_WriterClosed);
+            }
+            
+            _sb.Append(value);
+            return Task.CompletedTask;
+        }
+        
         public override Task WriteLineAsync(char value)
         {
             WriteLine(value);
             return Task.CompletedTask;
         }
 
-        public override Task WriteLineAsync(string value)
+        public override Task WriteLineAsync(string? value)
         {
             WriteLine(value);
+            return Task.CompletedTask;
+        }
+
+        public override Task WriteLineAsync(StringBuilder? value, CancellationToken cancellationToken = default)
+        {
+            if (GetType() != typeof(StringWriter))
+            {
+                // This overload was added after the WriteLineAsync(char[], ...) overload, and so in case
+                // a derived type may have overridden it, we need to delegate to it, which the base does.
+                return base.WriteLineAsync(value, cancellationToken);                
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Task.FromCanceled(cancellationToken);
+            }
+
+            if (!_isOpen)
+            {
+                throw new ObjectDisposedException(null, SR.ObjectDisposed_WriterClosed);
+            }
+
+            _sb.Append(value);
+            WriteLine();
             return Task.CompletedTask;
         }
 
@@ -178,16 +311,25 @@ namespace System.IO
             return Task.CompletedTask;
         }
 
+        public override Task WriteLineAsync(ReadOnlyMemory<char> buffer, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Task.FromCanceled(cancellationToken);
+            }
+
+            WriteLine(buffer.Span);
+            return Task.CompletedTask;
+        }
+
         public override Task FlushAsync()
         {
             return Task.CompletedTask;
         }
-        
+
         #endregion
 
-        // Returns a string containing the characters written to this TextWriter
-        // so far.
-        //
+        // Returns a string containing the characters written to this TextWriter so far.
         public override string ToString()
         {
             return _sb.ToString();

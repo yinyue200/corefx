@@ -194,7 +194,7 @@ namespace System.Runtime.Serialization
         private static ConstructorInfo s_extensionDataObjectCtor;
         internal static ConstructorInfo ExtensionDataObjectCtor => s_extensionDataObjectCtor ??
                                                                    (s_extensionDataObjectCtor =
-                                                                       typeof (ExtensionDataObject).GetConstructor(Globals.ScanAllMembers, null, new Type[] {}, null));
+                                                                       typeof (ExtensionDataObject).GetConstructor(Globals.ScanAllMembers, null, Array.Empty<Type>(), null));
 
         private static ConstructorInfo s_hashtableCtor;
         internal static ConstructorInfo HashtableCtor
@@ -249,6 +249,20 @@ namespace System.Runtime.Serialization
             }
         }
 
+        private static MethodInfo s_resetCollectionMemberInfoMethod;
+        internal static MethodInfo ResetCollectionMemberInfoMethod
+        {
+            get
+            {
+                if (s_resetCollectionMemberInfoMethod == null)
+                {
+                    s_resetCollectionMemberInfoMethod = typeof(XmlObjectSerializerReadContext).GetMethod("ResetCollectionMemberInfo", Globals.ScanAllMembers, Array.Empty<Type>());
+                    Debug.Assert(s_resetCollectionMemberInfoMethod != null);
+                }
+                return s_resetCollectionMemberInfoMethod;
+            }
+        }
+
         private static MethodInfo s_storeIsGetOnlyCollectionMethod;
         internal static MethodInfo StoreIsGetOnlyCollectionMethod
         {
@@ -262,6 +276,20 @@ namespace System.Runtime.Serialization
                 return s_storeIsGetOnlyCollectionMethod;
             }
         }
+
+        private static MethodInfo s_resetIsGetOnlyCollection;
+        internal static MethodInfo ResetIsGetOnlyCollectionMethod
+        {
+            get
+            {
+                if (s_resetIsGetOnlyCollection == null)
+                {
+                    s_resetIsGetOnlyCollection = typeof(XmlObjectSerializerWriteContext).GetMethod("ResetIsGetOnlyCollection", Globals.ScanAllMembers);
+                    Debug.Assert(s_resetIsGetOnlyCollection != null);
+                }
+                return s_resetIsGetOnlyCollection;
+            }
+        }        
 
         private static MethodInfo s_throwNullValueReturnedForGetOnlyCollectionExceptionMethod;
         internal static MethodInfo ThrowNullValueReturnedForGetOnlyCollectionExceptionMethod
@@ -926,7 +954,6 @@ namespace System.Runtime.Serialization
             }
         }
 
-#if !uapaot
         private static MethodInfo s_getTypeHandleMethod;
         internal static MethodInfo GetTypeHandleMethod
         {
@@ -1010,6 +1037,5 @@ namespace System.Runtime.Serialization
                 return s_collectionSerializationExceptionMessageProperty;
             }
         }
-#endif
     }
 }

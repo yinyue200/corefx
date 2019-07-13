@@ -184,7 +184,7 @@ namespace System.Runtime.Serialization
                 {
                     if (!holder.CanSurrogatedObjectValueChange && returnValue != holder.ObjectValue)
                     {
-                        throw new SerializationException(string.Format(CultureInfo.CurrentCulture, SR.Serialization_NotCyclicallyReferenceableSurrogate, surrogate.GetType().FullName));
+                        throw new SerializationException(SR.Format(SR.Serialization_NotCyclicallyReferenceableSurrogate, surrogate.GetType().FullName));
                     }
                     holder.SetObjectValue(returnValue, this);
                 }
@@ -316,7 +316,7 @@ namespace System.Runtime.Serialization
                     }
                     if (Nullable.GetUnderlyingType(parentField.FieldType) != null)
                     {
-                        fieldsTemp[currentFieldIndex] = parentField.FieldType.GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
+                        fieldsTemp[currentFieldIndex] = parentField.FieldType.GetField(nameof(value), BindingFlags.NonPublic | BindingFlags.Instance);
                         currentFieldIndex++;
                     }
 
@@ -917,7 +917,7 @@ namespace System.Runtime.Serialization
             }
             if (!(member is FieldInfo)) // desktop checks specifically for RuntimeFieldInfo and SerializationFieldInfo, but the former is an implementation detail in corelib
             {
-                throw new SerializationException(SR.Format(SR.Serialization_InvalidType, member.GetType().ToString()));
+                throw new SerializationException(SR.Format(SR.Serialization_InvalidType, member.GetType()));
             }
 
             //Create a new fixup holder
@@ -1625,8 +1625,6 @@ namespace System.Runtime.Serialization
         internal string TypeName { get; }
     }
 
-    // TODO: Temporary workaround.  Remove this once SerializationInfo.UpdateValue is exposed
-    // from coreclr for use by ObjectManager.
     internal static class SerializationInfoExtensions
     {
         private static readonly Action<SerializationInfo, string, object, Type> s_updateValue =

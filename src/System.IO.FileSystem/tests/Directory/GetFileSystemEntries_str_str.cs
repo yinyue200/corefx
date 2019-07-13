@@ -191,7 +191,7 @@ namespace System.IO.Tests
         [Fact]
         public void SearchPatternIgnoreSubDirectories()
         {
-            //Shouldn't get files on full path by default
+            // Shouldn't get files on full path by default
             DirectoryInfo testDir = Directory.CreateDirectory(GetTestFilePath());
             Directory.CreateDirectory(Path.Combine(testDir.FullName, GetTestFileName()));
             using (File.Create(Path.Combine(testDir.FullName, GetTestFileName())))
@@ -411,157 +411,129 @@ namespace System.IO.Tests
 
         [ActiveIssue(20781, TestPlatforms.AnyUnix)]
         [OuterLoop("These are pretty corner, don't need to run all the time.")]
-        // Can't do these without extended path support on Windows, UsingNewNormalization filters appropriately
-        [ConditionalTheory(nameof(UsingNewNormalization)),
+        [Theory,
             // "foo*." actually becomes "foo<" when passed to NT. It matches all characters up to, and including, the final period.
             //
             // There is a "bug" somewhere in the Windows stack where *some* files with trailing spaces after the final period will be returned when
             // using "*." at the end of a string (which becomes "<"). According to the rules (and the actual pattern matcher used FsRtlIsNameInExpression)
             // *nothing* should match after the final period.
             //
-            // The results as passed to RtlIsNameInExpression (after changing *. to <) are in comments.
+            // We've made Core effectively call RtlIsNameInExpression directly, so this test validates the normally buggy cases. See the test above
+            // for what Windows really does. These are super obscure and the bug pattern isn't obvious so we're just going with "correct".
             InlineData(
                 "foo*.",
                 new string[] { @"foo", @"foo.", @"foo.t", @"foo.tx", @"foo.txt", @"bar.txt", @"foo..", @"foo...", @"foo. ", @"foo.  ", @"foo .", @"foo. . .", @"foo. t" },
-                // Really should be: new string[] { @"foo", @"foo.", @"foo..", @"foo...", @"foo .", @"foo. . ." }), but is
-                new string[] { @"foo", @"foo .", @"foo.", @"foo..", @"foo...", @"foo. ", @"foo. . ." }),
+                new string[] { @"foo", @"foo.", @"foo..", @"foo...", @"foo .", @"foo. . ." }),
             InlineData(
                 "*.",
                 new string[] { @"foo. ", @"foo.  ", @"foo..", @"foo. t" },
-                // Really should be: new string[] { @"foo.." }), but is
-                new string[] { @"foo. ", @"foo.  ", @"foo.." }),
+                new string[] { @"foo.." }),
             InlineData(
                 "f*.",
                 new string[] { @"foo. ", @"foo.  ", @"foo..", @"foo. t" },
-                // Really should be: new string[] { @"foo.." }), but is
-                new string[] { @"foo. ", @"foo.  ", @"foo.." }),
+                new string[] { @"foo.." }),
             InlineData(
                 "fo*.",
                 new string[] { @"foo. ", @"foo.  ", @"foo..", @"foo. t" },
-                // Really should be: new string[] { @"foo.." }), but is
-                new string[] { @"foo. ", @"foo.  ", @"foo.." }),
+                new string[] { @"foo.." }),
             InlineData(
                 "foo*.",
                 new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo.    " },
-                // Really should be: new string[] { }), but is
-                new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo.    " }),
+                new string[] { }),
             InlineData(
                 "foo*.",
                 new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo." },
-                // Really should be: new string[] { @"foo." }), but is
-                new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo." }),
+                new string[] { @"foo." }),
             InlineData(
                 "foo*.",
                 new string[] { @"foo.", @"foo. ", @"foo.  ", @"foo.   ", @"foo.    " },
-                // Really should be: new string[] { @"foo." }), but is
-                new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo." }),
+                new string[] { @"foo." }),
             InlineData(
                 "foo*.",
                 new string[] { @"foo.", @"foo", @"foo. ", @"foo.  ", @"foo.   ", @"foo.    " },
-                // Really should be: new string[] { @"foo.", @"foo" }), but is
-                new string[] { @"foo.", @"foo", @"foo.  ", @"foo.   ", @"foo. " }),
+                new string[] { @"foo.", @"foo" }),
             InlineData(
                 "foo*.",
                 new string[] { @"foo.", @"foo. ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo" },
-                // Really should be: new string[] { @"foo.", @"foo" }), but is
-                new string[] { @"foo.", @"foo", @"foo.  ", @"foo.   ", @"foo. " }),
+                new string[] { @"foo.", @"foo" }),
             InlineData(
                 "foo*.",
                 new string[] { @"foo.    ", @"foo", @"foo.", @"foo. ", @"foo.  ", @"foo.   " },
-                // Really should be: new string[] { @"foo.", @"foo" }), but is
-                new string[] { @"foo.", @"foo", @"foo.  ", @"foo.    ", @"foo. " }),
+                new string[] { @"foo.", @"foo" }),
             InlineData(
                 "foo*.",
                 new string[] { @"foo.    ", @"foo", @"food", @"foo.", @"foo. ", @"foo.  ", @"foo.   " },
-                // Really should be: new string[] { @"foo.", @"foo", @"food" }), but is
-                new string[] { @"foo.", @"foo", @"foo.  ", @"foo.    ", @"foo. ", @"food" }),
+                new string[] { @"foo.", @"foo", @"food" }),
             InlineData(
                 "fo*.",
                 new string[] { @"foo.", @"foo. ", @"foo.  ", @"foo.   ", @"foo.    " },
-                // Really should be: new string[] { @"foo." }), but is
-                new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo.", @"foo.    " }),
+                new string[] { @"foo." }),
             InlineData(
                 "foo*.",
                 new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo.     " },
-                // Really should be: new string[] { }), but is
-                new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo.    " }),
+                new string[] { }),
             InlineData(
                 "foo*.",
                 new string[] { @"foo. ", @"foo. .", @"foo. . ", @"foo. . .", @"foo. . . " },
-                // Really should be: new string[] { @"foo. .", @"foo. . ." }), but is
-                new string[] { @"foo. ", @"foo. .", @"foo. . ", @"foo. . ." }),
+                new string[] { @"foo. .", @"foo. . ." }),
             InlineData(
                 "foo*.",
                 new string[] { @"foo. ", @"foo. .", @"foo.. .", @"foo.... .", @"foo..... ." },
-                // Really should be: new string[] { @"foo. .", @"foo.. .", @"foo.... .", @"foo..... ." }), but is
-                new string[] { @"foo. ", @"foo. .", @"foo.. .", @"foo.... .", @"foo..... ." }),
+                new string[] { @"foo. .", @"foo.. .", @"foo.... .", @"foo..... ." }),
             InlineData(
                 "fo*.",
                 new string[] { @"foo. ", @"foo. .", @"foo. . ", @"foo. . .", @"foo. . . " },
-                // Really should be: new string[] { @"foo. .", @"foo. . ."}), but is
-                new string[] { @"foo. ", @"foo. .", @"foo. . ", @"foo. . .", @"foo. . . " }),
+                new string[] { @"foo. .", @"foo. . ."}),
             InlineData(
                 "foo*.",
                 new string[] { @"foo.", @"foo. ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo.     " },
-                // Really should be: new string[] { @"foo." }), but is
-                new string[] { @"foo.", @"foo. ", @"foo.  ", @"foo.   " }),
+                new string[] { @"foo." }),
             InlineData(
                 "food*.",
                 new string[] { @"food.", @"food. ", @"food.  ", @"food.   ", @"food.    ", @"food.     " },
-                // Really should be: new string[] { @"food." }), but is
-                new string[] { @"food.", @"food. ", @"food.  ", @"food.   " }),
+                new string[] { @"food." }),
             InlineData(
                 "food*.",
                 new string[] { @"food.", @"food. ", @"food.  ", @"food.   ", @"food.    ", @"food.     ", @"foodi." },
-                // Really should be: new string[] { @"food.", @"foodi." }), but is
-                new string[] { @"food.", @"food. ", @"food.  ", @"food.   ", @"foodi." }),
+                new string[] { @"food.", @"foodi." }),
             InlineData(
                 "foodi*.",
                 new string[] { @"foodi.", @"foodi. ", @"foodi.  ", @"foodi.   ", @"foodi.    ", @"foodi.     " },
-                // Really should be: new string[] { @"foodi." }), but is
-                new string[] { @"foodi.", @"foodi. ", @"foodi.  ", @"foodi.   " }),
+                new string[] { @"foodi." }),
             InlineData(
                 "foodie*.",
                 new string[] { @"foodie.", @"foodie. ", @"foodie.  ", @"foodie.   ", @"foodie.    ", @"foodie.     " },
-                // Really should be: new string[] { @"foodie." }), but is
-                new string[] { @"foodie.", @"foodie. ", @"foodie.  ", @"foodie.   " }),
+                new string[] { @"foodie." }),
             InlineData(
                 "fooooo*.",
                 new string[] { @"foooooo.", @"foooooo. ", @"foooooo.  " },
-                // Really should be: new string[] { @"foooooo." }), but is
-                new string[] { @"foooooo.", @"foooooo. ", @"foooooo.  " }),
+                new string[] { @"foooooo." }),
             InlineData(
                 "fooooo*.",
                 new string[] { @"foooooo. ", @"foooooo.  ", @"foooooo.   " },
-                // Really should be: new string[] { }), but is
-                new string[] { @"foooooo. ", @"foooooo.  ", @"foooooo.   " }),
+                new string[] { }),
             InlineData(
                 "fo*.",
                 new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo.     " },
-                // Really should be: new string[] { }), but is
-                new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo.     " }),
+                new string[] { }),
             InlineData(
                 "fo*.",
                 new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo.     ", @"foo.      ", @"foo.       " },
-                // Really should be: new string[] { }), but is
-                new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo.     ", @"foo.      ", @"foo.       " }),
+                new string[] { }),
             InlineData(
                 "fo*.",
                 new string[] { @"fo. ", @"fo.  ", @"fo.   ", @"fo.    ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo.     ", @"foo.      ", @"foo.       " },
-                // Really should be: new string[] { }), but is
-                new string[] { @"fo. ", @"fo.  ", @"fo.   ", @"fo.    ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo.     ", @"foo.      ", @"foo.       " }),
+                new string[] { }),
             InlineData(
                 "fo*.",
                 new string[] { @"fo. ", @"fo.  ", @"fo.   ", @"fo.    ", @"fo.     ", @"fo.      ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo.     ", @"foo.      ", @"foo.       " },
-                // Really should be: new string[] { }), but is
-                new string[] { @"fo. ", @"fo.  ", @"fo.   ", @"fo.    ", @"fo.     ", @"fo.      ", @"foo.  ", @"foo.   ", @"foo.    ", @"foo.     ", @"foo.      ", @"foo.       " }),
+                new string[] { }),
             InlineData(
                 "foo*.",
                 new string[] { @"foo. ", @"foo.  ", @"foo..", @"foo. t", @"foo.   ", @"foo.    " },
-                // Really should be: new string[] { @"foo.." }), but is
-                new string[] { @"foo. ", @"foo.  ", @"foo.   ", @"foo.." }),
+                new string[] { @"foo.." }),
             ]
-        public void PatternTests_DosStarOddSpace(string pattern, string[] sourceFiles, string[] expected)
+        public void PatternTests_DosStarOddSpace_Core(string pattern, string[] sourceFiles, string[] expected)
         {
             // Tests for DOS_STAR, which only occurs when the source pattern ends in *.
             // These cases don't match documented behavior on Windows- matching *should* end at the final period.
@@ -607,25 +579,14 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        [PlatformSpecific(TestPlatforms.Windows)]  
+        [PlatformSpecific(TestPlatforms.Windows)]
         public void WindowsSearchPatternLongSegment()
         {
             // Create a path segment longer than the normal max of 255
             DirectoryInfo testDir = Directory.CreateDirectory(GetTestFilePath());
             string longName = new string('k', 257);
-            
-            // Long path segment in search pattern throws PathTooLongException on Desktop,
-            // otherwise it is an IOException.
-            if (PlatformDetection.IsFullFramework)
-            {
-                Assert.Throws<PathTooLongException>(() => GetEntries(testDir.FullName, longName));
-            }
-            else
-            {
-                var exception = Assert.Throws<IOException>(() => GetEntries(testDir.FullName, longName));
-                // Should be Interop.Errors.ERROR_INVALID_PARAMETER converted to a HResult
-                Assert.Equal(unchecked((int)0x80070057), exception.HResult);
-            }
+
+            GetEntries(testDir.FullName, longName);
         }
 
         [ConditionalFact(nameof(AreAllLongPathsAvailable))]
@@ -651,91 +612,69 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        [PlatformSpecific(TestPlatforms.Windows)]  // Search pattern with double dots throws ArgumentException
-        public void WindowsSearchPatternWithDoubleDots()
+        public void SearchPatternWithDoubleDots_Core()
         {
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, Path.Combine("..ab ab.. .. abc..d", "abc..")));
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, ".."));
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, @".." + Path.DirectorySeparatorChar));
+            // Search pattern with double dots no longer throws ArgumentException
+            string directory = Directory.CreateDirectory(GetTestFilePath()).FullName;
+            Assert.Throws<DirectoryNotFoundException>(() => GetEntries(directory, Path.Combine("..ab ab.. .. abc..d", "abc..")));
+            GetEntries(directory, "..");
+            GetEntries(directory, @".." + Path.DirectorySeparatorChar);
+
+            Assert.Throws<DirectoryNotFoundException>(() => GetEntries(directory, Path.Combine("..ab ab.. .. abc..d", "abc", "..")));
+            GetEntries(directory, Path.Combine("..ab ab.. .. abc..d", "..", "abc"));
+            Assert.Throws<DirectoryNotFoundException>(() => GetEntries(directory, Path.Combine("..", "..ab ab.. .. abc..d", "abc")));
+            Assert.Throws<DirectoryNotFoundException>(() => GetEntries(directory, Path.Combine("..", "..ab ab.. .. abc..d", "abc") + Path.DirectorySeparatorChar));
         }
 
         private static char[] OldWildcards = new char[] { '*', '?' };
         private static char[] NewWildcards = new char[] { '<', '>', '\"' };
 
         [Fact]
-        [PlatformSpecific(TestPlatforms.Windows)]  // Windows-invalid search patterns throw
-        public void WindowsSearchPatternInvalid()
+        public void SearchPatternInvalid_Core()
         {
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, "\0"));
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, "|"));
+            GetEntries(TestDirectory, "|");
 
             Assert.All(Path.GetInvalidFileNameChars().Except(OldWildcards).Except(NewWildcards), invalidChar =>
             {
                 switch (invalidChar)
                 {
                     case '\\':
-                    case '/':
-                        Assert.Throws<DirectoryNotFoundException>(() => GetEntries(Directory.GetCurrentDirectory(), string.Format("te{0}st", invalidChar.ToString())));
-                        break;
-                    //We don't throw in V1 too
-                    case ':':
-                        //History:
-                        // 1) we assumed that this will work in all non-9x machine
-                        // 2) Then only in XP
-                        // 3) NTFS?
-                        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) &&
-                            FileSystemDebugInfo.IsCurrentDriveNTFS()) // testing NTFS
+                        if (PlatformDetection.IsWindows)
                         {
-                            Assert.Throws<IOException>(() => GetEntries(Directory.GetCurrentDirectory(), string.Format("te{0}st", invalidChar.ToString())));
+                            Assert.Throws<DirectoryNotFoundException>(() => GetEntries(TestDirectory, string.Format("te{0}st", invalidChar.ToString())));
                         }
                         else
                         {
-                            GetEntries(Directory.GetCurrentDirectory(), string.Format("te{0}st", invalidChar.ToString()));
+                            GetEntries(TestDirectory, string.Format("te{0}st", invalidChar.ToString()));
                         }
                         break;
+
+                    case '/':
+                        Assert.Throws<DirectoryNotFoundException>(() => GetEntries(TestDirectory, string.Format("te{0}st", invalidChar.ToString())));
+                        break;
+
+                    case '\0':
+                        Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, "\0"));
+                        break;
+
                     default:
-                        Assert.Throws<ArgumentException>(() => GetEntries(Directory.GetCurrentDirectory(), string.Format("te{0}st", invalidChar.ToString())));
+                        GetEntries(TestDirectory, string.Format("te{0}st", invalidChar.ToString()));
                         break;
                 }
             });
         }
 
-        [Fact]
-        [PlatformSpecific(TestPlatforms.Windows)]  // Windows-invalid search patterns throw
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "In netcoreapp we made three new characters be treated as valid wildcards instead of invalid characters. NetFX still treats them as InvalidChars.")]
+        [Fact] // .NET Core doesn't throw on wildcards
         public void WindowsSearchPatternInvalid_Wildcards_netcoreapp()
         {
             Assert.All(OldWildcards, invalidChar =>
             {
-                GetEntries(Directory.GetCurrentDirectory(), string.Format("te{0}st", invalidChar.ToString()));
+                GetEntries(TestDirectory, string.Format("te{0}st", invalidChar.ToString()));
             });
             Assert.All(NewWildcards, invalidChar =>
             {
-                GetEntries(Directory.GetCurrentDirectory(), string.Format("te{0}st", invalidChar.ToString()));
+                GetEntries(TestDirectory, string.Format("te{0}st", invalidChar.ToString()));
             });
-        }
-
-        [Fact]
-        [PlatformSpecific(TestPlatforms.Windows)]  // Windows-invalid search patterns throw
-        [SkipOnTargetFramework(~TargetFrameworkMonikers.NetFramework, "In netcoreapp we made three new characters be treated as valid wildcards instead of invalid characters. NetFX still treats them as InvalidChars.")]
-        public void WindowsSearchPatternInvalid_Wildcards_netfx()
-        {
-            Assert.All(OldWildcards, invalidChar =>
-            {
-                GetEntries(Directory.GetCurrentDirectory(), string.Format("te{0}st", invalidChar.ToString()));
-            });
-            Assert.All(NewWildcards, invalidChar =>
-            {
-                Assert.Throws<ArgumentException>(() => GetEntries(Directory.GetCurrentDirectory(), string.Format("te{0}st", invalidChar.ToString())));
-            });
-        }
-
-        [Fact]
-        [PlatformSpecific(TestPlatforms.AnyUnix)]  // Unix-invalid sarch patterns throw ArgumentException
-        public void UnixSearchPatternInvalid()
-        {
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, "\0"));
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, string.Format("te{0}st", "\0".ToString())));
         }
 
         [Fact]
@@ -812,7 +751,12 @@ namespace System.IO.Tests
         }
 
         [Theory,
-            MemberData(nameof(WindowsInvalidUnixValid))]
+            InlineData("         "),
+            InlineData(" "),
+            InlineData("\n"),
+            InlineData(">"),
+            InlineData("<"),
+            InlineData("\t")]
         [PlatformSpecific(TestPlatforms.AnyUnix)]  // Unix-valid chars in file search patterns
         public void UnixSearchPatternFileValidChar(string valid)
         {
@@ -826,7 +770,12 @@ namespace System.IO.Tests
         }
 
         [Theory,
-            MemberData(nameof(WindowsInvalidUnixValid))]
+            InlineData("         "),
+            InlineData(" "),
+            InlineData("\n"),
+            InlineData(">"),
+            InlineData("<"),
+            InlineData("\t")]
         [PlatformSpecific(TestPlatforms.AnyUnix)]  // Unix-valid chars in directory search patterns
         public void UnixSearchPatternDirectoryValidChar(string valid)
         {
@@ -838,22 +787,6 @@ namespace System.IO.Tests
 
                 Assert.Contains(Path.Combine(testDir.FullName, valid), GetEntries(testDir.FullName, valid));
             }
-        }
-
-        [Fact]
-        [PlatformSpecific(TestPlatforms.AnyUnix)]  // Search pattern with DoubleDots on Unix
-        public void UnixSearchPatternWithDoubleDots()
-        {
-            // search pattern is valid but directory doesn't exist
-            Assert.Throws<DirectoryNotFoundException>(() => GetEntries(TestDirectory, Path.Combine("..ab ab.. .. abc..d", "abc..")));
-
-            // invalid search pattern trying to go up a directory with ..
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, ".."));
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, @".." + Path.DirectorySeparatorChar));
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, Path.Combine("..ab ab.. .. abc..d", "abc", "..")));
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, Path.Combine("..ab ab.. .. abc..d", "..", "abc")));
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, Path.Combine("..", "..ab ab.. .. abc..d", "abc")));
-            Assert.Throws<ArgumentException>(() => GetEntries(TestDirectory, Path.Combine("..", "..ab ab.. .. abc..d", "abc") + Path.DirectorySeparatorChar));
         }
 
         #endregion

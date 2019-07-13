@@ -19,8 +19,6 @@ namespace System.Collections.Specialized
         private int version; // Do not rename (binary serialization)
         private int count; // Do not rename (binary serialization)
         private readonly IComparer comparer; // Do not rename (binary serialization)
-        [NonSerialized]
-        private Object _syncRoot;
 
         public ListDictionary()
         {
@@ -146,17 +144,7 @@ namespace System.Collections.Specialized
             }
         }
 
-        public object SyncRoot
-        {
-            get
-            {
-                if (_syncRoot == null)
-                {
-                    System.Threading.Interlocked.CompareExchange(ref _syncRoot, new Object(), null);
-                }
-                return _syncRoot;
-            }
-        }
+        public object SyncRoot => this;
 
         public ICollection Values
         {
@@ -228,7 +216,7 @@ namespace System.Collections.Specialized
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
             if (index < 0)
-                throw new ArgumentOutOfRangeException(nameof(index), index, SR.ArgumentOutOfRange_NeedNonNegNum);
+                throw new ArgumentOutOfRangeException(nameof(index), index, SR.ArgumentOutOfRange_NeedNonNegNum_Index);
 
             if (array.Length - index < count)
                 throw new ArgumentException(SR.Arg_InsufficientSpace);
@@ -388,7 +376,7 @@ namespace System.Collections.Specialized
                 if (array == null)
                     throw new ArgumentNullException(nameof(array));
                 if (index < 0)
-                    throw new ArgumentOutOfRangeException(nameof(index), index, SR.ArgumentOutOfRange_NeedNonNegNum);
+                    throw new ArgumentOutOfRangeException(nameof(index), index, SR.ArgumentOutOfRange_NeedNonNegNum_Index);
 
                 for (DictionaryNode node = _list.head; node != null; node = node.next)
                 {

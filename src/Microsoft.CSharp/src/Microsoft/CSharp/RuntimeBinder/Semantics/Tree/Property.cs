@@ -4,7 +4,7 @@
 
 namespace Microsoft.CSharp.RuntimeBinder.Semantics
 {
-    internal sealed class ExprProperty : ExprWithType, IExprWithArgs
+    internal sealed class ExprProperty : ExprWithArgs
     {
         // If we have this.prop = 123, but the implementation of the property is in the
         // base class, then the object is of the base class type. Note that to get
@@ -29,17 +29,8 @@ namespace Microsoft.CSharp.RuntimeBinder.Semantics
             if (mwtSet != null)
             {
                 MethWithTypeSet = mwtSet;
+                Flags = EXPRFLAG.EXF_LVALUE;
             }
-        }
-
-        public Expr OptionalArguments { get; set; }
-
-        public ExprMemberGroup MemberGroup { get; set; }
-
-        public Expr OptionalObject
-        {
-            get => MemberGroup.OptionalObject;
-            set => MemberGroup.OptionalObject = value;
         }
 
         public Expr OptionalObjectThrough { get; }
@@ -48,6 +39,6 @@ namespace Microsoft.CSharp.RuntimeBinder.Semantics
 
         public MethWithType MethWithTypeSet { get; }
 
-        SymWithType IExprWithArgs.GetSymWithType() => PropWithTypeSlot;
+        public override SymWithType GetSymWithType() => PropWithTypeSlot;
     }
 }

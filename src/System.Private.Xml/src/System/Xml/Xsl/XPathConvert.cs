@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-/**
+/*
 * Routines used to manipulate IEEE 754 double-precision numbers, taken from JScript codebase.
 *
 * Define NOPARSE if you do not need FloatingDecimal -> double conversions
@@ -597,7 +597,7 @@ namespace System.Xml.Xsl
                 exp = bn._exp + 1022;
                 if (exp >= 2047)
                 {
-                    return Double.PositiveInfinity;
+                    return double.PositiveInfinity;
                 }
 
                 // Round after filling in the bits. In the extra uint, we set the low bit
@@ -2160,7 +2160,7 @@ namespace System.Xml.Xsl
 
             LNegative:
                 // bi was bigger than this.
-                Debug.Assert(false, "Who's subtracting to negative?");
+                Debug.Fail("Who's subtracting to negative?");
                 _length = 0;
                 AssertValid();
             }
@@ -2536,7 +2536,7 @@ namespace System.Xml.Xsl
                 if (dec._exponent >= MaxExp10)
                 {
                     // Overflow to infinity.
-                    dbl = Double.PositiveInfinity;
+                    dbl = double.PositiveInfinity;
                     goto LDone;
                 }
 
@@ -2595,7 +2595,7 @@ namespace System.Xml.Xsl
                 // which is _probably_ within expected errror. I did not take the time to fully
                 // investigate whether this really does meet the ECMA spec...
                 //
-                Debug.Assert(Double.IsNaN(dblLowPrec) || dblLowPrec == dbl);
+                Debug.Assert(double.IsNaN(dblLowPrec) || dblLowPrec == dbl);
                 return dec._sign < 0 ? -dbl : dbl;
             }
 
@@ -2895,12 +2895,12 @@ namespace System.Xml.Xsl
             // Handle NaN and infinity
             if (IsSpecial(dbl))
             {
-                if (Double.IsNaN(dbl))
+                if (double.IsNaN(dbl))
                 {
                     return "NaN";
                 }
 
-                Debug.Assert(Double.IsInfinity(dbl));
+                Debug.Assert(double.IsInfinity(dbl));
                 return dbl < 0 ? "-Infinity" : "Infinity";
             }
 
@@ -3073,7 +3073,7 @@ namespace System.Xml.Xsl
                 }
 
                 // Nothing digested - set the result to NaN and exit.
-                return Double.NaN;
+                return double.NaN;
 
             LGetLeft:
                 // Get digits to the left of the decimal point
@@ -3134,7 +3134,7 @@ namespace System.Xml.Xsl
                 if (pch < pchEnd && SkipWhitespace(pch) < pchEnd)
                 {
                     // If we're not at the end of the string, this is not a valid number
-                    return Double.NaN;
+                    return double.NaN;
                 }
 
                 if (numDig == 0)

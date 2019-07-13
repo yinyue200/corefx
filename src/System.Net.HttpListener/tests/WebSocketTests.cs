@@ -10,6 +10,7 @@ using Xunit;
 
 namespace System.Net.Tests
 {
+    [ConditionalClass(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer))] // httpsys component missing in Nano.
     public class WebSocketTests : IDisposable
     {
         private HttpListenerFactory _factory;
@@ -28,8 +29,7 @@ namespace System.Net.Tests
         {
             if (PlatformDetection.IsWindows7)
             {
-                // Websockets in WinHttp 5.1 is only supported from Windows 8+
-                Assert.Throws<PlatformNotSupportedException>(() => new ClientWebSocket());
+                // Websockets is supported only from Windows 8+
                 return;
             }
 

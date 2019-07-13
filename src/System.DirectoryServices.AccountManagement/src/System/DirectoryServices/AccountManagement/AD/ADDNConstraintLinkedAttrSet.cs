@@ -10,9 +10,6 @@ using System.Diagnostics;
 
 namespace System.DirectoryServices.AccountManagement
 {
-#pragma warning disable 618    // Have not migrated to v4 transparency yet
-    [System.Security.SecurityCritical(System.Security.SecurityCriticalScope.Everything)]
-#pragma warning restore 618
     internal class ADDNConstraintLinkedAttrSet : ADDNLinkedAttrSet
     {
         /// 
@@ -22,7 +19,7 @@ namespace System.DirectoryServices.AccountManagement
         /// The result validator should return true if the result is valid
         /// and false if the result is invalid and needs to be skipped.
         /// </summary>
-        /// <param name="resultDirEntry">
+        /// <param name="resultPropCollection">
         /// Directory entry object of the result.
         /// NOTE: ADDNLinkedAttrSet class is responsible for disposing this DirectoryEntry object.
         /// </param>

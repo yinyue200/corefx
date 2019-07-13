@@ -27,25 +27,23 @@ namespace System.Linq.Tests
         {
             // .NET Core returns the instance as an optimization.
             // see https://github.com/dotnet/corefx/pull/2401.
-            Assert.Equal(!PlatformDetection.IsFullFramework, ReferenceEquals(GetEmptyPartition<int>(), GetEmptyPartition<int>()));
+            Assert.Equal(true, ReferenceEquals(GetEmptyPartition<int>(), GetEmptyPartition<int>()));
         }
 
         [Fact]
+        [SkipOnTargetFramework(~TargetFrameworkMonikers.Netcoreapp, ".NET Core returns the instance as an optimization")]
         public void SkipSame()
         {
             IEnumerable<int> empty = GetEmptyPartition<int>();
-            // .NET Core returns the instance as an optimization.
-            // see https://github.com/dotnet/corefx/pull/2401.
-            Assert.Equal(!PlatformDetection.IsFullFramework, ReferenceEquals(empty, empty.Skip(2)));
+            Assert.Same(empty, empty.Skip(2));
         }
 
         [Fact]
+        [SkipOnTargetFramework(~TargetFrameworkMonikers.Netcoreapp, ".NET Core returns the instance as an optimization")]
         public void TakeSame()
         {
             IEnumerable<int> empty = GetEmptyPartition<int>();
-            // .NET Core returns the instance as an optimization.
-            // see https://github.com/dotnet/corefx/pull/2401.
-            Assert.Equal(!PlatformDetection.IsFullFramework, ReferenceEquals(empty, empty.Take(2)));
+            Assert.Same(empty, empty.Take(2));
         }
 
         [Fact]
@@ -100,10 +98,12 @@ namespace System.Linq.Tests
         }
 
         [Fact]
-        public void CantResetEnumerator()
+        public void ResetIsNop()
         {
             IEnumerator<int> en = GetEmptyPartition<int>().GetEnumerator();
-            Assert.Throws<NotSupportedException>(() => en.Reset());
+            en.Reset();
+            en.Reset();
+            en.Reset();
         }
     }
 }

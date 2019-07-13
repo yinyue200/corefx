@@ -192,7 +192,7 @@ namespace System.Security.Cryptography.CryptoConfigTests
                 yield return new object[] { "System.Security.Cryptography.AsymmetricAlgorithm", "System.Security.Cryptography.RSACryptoServiceProvider", true };
                 yield return new object[] { "DSA", "System.Security.Cryptography.DSACryptoServiceProvider", true };
                 yield return new object[] { "System.Security.Cryptography.DSA", "System.Security.Cryptography.DSACryptoServiceProvider", true };
-                yield return new object[] { "ECDsa", "System.Security.Cryptography.ECDsaCng", false };
+                yield return new object[] { "ECDsa", "System.Security.Cryptography.ECDsaCng", true };
                 yield return new object[] { "ECDsaCng", "System.Security.Cryptography.ECDsaCng", false };
                 yield return new object[] { "System.Security.Cryptography.ECDsaCng", null, false };
                 yield return new object[] { "DES", "System.Security.Cryptography.DESCryptoServiceProvider", true };
@@ -245,18 +245,20 @@ namespace System.Security.Cryptography.CryptoConfigTests
                 yield return new object[] { "X509Chain", "System.Security.Cryptography.X509Certificates.X509Chain", true };
 
                 // PKCS9 attributes
-                yield return new object[] { "1.2.840.113549.1.9.3", "System.Security.Cryptography.Pkcs.Pkcs9ContentType", false };
-                yield return new object[] { "1.2.840.113549.1.9.4", "System.Security.Cryptography.Pkcs.Pkcs9MessageDigest", false };
-                yield return new object[] { "1.2.840.113549.1.9.5", "System.Security.Cryptography.Pkcs.Pkcs9SigningTime", false };
-                yield return new object[] { "1.3.6.1.4.1.311.88.2.1", "System.Security.Cryptography.Pkcs.Pkcs9DocumentName", false };
-                yield return new object[] { "1.3.6.1.4.1.311.88.2.2", "System.Security.Cryptography.Pkcs.Pkcs9DocumentDescription", false };
+                yield return new object[] { "1.2.840.113549.1.9.3", "System.Security.Cryptography.Pkcs.Pkcs9ContentType", true };
+                yield return new object[] { "1.2.840.113549.1.9.4", "System.Security.Cryptography.Pkcs.Pkcs9MessageDigest", true };
+                yield return new object[] { "1.2.840.113549.1.9.5", "System.Security.Cryptography.Pkcs.Pkcs9SigningTime", true };
+                yield return new object[] { "1.3.6.1.4.1.311.88.2.1", "System.Security.Cryptography.Pkcs.Pkcs9DocumentName", true };
+                yield return new object[] { "1.3.6.1.4.1.311.88.2.2", "System.Security.Cryptography.Pkcs.Pkcs9DocumentDescription", true };
             }
         }
 
         [Theory, MemberData(nameof(AllValidNames))]
         public static void CreateFromName_AllValidNames(string name, string typeName, bool supportsUnixMac)
         {
-            if (supportsUnixMac || RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
+            if (supportsUnixMac || isWindows)
             {
                 object obj = CryptoConfig.CreateFromName(name);
                 Assert.NotNull(obj);
@@ -266,7 +268,15 @@ namespace System.Security.Cryptography.CryptoConfigTests
                     typeName = name;
                 }
 
-                Assert.Equal(typeName, obj.GetType().FullName);
+                // ECDsa is special on non-Windows
+                if (isWindows || name != "ECDsa")
+                {
+                    Assert.Equal(typeName, obj.GetType().FullName);
+                }
+                else
+                {
+                    Assert.NotEqual(typeName, obj.GetType().FullName);
+                }
 
                 if (obj is IDisposable)
                 {

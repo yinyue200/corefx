@@ -45,8 +45,8 @@ namespace System.Net.NetworkInformation.Tests
             }
         }
 
-        [ConditionalFact(nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsNotWindowsSubsystemForLinux))] // https://github.com/Microsoft/BashOnWindows/issues/308
-        [PlatformSpecific(TestPlatforms.Linux)]  // Some APIs are not supported on Linux
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsSubsystemForLinux))] // https://github.com/dotnet/corefx/issues/15513 and https://github.com/Microsoft/WSL/issues/3561
+        [PlatformSpecific(TestPlatforms.Linux)]  // Some APIs are not supported on Windows and OSX
         public void BasicTest_GetIPv4InterfaceStatistics_Success_Linux()
         {
             // This API is not actually IPv4 specific.

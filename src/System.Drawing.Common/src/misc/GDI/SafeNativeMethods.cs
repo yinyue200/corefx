@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Runtime.InteropServices;
-using System.Security;
 
 namespace System.Drawing.Internal
 {
@@ -11,13 +10,12 @@ namespace System.Drawing.Internal
     /// This is an extract of the System.Drawing IntNativeMethods in the CommonUI tree.
     /// This is done to be able to compile the GDI code in both assemblies System.Drawing and System.Windows.Forms.
     /// </summary>
-    [SuppressUnmanagedCodeSecurity]
     internal static partial class IntSafeNativeMethods
     {
         public sealed class CommonHandles
         {
             static CommonHandles() { }
-            
+
             /// <summary>
             /// Handle type for GDI objects.
             /// </summary>

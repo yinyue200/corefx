@@ -274,7 +274,51 @@ namespace System.Linq.Expressions.Tests
             Assert.Equal("IIF(a, b, default(Void))", e2.ToString());
         }
 
-        private static IEnumerable<object[]> ConditionalValues()
+        [Theory, ClassData(typeof(CompilationTypes))]
+        public void TurnOnNullableComparedWithConstantNull(bool useInterpreter)
+        {
+            Func<int> func = Expression.Lambda<Func<int>>(
+                    Expression.Condition(
+                        Expression.Equal(Expression.Constant(2, typeof(int?)), Expression.Default(typeof(int?))),
+                        Expression.Constant(1), Expression.Constant(2)))
+                .Compile(useInterpreter);
+            Assert.Equal(2, func());
+        }
+
+        [Theory, ClassData(typeof(CompilationTypes))]
+        public void TurnOnReferenceComparedWithConstantNull(bool useInterpreter)
+        {
+            Func<int> func = Expression.Lambda<Func<int>>(
+                    Expression.Condition(
+                        Expression.Equal(Expression.Constant(new object()), Expression.Default(typeof(object))),
+                        Expression.Constant(1), Expression.Constant(2)))
+                .Compile(useInterpreter);
+            Assert.Equal(2, func());
+        }
+
+        [Theory, ClassData(typeof(CompilationTypes))]
+        public void TurnOnConstantNullComparedWithNullable(bool useInterpreter)
+        {
+            Func<int> func = Expression.Lambda<Func<int>>(
+                    Expression.Condition(
+                        Expression.Equal(Expression.Default(typeof(int?)), Expression.Constant(2, typeof(int?))),
+                        Expression.Constant(1), Expression.Constant(2)))
+                .Compile(useInterpreter);
+            Assert.Equal(2, func());
+        }
+
+        [Theory, ClassData(typeof(CompilationTypes))]
+        public void TurnOnConstantNullComparedWithReference(bool useInterpreter)
+        {
+            Func<int> func = Expression.Lambda<Func<int>>(
+                    Expression.Condition(
+                        Expression.Equal(Expression.Default(typeof(object)), Expression.Constant(new object())),
+                        Expression.Constant(1), Expression.Constant(2)))
+                .Compile(useInterpreter);
+            Assert.Equal(2, func());
+        }
+
+        public static IEnumerable<object[]> ConditionalValues()
         {
             yield return new object[] { true, "yes", "no", "yes" };
             yield return new object[] { false, "yes", "no", "no" };
@@ -282,7 +326,7 @@ namespace System.Linq.Expressions.Tests
             yield return new object[] { false, 42L, 12L, 12L };
         }
 
-        private static IEnumerable<object[]> ConditionalValuesWithTypes()
+        public static IEnumerable<object[]> ConditionalValuesWithTypes()
         {
             ConstantExpression ce = Expression.Constant(98);
             BinaryExpression be = Expression.And(Expression.Constant(2), Expression.Constant(3));

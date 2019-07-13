@@ -1,5 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<root>
+﻿<root>
   <!-- 
     Microsoft ResX Schema 
     
@@ -201,6 +200,9 @@
   <data name="ADP_NonPooledOpenTimeout" xml:space="preserve">
     <value>Timeout attempting to open the connection.  The time period elapsed prior to attempting to open the connection has been exceeded.  This may have occurred because of too many simultaneous non-pooled connection attempts.</value>
   </data>
+  <data name="ADP_QuotePrefixNotSet" xml:space="preserve">
+    <value>{0} requires an open connection when the quote prefix has not been set.</value>
+  </data>
   <data name="MDF_QueryFailed" xml:space="preserve">
     <value>Unable to build the '{0}' collection because execution of the SQL query failed. See the inner exception for details.</value>
   </data>
@@ -265,7 +267,7 @@
     <value>Keyword not supported: '{0}'.</value>
   </data>
   <data name="ADP_InternalProviderError" xml:space="preserve">
-    <value>Internal .Net Framework Data Provider error {0}.</value>
+    <value>Internal .NET Framework Data Provider error {0}.</value>
   </data>
   <data name="ADP_InvalidMultipartName" xml:space="preserve">
     <value>{0} '{1}'.</value>
@@ -304,7 +306,7 @@
     <value>OdbcCommandBuilder.DeriveParameters failed because the OdbcCommand.CommandText property value is an invalid multipart name</value>
   </data>
   <data name="ODBC_NotSupportedEnumerationValue" xml:space="preserve">
-    <value>The {0} enumeration value, {1}, is not supported by the .Net Framework Odbc Data Provider.</value>
+    <value>The {0} enumeration value, {1}, is not supported by the .NET Framework Odbc Data Provider.</value>
   </data>
   <data name="ADP_CommandTextRequired" xml:space="preserve">
     <value>{0}: CommandText property has not been initialized</value>
@@ -325,10 +327,10 @@
     <value>There is already an open DataReader associated with this Command which must be closed first.</value>
   </data>
   <data name="ADP_DeriveParametersNotSupported" xml:space="preserve">
-    <value>{0} DeriveParameters only supports CommandType.StoredProcedure, not CommandType.{1}.</value>
+    <value>{0} DeriveParameters only supports CommandType.StoredProcedure, not CommandType. {1}.</value>
   </data>
   <data name="ADP_InvalidCommandTimeout" xml:space="preserve">
-    <value>Invalid CommandTimeout value {0}; the value must be >= 0.</value>
+    <value>Invalid CommandTimeout value {0}; the value must be &gt;= 0.</value>
   </data>
   <data name="ADP_UninitializedParameterSize" xml:space="preserve">
     <value>{1}[{0}]: the Size property has an invalid size of 0.</value>
@@ -425,5 +427,11 @@
   </data>
   <data name="Odbc_OpenConnectionNoOwner" xml:space="preserve">
     <value>An internal connection does not have an owner.</value>
+  </data>
+  <data name="Odbc_PlatformNotSupported" xml:space="preserve">
+    <value>System.Data.ODBC is not supported on this platform.</value>
+  </data>
+  <data name="Odbc_UnixOdbcNotFound" xml:space="preserve">
+    <value>Dependency unixODBC with minimum version 2.3.1 is required.</value>
   </data>
 </root>

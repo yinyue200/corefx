@@ -24,8 +24,8 @@ namespace System.Linq.Tests
         public void SameResultsRepeatCallsStringQuery()
         {
             var q = from x1 in new[] { 55, 49, 9, -100, 24, 25, -1, 0 }
-                             from x2 in new[] { "!@#$%^", "C", "AAA", "", null, "Calling Twice", "SoS", String.Empty }
-                             where !String.IsNullOrEmpty(x2)
+                             from x2 in new[] { "!@#$%^", "C", "AAA", "", null, "Calling Twice", "SoS", string.Empty }
+                             where !string.IsNullOrEmpty(x2)
                              select new { a1 = x1, a2 = x2 };
 
             Assert.Equal(q.OrderByDescending(e => e.a1).ThenBy(f => f.a2), q.OrderByDescending(e => e.a1).ThenBy(f => f.a2));
@@ -161,14 +161,7 @@ namespace System.Linq.Tests
             // The full .NET Framework has a bug where the input is incorrectly ordered if the comparer
             // returns int.MaxValue or int.MinValue. See https://github.com/dotnet/corefx/pull/2240.
             IEnumerable<int> ordered = outOfOrder.OrderByDescending(i => i, new ExtremeComparer()).ToArray();
-            if (PlatformDetection.IsFullFramework)
-            {
-                Assert.Equal(new[] { 3, 5, 1, 4, 9, 2, 0, 8, 7, 6 }, ordered);
-            }
-            else
-            {
-                Assert.Equal(Enumerable.Range(0, 10).Reverse(), ordered);
-            }
+            Assert.Equal(Enumerable.Range(0, 10).Reverse(), ordered);
         }
 
         [Fact]
@@ -183,6 +176,51 @@ namespace System.Linq.Tests
         {
             Func<DateTime, int> keySelector = null;
             AssertExtensions.Throws<ArgumentNullException>("keySelector", () => Enumerable.Empty<DateTime>().OrderByDescending(keySelector));
+        }
+
+        [Fact]
+        public void SortsLargeAscendingEnumerableCorrectly()
+        {
+            const int Items = 1_000_000;
+            IEnumerable<int> expected = NumberRangeGuaranteedNotCollectionType(0, Items);
+
+            IEnumerable<int> unordered = expected.Select(i => i);
+            IOrderedEnumerable<int> ordered = unordered.OrderByDescending(i => -i);
+
+            Assert.Equal(expected, ordered);
+        }
+
+        [Fact]
+        public void SortsLargeDescendingEnumerableCorrectly()
+        {
+            const int Items = 1_000_000;
+            IEnumerable<int> expected = NumberRangeGuaranteedNotCollectionType(0, Items);
+
+            IEnumerable<int> unordered = expected.Select(i => Items - i - 1);
+            IOrderedEnumerable<int> ordered = unordered.OrderByDescending(i => -i);
+
+            Assert.Equal(expected, ordered);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(3)]
+        [InlineData(8)]
+        [InlineData(16)]
+        [InlineData(1024)]
+        [InlineData(4096)]
+        [InlineData(1_000_000)]
+        public void SortsRandomizedEnumerableCorrectly(int items)
+        {
+            var r = new Random(42);
+
+            int[] randomized = Enumerable.Range(0, items).Select(i => r.Next()).ToArray();
+            int[] ordered = ForceNotCollection(randomized).OrderByDescending(i => -i).ToArray();
+
+            Array.Sort(randomized, (a, b) => a - b);
+            Assert.Equal(randomized, ordered);
         }
     }
 }

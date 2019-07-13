@@ -21,7 +21,7 @@ namespace System.DirectoryServices.AccountManagement.Tests
         public void Ctor_NullContext_ThrowsArgumentException()
         {
             AssertExtensions.Throws<ArgumentException>(null, () => new ComputerPrincipal(null));
-            AssertExtensions.Throws<ArgumentException>(null, () => new ComputerPrincipal(null, "samAcountName", "password", enabled: true));
+            AssertExtensions.Throws<ArgumentException>(null, () => new ComputerPrincipal(null, "samAccountName", "password", enabled: true));
         }
 
         [Fact]
@@ -35,7 +35,7 @@ namespace System.DirectoryServices.AccountManagement.Tests
         public void Ctor_EmptySamAccountName_ThrowsArgumentNullException()
         {
             var context = new PrincipalContext(ContextType.Machine);
-            AssertExtensions.Throws<ArgumentNullException>("Principal.SamAccountName cannot be null or empty.", () => new ComputerPrincipal(context, string.Empty, "password", enabled: true));
+            AssertExtensions.Throws<ArgumentNullException>("Principal.SamAccountName", null, () => new ComputerPrincipal(context, string.Empty, "password", enabled: true));
         }
 
         [Fact]
@@ -45,7 +45,7 @@ namespace System.DirectoryServices.AccountManagement.Tests
             AssertExtensions.Throws<ArgumentException>(null, () => new ComputerPrincipal(context, "samAccountName", null, enabled: true));
         }
 
-        [ConditionalFact(nameof(PlatformDetection) + "." + nameof(PlatformDetection.IsNotWindowsNanoServer))]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsNanoServer), nameof(PlatformDetection.IsNotWindowsIoTCore))]
         public void Ctor_MachineContext_NoException()
         {
             var context = new PrincipalContext(ContextType.Machine);

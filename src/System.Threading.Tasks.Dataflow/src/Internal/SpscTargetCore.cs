@@ -18,7 +18,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security;
 
-#pragma warning disable 0420 // turn off warning for passing volatiles to interlocked operations
 namespace System.Threading.Tasks.Dataflow.Internal
 {
     // SpscTargetCore provides a fast target core for use in blocks that will only have single-producer-single-consumer
@@ -313,7 +312,9 @@ namespace System.Threading.Tasks.Dataflow.Internal
             // the exception because this method could be accessed concurrently
             // by the producer and consumer, a producer calling Fault and the 
             // processing task processing the user delegate which might throw.
+#pragma warning disable 0420
             lock (LazyInitializer.EnsureInitialized(ref _exceptions, () => new List<Exception>()))
+#pragma warning restore 0420
             {
                 _exceptions.Add(exception);
             }
@@ -399,7 +400,7 @@ namespace System.Threading.Tasks.Dataflow.Internal
             internal IEnumerable<TInput> InputQueue { get { return _target._messages.ToList(); } }
 
             /// <summary>Gets the current number of outstanding input processing operations.</summary>
-            internal Int32 CurrentDegreeOfParallelism { get { return _target._activeConsumer != null && !_target.Completion.IsCompleted ? 1 : 0; } }
+            internal int CurrentDegreeOfParallelism { get { return _target._activeConsumer != null && !_target.Completion.IsCompleted ? 1 : 0; } }
             /// <summary>Gets the DataflowBlockOptions used to configure this block.</summary>
             internal ExecutionDataflowBlockOptions DataflowBlockOptions { get { return _target._dataflowBlockOptions; } }
             /// <summary>Gets whether the block is declining further messages.</summary>

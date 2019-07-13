@@ -9,7 +9,7 @@ namespace System.IO.Tests
 {
     #region EnumerateFiles
 
-    public class DirectoryInfo_EnumerateFiles_Str : Directory_GetFiles_str
+    public class DirectoryInfo_EnumerateFiles_str : Directory_GetFiles_str
     {
         public override string[] GetEntries(string path)
         {
@@ -32,6 +32,8 @@ namespace System.IO.Tests
 
     public class DirectoryInfo_EnumerateFiles_str_str_so : Directory_GetFiles_str_str_so
     {
+        public override bool IsDirectoryInfo => true;
+
         public override string[] GetEntries(string path)
         {
             return ((new DirectoryInfo(path).EnumerateFiles("*", SearchOption.TopDirectoryOnly).Select(x => x.FullName)).ToArray());

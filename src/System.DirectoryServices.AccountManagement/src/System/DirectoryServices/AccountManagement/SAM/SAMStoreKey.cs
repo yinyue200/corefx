@@ -22,7 +22,7 @@ namespace System.DirectoryServices.AccountManagement
 
             // Make a copy of the SID, since a byte[] is mutable
             _sid = new byte[sid.Length];
-            Array.Copy(sid, _sid, sid.Length);
+            Array.Copy(sid, 0, _sid, 0, sid.Length);
 
             GlobalDebug.WriteLineIf(
                             GlobalDebug.Info,
@@ -39,7 +39,7 @@ namespace System.DirectoryServices.AccountManagement
 
             SAMStoreKey that = (SAMStoreKey)o;
 
-            if (String.Compare(_machineName, that._machineName, StringComparison.OrdinalIgnoreCase) != 0)
+            if (!string.Equals(_machineName, that._machineName, StringComparison.OrdinalIgnoreCase))
                 return false;
 
             return Utils.AreBytesEqual(_sid, that._sid);

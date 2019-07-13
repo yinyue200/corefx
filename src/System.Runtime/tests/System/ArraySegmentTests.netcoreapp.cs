@@ -98,6 +98,28 @@ namespace System.Tests
             var emptyArraySegment = new ArraySegment<T>(new T[1], 0, 0);
             Assert.NotSame(emptyArraySegment.Array, emptyArraySegment.ToArray());
         }
+
+        [Fact]
+        public void Cast_FromNullArray_ReturnsDefault()
+        {
+            ArraySegment<T> fromNull = null;
+            Assert.Null(fromNull.Array);
+            Assert.Equal(0, fromNull.Offset);
+            Assert.Equal(0, fromNull.Count);
+
+            Assert.True(default(ArraySegment<T>) == null);
+            Assert.True(new ArraySegment<T>(Array.Empty<T>()) != null);
+        }
+
+        [Fact]
+        public void Cast_FromValidArray_ReturnsSegmentForWholeArray()
+        {
+            var array = new T[42];
+            ArraySegment<T> fromArray = array;
+            Assert.Same(array, fromArray.Array);
+            Assert.Equal(0, fromArray.Offset);
+            Assert.Equal(42, fromArray.Count);
+        }
     }
 
     public static partial class ArraySegment_Tests
@@ -208,11 +230,11 @@ namespace System.Tests
                 // Destination not large enough
                 AssertExtensions.Throws<ArgumentException>("destinationArray", () => arraySegment.CopyTo(new int[count - 1]));
                 AssertExtensions.Throws<ArgumentException>("destinationArray", () => arraySegment.CopyTo(new int[count - 1], 0));
-                AssertExtensions.Throws<ArgumentException>(null, () => arraySegment.CopyTo(new ArraySegment<int>(new int[count - 1])));
+                AssertExtensions.Throws<ArgumentException>("destination", null, () => arraySegment.CopyTo(new ArraySegment<int>(new int[count - 1])));
 
                 // Don't write beyond the limits of the destination in cases where source.Count > destination.Count
-                AssertExtensions.Throws<ArgumentException>(null, () => arraySegment.CopyTo(new ArraySegment<int>(new int[count], 1, 0))); // destination.Array can't fit source at destination.Offset
-                AssertExtensions.Throws<ArgumentException>(null, () => arraySegment.CopyTo(new ArraySegment<int>(new int[count], 0, count - 1))); // destination.Array can fit source at destination.Offset, but destination can't
+                AssertExtensions.Throws<ArgumentException>("destination", null, () => arraySegment.CopyTo(new ArraySegment<int>(new int[count], 1, 0))); // destination.Array can't fit source at destination.Offset
+                AssertExtensions.Throws<ArgumentException>("destination", null, () => arraySegment.CopyTo(new ArraySegment<int>(new int[count], 0, count - 1))); // destination.Array can fit source at destination.Offset, but destination can't
             }
         }
 
