@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Globalization;
 using System.Security;
+using System.Runtime.CompilerServices;
 
 namespace System.Text
 {
@@ -35,28 +36,6 @@ namespace System.Text
         [System.Security.SecurityCritical]  // auto-generated
         public SBCSCodePageEncoding(int codePage, int dataCodePage) : base(codePage, dataCodePage)
         {
-        }
-
-        // Method assumes that memory pointer is aligned
-        private static unsafe void ZeroMemAligned(byte* buffer, int count)
-        {
-            long* pLong = (long*)buffer;
-            long* pLongEnd = (long*)(buffer + count - sizeof(long));
-
-            while (pLong < pLongEnd)
-            {
-                *pLong = 0;
-                pLong++;
-            }
-
-            byte* pByte = (byte*)pLong;
-            byte* pEnd = buffer + count;
-
-            while (pByte < pEnd)
-            {
-                *pByte = 0;
-                pByte++;
-            }
         }
 
         // We have a managed code page entry, so load our tables
@@ -98,7 +77,7 @@ namespace System.Text
                 const int CodePageNumberSize = 4;
                 int bytesToAllocate = UnicodeToBytesMappingSize + BytesToUnicodeMappingSize + CodePageNumberSize + iExtraBytes;
                 byte* pNativeMemory = GetNativeMemory(bytesToAllocate);
-                ZeroMemAligned(pNativeMemory, bytesToAllocate);
+                Unsafe.InitBlockUnaligned(pNativeMemory, 0, (uint)bytesToAllocate);
 
                 char* mapBytesToUnicode = (char*)pNativeMemory;
                 byte* mapUnicodeToBytes = (byte*)(pNativeMemory + 256 * 2);
@@ -853,8 +832,7 @@ namespace System.Text
             byte[] byteBuffer = new byte[1];
             char* charEnd = chars + charCount;
 
-            DecoderFallbackBufferHelper fallbackHelper = new DecoderFallbackBufferHelper(
-                decoder != null ? decoder.FallbackBuffer : DecoderFallback.CreateFallbackBuffer());
+            DecoderFallbackBufferHelper fallbackHelper = new DecoderFallbackBufferHelper(null);
 
             // Not quite so fast loop
             while (bytes < byteEnd)
