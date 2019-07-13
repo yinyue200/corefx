@@ -54,8 +54,11 @@
     <Company />
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-    <PackageLicenseUrl>https://github.com/yinyue200/corefx/blob/master/LICENSE.TXT</PackageLicenseUrl>
     <Version>1.0.1</Version>
+    <Description>Provides support for code-page based encodings, including Windows-1252, Shift-JIS, and GB2312.
+Mono doesn't really support System.Text.Encoding.CodePages , so I made the package.</Description>
+    <RepositoryUrl>https://github.com/yinyue200/corefx/tree/stec</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
   <Import Project="$(ToolsDir)encoding.targets" Condition="Exists('$(ToolsDir)encoding.targets')" />
 </Project>
